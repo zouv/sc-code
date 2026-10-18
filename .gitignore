@@ -1,0 +1,138 @@
+# =============================================================================
+# ScCode .gitignore
+# =============================================================================
+
+# ── Dependencies ─────────────────────────────────────────────────────────────
+node_modules/
+
+# ── Build output ─────────────────────────────────────────────────────────────
+/dist/
+/out/
+/build/
+*.tsbuildinfo
+
+# ── Rust / Cargo ─────────────────────────────────────────────────────────────
+**/target/
+
+# ── WASM build artifacts (wasm-pack output) ──────────────────────────────────
+**/pkg/
+
+# ── Extensions (auto-installed on first dev/build via npm run setup) ──────────
+/extensions/
+
+# ── Cargo.lock for library crates ───────────────────────────────────────────
+# Library lock files should not be committed (Cargo best practice).
+# The workspace application lock (/Cargo.lock) IS committed.
+# Keep src-tauri/Cargo.lock as imported provenance; it is not the workspace lock.
+sidex-extension-sdk/Cargo.lock
+extensions-rust/Cargo.lock
+examples/**/Cargo.lock
+
+# ── Logs ─────────────────────────────────────────────────────────────────────
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+/logs/
+
+# ── OS files ─────────────────────────────────────────────────────────────────
+.DS_Store
+._*
+Thumbs.db
+Desktop.ini
+ehthumbs.db
+
+# ── IDE / Editor ─────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+*.sublime-project
+*.sublime-workspace
+
+# ── Environment / Secrets ────────────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+!.env.*.example
+*.pem
+aws-credentials.json
+
+# ── Tauri generated ──────────────────────────────────────────────────────────
+src-tauri/gen/
+
+# ── Test / Coverage ──────────────────────────────────────────────────────────
+coverage/
+.nyc_output/
+*.lcov
+
+# ── Local scratch / source reconstruction (never ship) ───────────────────────
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+/scratchtmp/
+/recover_sources.py
+/recovered/
+/reconstruct/
+/reconstruct_sources.py
+/recover_*.py
+
+# ── Misc ─────────────────────────────────────────────────────────────────────
+*.tgz
+*.vsix
+.turbo/
+.cache/
+.parcel-cache/
+
+# ── Cloudflare Wrangler (marketplace-proxy dev state) ────────────────────────
+infrastructure/marketplace-proxy/.wrangler/
+
+# ── Sidex ephemeral state (never commit) ─────────────────────────────────────
+# Memory, bench results, and other generated state live in ~/.sidex/.
+# Only .sidex/rules/ and .sidex/skills/ are meant to be committed.
+.sidex/*
+!.sidex/rules/
+!.sidex/skills/
+MEMORY.md
+.kilo/
+
+# ScCode local generated runtimes, build caches, fixtures and diagnostics
+/.runtime/
+*.partial
+*.dmp
+*.stackdump
+/src-tauri/shell-integration/
+# Transitional output locations from previous versions (never commit)
+/src-tauri/tauri.runtime.conf.json
+/src-tauri/runtime/
+/extensions-meta.json
+/public/builtin-extensions.js
+
+# Other local scratch/report state (source manifests and lockfiles remain tracked)
+/artifacts/
+/.runtime-*.log
+*.tmp
+*.bak
+*.orig
+*.rej
+/playwright-report/
+/test-results/
+
+# Finished local installers and unpack resources exported by build.bat / release.bat
+/packages/
+
+# Local AI/editor session settings (shared skills and rules remain tracked)
+/.claude/settings.local.json
+/.claude/sessions/
+/.codex/sessions/
+/.codex/logs/
+/.codex/config.local.toml
+/.opencode/sessions/
+/.history/
+
+# Local service state / database sidecars (not source fixtures)
+/sidexai/**/*.db-shm
+/sidexai/**/*.db-wal

@@ -1,0 +1,56 @@
+# 行尾与二进制处理。
+#
+# 刻意不设 `* text=auto`：本仓库主要在 Windows 上开发，用户的 core.autocrlf=true
+# 已负责文本文件的行尾规范化；再叠加 text=auto 会与个人 git 配置互相拉扯，
+# 造成大批文件"假修改"。这里只显式声明二进制类型，避免行尾转换破坏它们。
+#
+# 若日后需要强制仓库内统一 LF，改为 `* text=auto eol=lf` 并全量重新检出
+# （注意：那会一次性重写所有文本文件的行尾）。
+
+# ── 图片 ────────────────────────────────────────────────────────────────────
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.bmp binary
+*.icns binary
+*.psd binary
+
+# ── 字体 ────────────────────────────────────────────────────────────────────
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.otf binary
+*.eot binary
+
+# ── 文档 / 归档 ─────────────────────────────────────────────────────────────
+*.pdf binary
+*.zip binary
+*.gz binary
+*.tar binary
+*.7z binary
+
+# ── 原生 / 可执行 ───────────────────────────────────────────────────────────
+*.exe binary
+*.dll binary
+*.so binary
+*.dylib binary
+*.node binary
+*.wasm binary
+*.lib binary
+*.pdb binary
+
+# ── 媒体 ────────────────────────────────────────────────────────────────────
+*.mp3 binary
+*.mp4 binary
+*.wav binary
+*.webm binary
+
+# Windows daily entry points keep CMD-compatible line endings.
+*.bat text eol=crlf
+
+# Bash entry points must also work after a Windows checkout.
+*.sh text eol=lf
+scripts/bin/xattr text eol=lf

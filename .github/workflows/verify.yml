@@ -1,0 +1,58 @@
+name: ScCode verification
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: npm run verify:import
+      - run: npm test
+      - run: npm run test:transport
+      - run: npm run typecheck
+      - run: npm run build
+      - run: bash check-docs.sh
+  runtime:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup toolchain install stable --profile minimal
+      - run: cargo +stable test -p sc-code-runtime -p sidex-auth -p sidex-workspace -p sidex-agent -p sidex-settings -p sidex-extensions
+  native:
+    runs-on: windows-latest
+    env:
+      AWS_LC_SYS_PREBUILT_NASM: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: rustup toolchain install stable --profile minimal
+      - run: cargo +stable check -p sc-code
+      - run: cargo +stable test -p sc-code --lib
+  agent:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: sidexai/sidex-server/go.mod
+          cache-dependency-path: sidexai/sidex-server/go.sum
+      - run: go test -tags fts5 ./...
+        working-directory: sidexai/sidex-server

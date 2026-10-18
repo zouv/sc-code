@@ -1,0 +1,66 @@
+# 总体开发计划 · ScCode
+
+## 总进度
+2026-10-18：starter 初始化和 3704 项完整源码导入完成；独立运行、安全基础、扩展状态与 Windows debug NSIS 链路已实现并做自动化回归。**完整无缝迁移尚未验收，未签名、未发布。**
+
+## 开发大纲
+| 编号 | 优先级 | 任务 | 状态 |
+|---|---|---|---|
+| S0a | P0 | ~~starter 初始化、完整源码导入、来源清单~~ | ✅ 2026-10-18 |
+| S0b | P0 | custom 全功能逐项行为验收 | 部分自动化通过；GUI 项待验 |
+| S1a | P0 | ~~独立身份、只复制迁移、固定资源打包~~ | ✅ 2026-10-18 |
+| S1b | P0 | 安装/升级、真实迁移与历史 WebView 状态验收 | GUI 输入/截图受阻，未导入真实数据 |
+| S2a | P0 | ~~本地 transport 鉴权、密钥禁明文降级、单文件冲突保护~~ | ✅ 2026-10-18 |
+| S2b | P0 | CSP/workspace trust、扩展/工具权限边界 | 待开发；不可信项目/扩展不可视作安全 |
+| S2c | P0 | 持久恢复 journal、多文件事务、状态锁崩溃恢复 | 待开发；现有 checkpoint 仅单文件内存 |
+| S3a | P1 | ~~Node/TS/Rust/Go 回归、真实宿主/侧车 smoke、最新 debug NSIS~~ | ✅ 2026-10-18 |
+| S3b | P1 | 干净机器、正式 release/签名和 CI 实际运行 | 待验收 |
+| S3c | P1 | 扩展Rust回归：Windows shell超时清理、终端平台测试、remote测试API | 新发现3项未修；生产构建通过不代表全套回归通过 |
+| S4a | P1 | ~~JSONC 配置、持久 Memento/工作区隔离、扩展 secret native 桥~~ | ✅ 2026-10-18；真 keyring 未验 |
+| S4b | P1 | 全扩展 API 契约、跨窗口同步、ESM 重启策略与真 keyring | 待开发/验收 |
+| S5 | P1 | AI 与 IDE 共用文档/LSP/index Runtime | 待开发 |
+| S5b | P1 | ACP客户端插件/AgentBackend替换内置Agent | 已评估；本轮未移除，待协议与迁移验收 |
+| S5c | P1 | 独立Tab补全适配，修正默认后端路由不一致 | 已定位；不把ACP会话直接当低延迟补全 |
+| S7 | P1 | ~~ScCode显示品牌、SC SVG、多平台图标、迁移提示去重~~ | ✅ 2026-10-18；含紫灰/淡紫配色区分，重打包/GUI边界见HANDOFF |
+| S8 | P1 | ~~日常 BAT（含独立Release入口与packages/dev、release安装包和unpack/dev、release免安装目录）、.runtime 收拢、ScCode profile迁移与凭据身份、Agent默认收起~~ | ✅ 2026-10-18；自动化与包信息见HANDOFF，真实GUI/keyring待验 |
+| S9 | P1 | ~~仓库布局、源码/生成物Git边界与首次提交~~ | ✅ 2026-10-18；干净检出验收通过，提交/推送记录以Git为准 |
+| S6 | P2 | 扩展 API/服务/许可矩阵、性能基准与新特性 | 待开发 |
+
+## 移植验收矩阵
+| 兼容场景 | 当前证据 | 尚待验收 |
+|---|---|---|
+| 文件/功能不遗漏、独立产品身份 | 3704 项导入清单；普通功能模块与身份自动检查 | 清单不替代行为验收 |
+| 扩展配置/启动/TreeView | 真生产 Node 宿主配置门、配置值、Tree provider 自动测试 | 活动栏图标、启动视图恢复、WebviewView dispose GUI |
+| 打开/保存对话框 | 真宿主模拟 Workbench 回包；Uri/fsPath/中文空格路径/取消 | 桌面文件选择器真实 UI |
+| 扩展更新/状态 | CJS 新入口/命令撤销/树刷新；ESM初次加载；状态重启、多根切换 | ESM真正热重载、第三方扩展完整生命周期 |
+| VSIX/profile扩展同步/工作区拖拽 | 源码保留、类型与模块检查 | 安装 VSIX、标签拖动、拖文件不变脏、区域语义逐项 GUI |
+| 设置/数据迁移 | JSONC并发保存；合成只复制、SQLite快照、HOME隔离测试 | 安装升级、真实旧库、WebView跨origin历史状态、真keyring |
+| AI通信 | 取消/重连/endpoint；真实Go REST/WS鉴权smoke | 实际provider模型、工具权限、长会话故障恢复 |
+| 构建/发布脚本与文档 | 独立打包与历史内容保留 | 正式签名发行、跨平台构建、旧命令使用迁移指引 |
+
+## 下一批交付顺序
+1. P0 迁移兼容：可交互 Windows 会话/干净机器执行合成 profile 全矩阵；用户同意且关闭旧应用后才验真实数据，先备份、不覆盖、不删来源。
+2. P0 安全：梳理需要的资产/网络来源与 Tauri invoke能力 → 收紧 CSP → workspace trust/扩展执行与agent工具授权；兼容测试先于强制切换。
+3. P0 恢复：持久 journal + 崩溃恢复状态机 + 多文件 prepare/commit/rollback + 内容冲突检测；进程锁应先辨别活跃持有者，禁止超时直接删除锁。
+4. P1 Runtime：文档版本/编辑源一致性 → LSP/index共享 → agent只消费同一文档快照；逐步替换双份服务，不先重写工作台。
+
+## Agent 当前兼容风险
+- Go注册66种工具但不是66种完整桌面能力：本机LSP仍是提示文本；patch/regex、后台shell与read_lints路由缺少Rust处理；编排local_exec=false与server拒绝workspace工具的策略冲突。
+- Tab补全存在 /v1/completions 与 /complete 契约不一致，需外部FIM服务；云Agent设置明确无托管后端。
+- 本轮未调用真实模型/账户验证；移除内置Agent前必须以真实编辑、语言语义、取消/权限和历史会话迁移为验收项。
+
+## Agent 解耦交付建议（评估，不代表本轮已实现）
+1. 定义插件级 AgentBackend/会话模型；保留通用聊天、流式渲染、文件上下文、diff和权限UI，模型/推理/记忆交给外部Agent。
+2. ScCode 实现 ACP Client + Agent启动/生命周期 + 能力协商；建立 initialize/new/prompt/update/cancel、permission、可选文件/终端/会话恢复的fake Agent契约测试，默认拒绝未知权限。
+3. 固定至少一个外部Agent版本做真实编辑/取消/失败/重连/授权验收；未实现能力显示不可用，不模拟成功。ACP不是VSIX扩展协议，不能仅安装Agent而省略Client。
+4. 按通用文件/文档版本检查接入读写，保留 unsaved buffer、路径/工作区权限和取消后子进程清理边界；ACP不自动保证权限沙箱。
+5. 保留旧会话只读/导出与旧设置解析；确认切换不丢历史后停自启Go、移除内置provider/计费/推理/专属MCP&skills设置和资源；不要连带删除共享Node宿主、LSP、DAP、搜索/终端。
+6. Tab补全、多Agent DAG/验证器/记忆和长期恢复另做能力矩阵，不承诺ACP可一键替代；安全/事务P0仍需要独立完成。
+
+## 已交付里程碑
+以上 ✅ 为未发布实现里程碑；自动化测试通过不代表所有 GUI、用户数据或第三方扩展都兼容。
+
+## 新发现的回归缺口（2026-10-18）
+- crates/sidex-agent/src/tools/shell.rs / timeout_terminates_long_running_child：1秒超时测试实耗88秒，未满足7秒上限；同步taskkill/pipe清理链路需单独诊断，不能靠放宽断言掩盖。未承诺Agent取消会可靠清理子进程。
+- crates/sidex-terminal/src/link_detection.rs / detect_absolute_path_unix：Windows下Unix绝对路径用例失败；明确跨平台产品语义后修检测或约束测试，不能只为变绿忽略。
+- crates/sidex-remote/src/ssh.rs 测试：依赖的russh_keys::key::ed25519 API不存在，测试目标编译失败；修fixture并重跑SSH测试。生产构建未受此测试编译问题影响。

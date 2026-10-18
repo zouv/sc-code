@@ -1,0 +1,82 @@
+{
+  "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
+  "productName": "ScCode",
+  "version": "0.1.0",
+  "identifier": "dev.sccode.app",
+  "build": {
+    "frontendDist": "../.runtime/dist",
+    "devUrl": "http://localhost:1420",
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run runtime:check && npm run build"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "ScCode",
+        "width": 1280,
+        "height": 800,
+        "minWidth": 800,
+        "minHeight": 600,
+        "resizable": true,
+        "fullscreen": false,
+        "decorations": false,
+        "shadow": true,
+        "visible": false,
+        "dragDropEnabled": false,
+        "useHttpsScheme": true
+      }
+    ],
+    "security": {
+      "csp": null,
+      "assetProtocol": {
+        "enable": true,
+        "scope": []
+      }
+    }
+  },
+  "plugins": {},
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "copyright": "Copyright © ScCode contributors; portions © Siden Technologies Inc. and Microsoft Corporation.",
+    "category": "DeveloperTool",
+    "shortDescription": "A fast, open-source code editor.",
+    "longDescription": "ScCode is an independent, open-source code editor and AI development workspace.",
+    "resources": {
+      "extension-host/server.cjs": "extension-host/server.cjs",
+      "extension-host/host.cjs": "extension-host/host.cjs",
+      "extension-host/configuration.cjs": "extension-host/configuration.cjs",
+      "extension-host/transport-auth.cjs": "extension-host/transport-auth.cjs",
+      "extension-host/storage.cjs": "extension-host/storage.cjs",
+      "../src/vs/workbench/contrib/terminal/common/scripts/": "shell-integration/"
+    },
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "macOS": {
+      "entitlements": "entitlements.plist",
+      "minimumSystemVersion": "10.15",
+      "infoPlist": "Info.plist"
+    },
+    "windows": {
+      "webviewInstallMode": {
+        "type": "downloadBootstrapper"
+      },
+      "wix": {
+        "version": "0.1.0.0"
+      }
+    },
+    "linux": {
+      "deb": {
+        "depends": [
+          "libwebkit2gtk-4.1-0",
+          "libgtk-3-0"
+        ]
+      }
+    }
+  }
+}
