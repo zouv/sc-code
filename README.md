@@ -99,6 +99,20 @@ bash check-docs.sh
 
 `npm test` 包含实际 fork 生产 Node 宿主的合成扩展测试；不读取用户 profile 或真实 keyring。`test:server` 启动真实 Go exe，只用临时 profile 和随机凭据，验证 REST/WS/Origin/Host；不注入用户 API key，不调用模型。
 
+## 实验开关：真实 Node 扩展宿主
+
+默认仍使用旧的 `host.cjs` 仿制宿主。启用 VSCode 真实扩展宿主（`src/vs/workbench/api/node` + `extensionHost.cjs`）：
+
+```powershell
+npm run ext-host:build          # 构建 .runtime/ext-host/extensionHost.cjs
+$env:SC_CODE_REAL_EXT_HOST='1'  # 构建期注入；也可用 ?realExtHost=1
+npm run desktop:dev
+```
+
+真实宿主通过 loopback WebSocket + `PersistentProtocol` 通信，扩展在独立的 Node 进程中运行；`extension-host/extensionHost.cjs` 会随 `runtime:prepare`/打包进入运行资源。当前为实验路径，第三方扩展矩阵尚未验收。
+
+性能基线：`npm run perf:baseline`（冷启动到窗口时间 + 进程树工作集，输出 `.runtime/logs/perf-*.json`）。设置/UI 状态在桌面版存于 profile 内 SQLite，首次启动自动从 IndexedDB 复制一次。
+
 ## 兼容与安全边界
 
 - 原 command/settings IDs 和 VS Code API 1.110.0 保留；产品版本独立。原定制功能基线见 `docs/history/custom/registry.md`，3704 项来源清单见 `docs/import-manifest.json`。

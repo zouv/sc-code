@@ -170,3 +170,10 @@ export const USER_LOCAL_AND_REMOTE_SETTINGS = [
 	'http.fetchAdditionalSupport',
 	'http.experimental.networkInterfaceCheckInterval'
 ];
+
+/**
+ * Default for `http.systemCertificatesNode`, kept in sync with upstream
+ * VSCode. The Node extension host imports this constant when it registers its
+ * proxy configuration.
+ */
+export const systemCertificatesNodeDefault = false;

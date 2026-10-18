@@ -484,6 +484,9 @@ pub fn run() {
         .manage(commands::next_gen_tools::CheckpointStore::new())
         .manage(Arc::new(IndexStore::new(false)))
         .manage(ExtensionPlatformSupervisor::new())
+        .manage(Arc::new(
+            commands::real_ext_host::RealExtensionHost::new(),
+        ))
         .manage(ExtensionDiagnosticsStore::new())
         .manage(Arc::new(SettingsStore::new()))
         .manage(Arc::new(sidex_extension_api::CommandRegistry::new()))
@@ -732,7 +735,10 @@ pub fn run() {
             commands::get_user_data_dir,
             commands::storage_get,
             commands::storage_set,
+            commands::storage_list,
             commands::storage_delete,
+            commands::real_ext_host_start,
+            commands::real_ext_host_stop,
             // Chat session persistence
             commands::session_create,
             commands::session_list,
@@ -986,6 +992,11 @@ pub fn run() {
                 }
                 if let Some(supervisor) = app_handle.try_state::<ExtensionPlatformSupervisor>() {
                     let _ = supervisor.stop();
+                }
+                if let Some(host) =
+                    app_handle.try_state::<Arc<commands::real_ext_host::RealExtensionHost>>()
+                {
+                    host.shutdown();
                 }
                 // Every other child-process owner is stopped explicitly here
                 // rather than left to Drop; the agent server needs the same

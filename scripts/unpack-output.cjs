@@ -5,7 +5,7 @@ const path = require('node:path');
 const { assertLocalPath } = require('./package-output.cjs');
 const { sha256, treeHash, validateExtensions } = require('./desktop-runtime.cjs');
 const resourceDirs = ['bin', 'extension-host', 'extensions', 'licenses', 'shell-integration'];
-const requiredFiles = ['ScCode.exe', 'bin/node.exe', 'sidex-server.exe', 'runtime-manifest.json',
+const requiredFiles = ['ScCode.exe', 'bin/node.exe', 'sidex-server.exe', 'runtime-manifest.json', 'extension-host/extensionHost.cjs',
   ...['server', 'host', 'configuration', 'transport-auth', 'storage'].map(name => 'extension-host/' + name + '.cjs'),
   'shell-integration/shellIntegration.ps1'];
 const markerName = 'unpack-manifest.json';

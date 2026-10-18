@@ -25,6 +25,7 @@ function quietMissingSourceMaps() {
 
 export default defineConfig({
   clearScreen: false,
+  envPrefix: ['VITE_', 'TAURI_', 'SC_CODE_REAL_EXT_HOST'],
   assetsInclude: ['**/*.wasm', '**/*.json', '**/*.tmLanguage.json'],
   publicDir: '.runtime/public',
   plugins: [nlsPlugin(), quietMissingSourceMaps()],
@@ -35,7 +36,6 @@ export default defineConfig({
       ignored: ['**/src-tauri/**', '**/.runtime/target/**', '**/.runtime/downloads/**'],
     },
   },
-  envPrefix: ['VITE_', 'TAURI_'],
   resolve: {
     alias: {
       'vs': path.resolve(__dirname, 'src/vs'),
@@ -45,7 +45,9 @@ export default defineConfig({
     outDir: '.runtime/dist',
     target: ['es2022', 'chrome100', 'safari15'],
     minify: 'esbuild',
-    sourcemap: false,
+    // Release builds can opt into hidden source maps for crash triage without
+    // shipping them to users. Off by default to keep build time/memory down.
+    sourcemap: process.env.SC_CODE_SOURCEMAP === '1' ? 'hidden' : false,
     cssCodeSplit: true,
     chunkSizeWarningLimit: 5000,
     rollupOptions: {
@@ -108,15 +110,24 @@ export default defineConfig({
           if (id.endsWith('/vs/nls.mock.js')) {
             return 'nls';
           }
-          if (
-            id.includes('/vs/base/') ||
-            id.endsWith('/vs/amdX.ts') || id.endsWith('/vs/amdX.js') ||
+          // Split the former single ~10MB "core" chunk along VSCode's own
+          // architectural layers. base has no imports from platform/editor,
+          // platform only depends on base, and editor depends on both, so the
+          // chunk graph stays acyclic and browsers can load/cache them
+          // independently.
+          if (id.endsWith('/vs/amdX.ts') || id.endsWith('/vs/amdX.js') ||
             id.endsWith('/vs/sidex-bridge.ts') || id.endsWith('/vs/sidex-bridge.js') ||
-            id.includes('xterm') || id.includes('/terminal/') ||
-            (id.includes('/vs/editor/') && !id.includes('/workbench/')) ||
-            id.includes('/vs/platform/')
-          ) {
-            return 'core';
+            id.includes('/vs/base/')) {
+            return 'base';
+          }
+          if (id.includes('xterm') || id.includes('/terminal/')) {
+            return 'terminal';
+          }
+          if (id.includes('/vs/editor/') && !id.includes('/workbench/')) {
+            return 'monaco';
+          }
+          if (id.includes('/vs/platform/')) {
+            return 'platform';
           }
         },
       },

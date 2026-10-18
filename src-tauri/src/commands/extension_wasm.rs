@@ -2043,7 +2043,10 @@ struct LoadedWasmExtension {
 // ---------------------------------------------------------------------------
 
 pub struct WasmExtensionRuntime {
-    inner: Mutex<WasmRuntimeState>,
+    /// `None` until the first WASM extension is actually loaded. Creating the
+    /// wasmtime engine eagerly costs startup time and memory even though no
+    /// WASM extensions ship with the product today.
+    inner: Mutex<Option<WasmRuntimeState>>,
 }
 
 struct WasmRuntimeState {
@@ -2056,6 +2059,12 @@ struct WasmRuntimeState {
 
 impl WasmExtensionRuntime {
     pub fn new() -> Result<Self> {
+        Ok(Self {
+            inner: Mutex::new(None),
+        })
+    }
+
+    fn create_state() -> Result<WasmRuntimeState> {
         let mut config = Config::new();
         config.wasm_component_model(true);
 
@@ -2069,15 +2078,22 @@ impl WasmExtensionRuntime {
         SidexExtension::add_to_linker::<_, wasmtime::component::HasSelf<_>>(&mut linker, |x| x)
             .map_err(|e| anyhow::anyhow!("add WIT bindings to linker: {e}"))?;
 
-        Ok(Self {
-            inner: Mutex::new(WasmRuntimeState {
-                engine,
-                linker,
-                extensions: HashMap::new(),
-                shared_documents: HashMap::new(),
-                shared_workspace_folders: Vec::new(),
-            }),
+        Ok(WasmRuntimeState {
+            engine,
+            linker,
+            extensions: HashMap::new(),
+            shared_documents: HashMap::new(),
+            shared_workspace_folders: Vec::new(),
         })
+    }
+
+    /// Return the initialized state, creating the wasmtime engine on first use.
+    fn state(&self) -> Result<std::sync::MutexGuard<'_, Option<WasmRuntimeState>>, String> {
+        let mut guard = self.inner.lock().map_err(|e| e.to_string())?;
+        if guard.is_none() {
+            *guard = Some(Self::create_state().map_err(|e| e.to_string())?);
+        }
+        Ok(guard)
     }
 
     pub fn load_extension(&self, manifest: &ExtensionManifest) -> Result<(), String> {
@@ -2093,7 +2109,8 @@ impl WasmExtensionRuntime {
             wasm_path.display()
         );
 
-        let mut guard = self.inner.lock().map_err(|e| e.to_string())?;
+        let mut guard = self.state()?;
+        let guard = guard.as_mut().ok_or("WASM runtime unavailable")?;
 
         let component = Component::from_file(&guard.engine, &wasm_path)
             .map_err(|e| format!("failed to load wasm component {}: {e}", wasm_path.display()))?;
@@ -2140,7 +2157,8 @@ impl WasmExtensionRuntime {
     }
 
     pub fn unload_extension(&self, id: &str) -> Result<(), String> {
-        let mut guard = self.inner.lock().map_err(|e| e.to_string())?;
+        let mut guard = self.state()?;
+        let guard = guard.as_mut().ok_or("WASM runtime unavailable")?;
         if let Some(mut ext) = guard.extensions.remove(id) {
             let _ = ext
                 .bindings
@@ -2156,11 +2174,17 @@ impl WasmExtensionRuntime {
             .inner
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner);
-        guard.extensions.keys().cloned().collect()
+        match guard.as_ref() {
+            Some(state) => state.extensions.keys().cloned().collect(),
+            None => Vec::new(),
+        }
     }
 
     pub fn sync_document(&self, uri: &str, language_id: &str, text: &str) {
         if let Ok(mut guard) = self.inner.lock() {
+            let Some(guard) = guard.as_mut() else {
+                return;
+            };
             guard.shared_documents.insert(
                 uri.to_string(),
                 DocumentData {
@@ -2187,6 +2211,9 @@ impl WasmExtensionRuntime {
 
     pub fn close_document(&self, uri: &str) {
         if let Ok(mut guard) = self.inner.lock() {
+            let Some(guard) = guard.as_mut() else {
+                return;
+            };
             guard.shared_documents.remove(uri);
             for ext in guard.extensions.values_mut() {
                 ext.store.data_mut().documents.remove(uri);
@@ -2196,6 +2223,9 @@ impl WasmExtensionRuntime {
 
     pub fn sync_workspace_folders(&self, folders: &[String]) {
         if let Ok(mut guard) = self.inner.lock() {
+            let Some(guard) = guard.as_mut() else {
+                return;
+            };
             guard.shared_workspace_folders = folders.to_vec();
             for ext in guard.extensions.values_mut() {
                 ext.store.data_mut().workspace_folders = folders.to_vec();
@@ -2272,7 +2302,8 @@ pub async fn wasm_provide_completion(
     params: WasmProviderParams,
     state: State<'_, Arc<WasmExtensionRuntime>>,
 ) -> Result<Option<WasmCompletionResult>, String> {
-    let mut guard = state.inner.lock().map_err(|e| e.to_string())?;
+    let mut guard = state.state()?;
+    let guard = guard.as_mut().ok_or("WASM runtime unavailable")?;
     let ext = guard
         .extensions
         .get_mut(&params.extension_id)
@@ -2312,7 +2343,8 @@ pub async fn wasm_provide_hover(
     params: WasmProviderParams,
     state: State<'_, Arc<WasmExtensionRuntime>>,
 ) -> Result<Option<WasmHoverResult>, String> {
-    let mut guard = state.inner.lock().map_err(|e| e.to_string())?;
+    let mut guard = state.state()?;
+    let guard = guard.as_mut().ok_or("WASM runtime unavailable")?;
     let ext = guard
         .extensions
         .get_mut(&params.extension_id)
@@ -2338,7 +2370,8 @@ pub async fn wasm_provide_definition(
     params: WasmProviderParams,
     state: State<'_, Arc<WasmExtensionRuntime>>,
 ) -> Result<Vec<serde_json::Value>, String> {
-    let mut guard = state.inner.lock().map_err(|e| e.to_string())?;
+    let mut guard = state.state()?;
+    let guard = guard.as_mut().ok_or("WASM runtime unavailable")?;
     let ext = guard
         .extensions
         .get_mut(&params.extension_id)
@@ -2361,7 +2394,8 @@ pub async fn wasm_provide_references(
     params: WasmProviderParams,
     state: State<'_, Arc<WasmExtensionRuntime>>,
 ) -> Result<Vec<serde_json::Value>, String> {
-    let mut guard = state.inner.lock().map_err(|e| e.to_string())?;
+    let mut guard = state.state()?;
+    let guard = guard.as_mut().ok_or("WASM runtime unavailable")?;
     let ext = guard
         .extensions
         .get_mut(&params.extension_id)
@@ -2384,7 +2418,8 @@ pub async fn wasm_provide_document_symbols(
     params: WasmProviderParams,
     state: State<'_, Arc<WasmExtensionRuntime>>,
 ) -> Result<Vec<serde_json::Value>, String> {
-    let mut guard = state.inner.lock().map_err(|e| e.to_string())?;
+    let mut guard = state.state()?;
+    let guard = guard.as_mut().ok_or("WASM runtime unavailable")?;
     let ext = guard
         .extensions
         .get_mut(&params.extension_id)
@@ -2419,7 +2454,8 @@ pub async fn wasm_provide_formatting(
     insert_spaces: bool,
     state: State<'_, Arc<WasmExtensionRuntime>>,
 ) -> Result<Vec<serde_json::Value>, String> {
-    let mut guard = state.inner.lock().map_err(|e| e.to_string())?;
+    let mut guard = state.state()?;
+    let guard = guard.as_mut().ok_or("WASM runtime unavailable")?;
     let ext = guard
         .extensions
         .get_mut(&params.extension_id)
@@ -2533,7 +2569,8 @@ pub async fn wasm_provide_completion_all(
     character: u32,
     state: State<'_, Arc<WasmExtensionRuntime>>,
 ) -> Result<Option<WasmCompletionResult>, String> {
-    let mut guard = state.inner.lock().map_err(|e| e.to_string())?;
+    let mut guard = state.state()?;
+    let guard = guard.as_mut().ok_or("WASM runtime unavailable")?;
     let ctx = make_doc_ctx(&uri, &language_id, version);
     let pos = make_position(line, character);
 
@@ -2591,7 +2628,8 @@ pub async fn wasm_provide_hover_all(
     character: u32,
     state: State<'_, Arc<WasmExtensionRuntime>>,
 ) -> Result<Option<WasmHoverResult>, String> {
-    let mut guard = state.inner.lock().map_err(|e| e.to_string())?;
+    let mut guard = state.state()?;
+    let guard = guard.as_mut().ok_or("WASM runtime unavailable")?;
     let ctx = make_doc_ctx(&uri, &language_id, version);
     let pos = make_position(line, character);
 
@@ -2629,7 +2667,8 @@ pub async fn wasm_provide_definition_all(
     character: u32,
     state: State<'_, Arc<WasmExtensionRuntime>>,
 ) -> Result<Vec<serde_json::Value>, String> {
-    let mut guard = state.inner.lock().map_err(|e| e.to_string())?;
+    let mut guard = state.state()?;
+    let guard = guard.as_mut().ok_or("WASM runtime unavailable")?;
     let ctx = make_doc_ctx(&uri, &language_id, version);
     let pos = make_position(line, character);
 
@@ -2664,7 +2703,8 @@ pub async fn wasm_provide_document_symbols_all(
     version: u32,
     state: State<'_, Arc<WasmExtensionRuntime>>,
 ) -> Result<Vec<serde_json::Value>, String> {
-    let mut guard = state.inner.lock().map_err(|e| e.to_string())?;
+    let mut guard = state.state()?;
+    let guard = guard.as_mut().ok_or("WASM runtime unavailable")?;
     let ctx = make_doc_ctx(&uri, &language_id, version);
 
     let mut all_symbols = Vec::new();
@@ -2706,7 +2746,8 @@ pub async fn wasm_provide_formatting_all(
     insert_spaces: bool,
     state: State<'_, Arc<WasmExtensionRuntime>>,
 ) -> Result<Vec<serde_json::Value>, String> {
-    let mut guard = state.inner.lock().map_err(|e| e.to_string())?;
+    let mut guard = state.state()?;
+    let guard = guard.as_mut().ok_or("WASM runtime unavailable")?;
     let ctx = make_doc_ctx(&uri, &language_id, version);
 
     let ext_ids: Vec<String> = guard.extensions.keys().cloned().collect();
@@ -2749,7 +2790,8 @@ pub async fn wasm_on_document_opened(
     version: u32,
     state: State<'_, Arc<WasmExtensionRuntime>>,
 ) -> Result<(), String> {
-    let mut guard = state.inner.lock().map_err(|e| e.to_string())?;
+    let mut guard = state.state()?;
+    let guard = guard.as_mut().ok_or("WASM runtime unavailable")?;
     let ctx = make_doc_ctx(&uri, &language_id, version);
     for ext in guard.extensions.values_mut() {
         let _ = ext
@@ -2767,7 +2809,8 @@ pub async fn wasm_on_document_closed(
     version: u32,
     state: State<'_, Arc<WasmExtensionRuntime>>,
 ) -> Result<(), String> {
-    let mut guard = state.inner.lock().map_err(|e| e.to_string())?;
+    let mut guard = state.state()?;
+    let guard = guard.as_mut().ok_or("WASM runtime unavailable")?;
     let ctx = make_doc_ctx(&uri, &language_id, version);
     for ext in guard.extensions.values_mut() {
         let _ = ext
@@ -2786,7 +2829,8 @@ pub async fn wasm_on_document_saved(
     reason: u32,
     state: State<'_, Arc<WasmExtensionRuntime>>,
 ) -> Result<(), String> {
-    let mut guard = state.inner.lock().map_err(|e| e.to_string())?;
+    let mut guard = state.state()?;
+    let guard = guard.as_mut().ok_or("WASM runtime unavailable")?;
     let ctx = make_doc_ctx(&uri, &language_id, version);
     for ext in guard.extensions.values_mut() {
         let _ = ext
@@ -2804,7 +2848,8 @@ pub async fn wasm_on_document_changed(
     version: u32,
     state: State<'_, Arc<WasmExtensionRuntime>>,
 ) -> Result<(), String> {
-    let mut guard = state.inner.lock().map_err(|e| e.to_string())?;
+    let mut guard = state.state()?;
+    let guard = guard.as_mut().ok_or("WASM runtime unavailable")?;
     let ctx = make_doc_ctx(&uri, &language_id, version);
     for ext in guard.extensions.values_mut() {
         let _ = ext
@@ -2820,7 +2865,8 @@ pub async fn wasm_on_configuration_changed(
     section: String,
     state: State<'_, Arc<WasmExtensionRuntime>>,
 ) -> Result<(), String> {
-    let mut guard = state.inner.lock().map_err(|e| e.to_string())?;
+    let mut guard = state.state()?;
+    let guard = guard.as_mut().ok_or("WASM runtime unavailable")?;
     for ext in guard.extensions.values_mut() {
         let _ = ext
             .bindings
@@ -2836,6 +2882,9 @@ pub async fn wasm_on_active_editor_changed(
     state: State<'_, Arc<WasmExtensionRuntime>>,
 ) -> Result<(), String> {
     if let Ok(mut guard) = state.inner.lock() {
+        let Some(guard) = guard.as_mut() else {
+            return Ok(());
+        };
         for ext in guard.extensions.values_mut() {
             ext.store.data_mut().active_editor_uri.clone_from(&uri);
             let _ = ext
@@ -2860,7 +2909,8 @@ pub async fn wasm_provide_type_definition_all(
     character: u32,
     state: State<'_, Arc<WasmExtensionRuntime>>,
 ) -> Result<Vec<serde_json::Value>, String> {
-    let mut guard = state.inner.lock().map_err(|e| e.to_string())?;
+    let mut guard = state.state()?;
+    let guard = guard.as_mut().ok_or("WASM runtime unavailable")?;
     let ctx = make_doc_ctx(&uri, &language_id, version);
     let pos = make_position(line, character);
     let mut all = Vec::new();
@@ -2890,7 +2940,8 @@ pub async fn wasm_provide_implementation_all(
     character: u32,
     state: State<'_, Arc<WasmExtensionRuntime>>,
 ) -> Result<Vec<serde_json::Value>, String> {
-    let mut guard = state.inner.lock().map_err(|e| e.to_string())?;
+    let mut guard = state.state()?;
+    let guard = guard.as_mut().ok_or("WASM runtime unavailable")?;
     let ctx = make_doc_ctx(&uri, &language_id, version);
     let pos = make_position(line, character);
     let mut all = Vec::new();
@@ -2920,7 +2971,8 @@ pub async fn wasm_provide_declaration_all(
     character: u32,
     state: State<'_, Arc<WasmExtensionRuntime>>,
 ) -> Result<Vec<serde_json::Value>, String> {
-    let mut guard = state.inner.lock().map_err(|e| e.to_string())?;
+    let mut guard = state.state()?;
+    let guard = guard.as_mut().ok_or("WASM runtime unavailable")?;
     let ctx = make_doc_ctx(&uri, &language_id, version);
     let pos = make_position(line, character);
     let mut all = Vec::new();
@@ -2953,7 +3005,8 @@ pub async fn wasm_provide_code_actions_all(
     end_character: u32,
     state: State<'_, Arc<WasmExtensionRuntime>>,
 ) -> Result<Vec<serde_json::Value>, String> {
-    let mut guard = state.inner.lock().map_err(|e| e.to_string())?;
+    let mut guard = state.state()?;
+    let guard = guard.as_mut().ok_or("WASM runtime unavailable")?;
     let ctx = make_doc_ctx(&uri, &language_id, version);
     let range = wit_types::Range {
         start: make_position(start_line, start_character),
@@ -2988,7 +3041,8 @@ pub async fn wasm_provide_code_lenses_all(
     version: u32,
     state: State<'_, Arc<WasmExtensionRuntime>>,
 ) -> Result<Vec<serde_json::Value>, String> {
-    let mut guard = state.inner.lock().map_err(|e| e.to_string())?;
+    let mut guard = state.state()?;
+    let guard = guard.as_mut().ok_or("WASM runtime unavailable")?;
     let ctx = make_doc_ctx(&uri, &language_id, version);
     let mut all = Vec::new();
     let ids: Vec<String> = guard.extensions.keys().cloned().collect();
@@ -3020,7 +3074,8 @@ pub async fn wasm_provide_signature_help_all(
     character: u32,
     state: State<'_, Arc<WasmExtensionRuntime>>,
 ) -> Result<Option<serde_json::Value>, String> {
-    let mut guard = state.inner.lock().map_err(|e| e.to_string())?;
+    let mut guard = state.state()?;
+    let guard = guard.as_mut().ok_or("WASM runtime unavailable")?;
     let ctx = make_doc_ctx(&uri, &language_id, version);
     let pos = make_position(line, character);
     let ids: Vec<String> = guard.extensions.keys().cloned().collect();
@@ -3055,7 +3110,8 @@ pub async fn wasm_provide_document_highlights_all(
     character: u32,
     state: State<'_, Arc<WasmExtensionRuntime>>,
 ) -> Result<Vec<serde_json::Value>, String> {
-    let mut guard = state.inner.lock().map_err(|e| e.to_string())?;
+    let mut guard = state.state()?;
+    let guard = guard.as_mut().ok_or("WASM runtime unavailable")?;
     let ctx = make_doc_ctx(&uri, &language_id, version);
     let pos = make_position(line, character);
     let mut all = Vec::new();
@@ -3088,7 +3144,8 @@ pub async fn wasm_provide_rename_all(
     new_name: String,
     state: State<'_, Arc<WasmExtensionRuntime>>,
 ) -> Result<Option<serde_json::Value>, String> {
-    let mut guard = state.inner.lock().map_err(|e| e.to_string())?;
+    let mut guard = state.state()?;
+    let guard = guard.as_mut().ok_or("WASM runtime unavailable")?;
     let ctx = make_doc_ctx(&uri, &language_id, version);
     let pos = make_position(line, character);
     let ids: Vec<String> = guard.extensions.keys().cloned().collect();
@@ -3118,7 +3175,8 @@ pub async fn wasm_provide_folding_ranges_all(
     version: u32,
     state: State<'_, Arc<WasmExtensionRuntime>>,
 ) -> Result<Vec<serde_json::Value>, String> {
-    let mut guard = state.inner.lock().map_err(|e| e.to_string())?;
+    let mut guard = state.state()?;
+    let guard = guard.as_mut().ok_or("WASM runtime unavailable")?;
     let ctx = make_doc_ctx(&uri, &language_id, version);
     let mut all = Vec::new();
     let ids: Vec<String> = guard.extensions.keys().cloned().collect();
@@ -3150,7 +3208,8 @@ pub async fn wasm_provide_inlay_hints_all(
     end_character: u32,
     state: State<'_, Arc<WasmExtensionRuntime>>,
 ) -> Result<Vec<serde_json::Value>, String> {
-    let mut guard = state.inner.lock().map_err(|e| e.to_string())?;
+    let mut guard = state.state()?;
+    let guard = guard.as_mut().ok_or("WASM runtime unavailable")?;
     let ctx = make_doc_ctx(&uri, &language_id, version);
     let range = wit_types::Range {
         start: make_position(start_line, start_character),
@@ -3187,7 +3246,8 @@ pub async fn wasm_provide_document_links_all(
     version: u32,
     state: State<'_, Arc<WasmExtensionRuntime>>,
 ) -> Result<Vec<serde_json::Value>, String> {
-    let mut guard = state.inner.lock().map_err(|e| e.to_string())?;
+    let mut guard = state.state()?;
+    let guard = guard.as_mut().ok_or("WASM runtime unavailable")?;
     let ctx = make_doc_ctx(&uri, &language_id, version);
     let mut all = Vec::new();
     let ids: Vec<String> = guard.extensions.keys().cloned().collect();
@@ -3215,7 +3275,8 @@ pub async fn wasm_provide_selection_ranges_all(
     positions: Vec<(u32, u32)>,
     state: State<'_, Arc<WasmExtensionRuntime>>,
 ) -> Result<Vec<serde_json::Value>, String> {
-    let mut guard = state.inner.lock().map_err(|e| e.to_string())?;
+    let mut guard = state.state()?;
+    let guard = guard.as_mut().ok_or("WASM runtime unavailable")?;
     let ctx = make_doc_ctx(&uri, &language_id, version);
     let wit_positions: Vec<wit_types::Position> = positions
         .iter()
@@ -3246,7 +3307,8 @@ pub async fn wasm_provide_semantic_tokens_all(
     version: u32,
     state: State<'_, Arc<WasmExtensionRuntime>>,
 ) -> Result<Option<serde_json::Value>, String> {
-    let mut guard = state.inner.lock().map_err(|e| e.to_string())?;
+    let mut guard = state.state()?;
+    let guard = guard.as_mut().ok_or("WASM runtime unavailable")?;
     let ctx = make_doc_ctx(&uri, &language_id, version);
     let ids: Vec<String> = guard.extensions.keys().cloned().collect();
     for id in &ids {
@@ -3272,7 +3334,8 @@ pub async fn wasm_provide_document_colors_all(
     version: u32,
     state: State<'_, Arc<WasmExtensionRuntime>>,
 ) -> Result<Vec<serde_json::Value>, String> {
-    let mut guard = state.inner.lock().map_err(|e| e.to_string())?;
+    let mut guard = state.state()?;
+    let guard = guard.as_mut().ok_or("WASM runtime unavailable")?;
     let ctx = make_doc_ctx(&uri, &language_id, version);
     let mut all = Vec::new();
     let ids: Vec<String> = guard.extensions.keys().cloned().collect();
@@ -3300,7 +3363,8 @@ pub async fn wasm_provide_workspace_symbols_all(
     query: String,
     state: State<'_, Arc<WasmExtensionRuntime>>,
 ) -> Result<Vec<serde_json::Value>, String> {
-    let mut guard = state.inner.lock().map_err(|e| e.to_string())?;
+    let mut guard = state.state()?;
+    let guard = guard.as_mut().ok_or("WASM runtime unavailable")?;
     let mut all = Vec::new();
     let ids: Vec<String> = guard.extensions.keys().cloned().collect();
     for id in &ids {
@@ -3339,7 +3403,8 @@ pub async fn wasm_provide_range_formatting_all(
     insert_spaces: bool,
     state: State<'_, Arc<WasmExtensionRuntime>>,
 ) -> Result<Vec<serde_json::Value>, String> {
-    let mut guard = state.inner.lock().map_err(|e| e.to_string())?;
+    let mut guard = state.state()?;
+    let guard = guard.as_mut().ok_or("WASM runtime unavailable")?;
     let ctx = make_doc_ctx(&uri, &language_id, version);
     let range = wit_types::Range {
         start: make_position(start_line, start_character),
@@ -3376,7 +3441,8 @@ pub async fn wasm_execute_command_all(
     args: String,
     state: State<'_, Arc<WasmExtensionRuntime>>,
 ) -> Result<Vec<serde_json::Value>, String> {
-    let mut guard = state.inner.lock().map_err(|e| e.to_string())?;
+    let mut guard = state.state()?;
+    let guard = guard.as_mut().ok_or("WASM runtime unavailable")?;
     let mut results = Vec::new();
     let ids: Vec<String> = guard.extensions.keys().cloned().collect();
     for id in &ids {
@@ -3402,7 +3468,8 @@ pub async fn wasm_get_extension_metadata(
     extension_id: String,
     state: State<'_, Arc<WasmExtensionRuntime>>,
 ) -> Result<serde_json::Value, String> {
-    let mut guard = state.inner.lock().map_err(|e| e.to_string())?;
+    let mut guard = state.state()?;
+    let guard = guard.as_mut().ok_or("WASM runtime unavailable")?;
     let ext = guard
         .extensions
         .get_mut(&extension_id)

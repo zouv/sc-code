@@ -18,6 +18,9 @@
 | 日常脚本/运行输出 | *.bat、scripts/{daily,build-desktop,package-output,unpack-output}.cjs、.cargo/config.toml、vite.config.ts | 真实用户 profile 与 packages/ 成品包不清理 |
 | 仓库布局/忽略规则 | .gitignore、.gitattributes、嵌套.gitignore、tests/repository-layout.test.cjs、docs/import-manifest.json | .runtime/packages/与用户状态不可入库；生产DLL/WASM/图标不可整类忽略 |
 | 打包验证 | scripts/desktop-runtime.cjs、scripts/prepare-desktop-runtime.cjs、scripts/build-desktop.cjs、scripts/smoke-local-server.cjs、tests/、.github/workflows/ | 历史 workflow |
+| 真实扩展宿主 | src/vs/workbench/api/node/{scCodeExtHostMain,extHost.sc-code.services}.ts、src/vs/workbench/services/extensions/browser/tauriProcessExtensionHost.ts、src-tauri/src/commands/real_ext_host.rs、scripts/{build-ext-host,vendor-ext-host-node}.cjs | 旧 host.cjs 逻辑 |
+| 工作台存储 | src/vs/workbench/services/storage/browser/{storageService,tauriStorageDatabase}.ts | 用户 profile 数据 |
+| 性能基线 | scripts/perf-baseline.cjs、vite.config.ts（分包/sourcemap） | 业务逻辑 |
 
 ## 1. 文件职责
 - public/sc-code.svg：无字体依赖的 SC/编辑器矢量品牌源；Tauri icon 派生 src-tauri/icons/ 的 PNG/ICO/ICNS；index.html favicon 与 titlebarpart.css 共用矢量。tests/branding.test.cjs 验证显示名、资产接入、尺寸、ScCode profile 与旧来源/协议兼容。
@@ -66,6 +69,11 @@
 | 原生 agent WS | src-tauri/src/commands/orchestrate.rs / run_agent_session |
 | 本地接口安全 | sidexai/sidex-server/internal/auth/local_transport.go / LocalTransportMiddleware |
 | 准备与真实侧车验收 | scripts/prepare-desktop-runtime.cjs；scripts/desktop-runtime.cjs / assertPrepared；scripts/smoke-local-server.cjs / smoke、request |
+| 真实扩展宿主构建 | scripts/build-ext-host.cjs（esbuild → `.runtime/ext-host/extensionHost.cjs`）；scripts/vendor-ext-host-node.cjs 从 VSCode 1.110.1 补齐 `src/vs/**/node`；入口 src/vs/workbench/api/node/scCodeExtHostMain.ts |
+| 真实宿主连接 | src/vs/workbench/services/extensions/browser/tauriProcessExtensionHost.ts / start、_createExtHostInitData、isRealExtensionHostEnabled；src-tauri/src/commands/real_ext_host.rs / real_ext_host_start、strip_verbatim、read_endpoint |
+| 真实宿主开关与注册 | src/vs/workbench/services/extensions/browser/extensionService.ts / _scanWebExtensions、_registerDiskExtensions、ScCodeExtensionHostKindPicker；extensionSync.contribution.ts 在真实宿主下让路 |
+| 工作台存储 | storageService.ts / createTauriOrIndexedDbStorage（首次从 IndexedDB 迁移）；tauriStorageDatabase.ts；Rust commands/storage.rs（`storage_list` 已在 lib.rs 注册） |
+| 懒启动/性能 | src-tauri/src/server.rs / server_endpoint（首次调用才 spawn）；extension_wasm.rs / state()（首次加载才建 engine）；scripts/perf-baseline.cjs |
 
 ## 3. 关键链路与反模式
 1. 导入：关闭旧应用 → 显式确认 → 只复制缺失项 → SQLite Backup（不拷 WAL/SHM）→ journal。非 SQLite 数据库仍要求旧应用停止；禁止移动、覆盖或删来源。
@@ -91,6 +99,30 @@
 - Agent工具链部分未打通：crates/sidex-agent/src/tools/lsp.rs仅返回说明文本；Rust dispatch缺patch_file/regex_replace以及后台shell/read_lints等处理，而Go LocalExecTools会把它们派本机；orchestrate/run_agent_session传local_exec=false，server又禁止非sandbox的workspace执行，不能承诺真实文件任务已可用。后续ACP必须验收真实行为、不能只测工具声明/成功回包。
 - Tab FIM默认指向本地agent但前端请求 /v1/completions、本地路由 /complete，且后者依赖 VLLM_URL；不可将现有注册UI认作可用补全。ACP替换应单列补全服务。
 - 内置 Agent 的 SIDEX_HIDDEN 默认 true，load 覆盖旧可见状态；每次启动收起，本次会话仍可手动打开。未停 Go 自启，未移除Agent。推荐 AgentBackend → ACP客户端/进程transport → session/权限/文件/终端能力契约验收 → 停止自启Go → 删除推理/provider/用量及Agent专属数据/构建依赖；旧聊天记录只读兼容，editor共享LSP/index/terminal与Node扩展宿主保留。
+
+## 3.6 真实 Node 扩展宿主（S10a）
+
+开关：`SC_CODE_REAL_EXT_HOST=1`（构建期）或 `?realExtHost=1` / `localStorage['scode.realExtHost']='1'`。关闭时仍走 `host.cjs` 仿制宿主。
+
+```
+构建：npm run ext-host:build
+  └─ esbuild: src/vs/workbench/api/node/scCodeExtHostMain.ts → .runtime/ext-host/extensionHost.cjs (CJS, node22)
+       ├─ extHost.common.services + extHost.sc-code.services（Node 版服务注册）
+       ├─ ExtensionHostMain（VSCode 真实扩展宿主）
+       └─ ws server (127.0.0.1, token 校验) + PersistentProtocol
+
+启动：workbench ExtensionService._initialize
+  ├─ hasLocalProcess = isRealExtensionHostEnabled()
+  ├─ ScCodeExtensionHostKindPicker：ui/workspace/web 全部 → LocalProcess
+  ├─ _scanWebExtensions → _registerDiskExtensions（先 list_installed_extensions + installFromLocation）
+  └─ TauriProcessExtensionHost.start()
+       ├─ invoke real_ext_host_start → Rust spawn Node（strip_verbatim，token 环境变量）
+       ├─ BrowserSocketFactory.connect(ws://127.0.0.1:port?token)
+       ├─ PersistentProtocol → 等 Ready → 发 initData → 等 Initialized
+       └─ ExtensionHostManager 接管 RPC（mainThread* 客户）
+```
+
+约束：宿主侧 `extHost.api.impl` 的代理断言需排除未移植的 notebook/interactive/share/profile；工作台侧不要注册依赖缺失服务的 `mainThreadComments/Timeline/Browsers/UriOpeners`。Node 进程不能在安装目录写文件；ESM shim/状态写 profile。
 
 ## 4. 接口契约与边界
 - buildPaths = {mode,targetRoot,build,bundle,packages,unpack}；unpack-manifest.json={format:1,product:ScCode,mode,platform,builtinCount,createdAt,files:[{path,size,sha256}]}，路径为包内相对路径。成品只支持准备好的Windows x64；免安装不改变SC_CODE_HOME/profile/WebView2前提。unpack校验/暂存完成后才导出安装包；发布unpack失败可能已输出新安装包，报错保留/回滚旧unpack，不宣称两个成品跨目录事务。

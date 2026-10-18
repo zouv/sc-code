@@ -61,25 +61,24 @@ import './mainThreadTheming.js';
 import './mainThreadTreeViews.js';
 import './mainThreadDownloadService.js';
 import './mainThreadUrls.js';
-import './mainThreadUriOpeners.js';
+// UriOpeners — removed: its external-uri-opener contribution is not part of the web port
 import './mainThreadWindow.js';
 import './mainThreadPower.js';
 import './mainThreadWebviewManager.js';
 import './mainThreadWorkspace.js';
-import './mainThreadComments.js';
-// Notebook/Interactive — removed: SideX uses sidex-extension-api
+// Comments — removed: the comments contribution is not part of the web port
 import './mainThreadTask.js';
 import './mainThreadLabelService.js';
 import './mainThreadTunnelService.js';
 import './mainThreadAuthentication.js';
-import './mainThreadTimeline.js';
+// Timeline — removed: the timeline contribution is not part of the web port
 import './mainThreadTesting.js';
 import './mainThreadSecretState.js';
 // Share — removed: SideX uses sidex-extension-api
 // ProfileContentHandlers — removed: SideX uses sidex-extension-api
 import './mainThreadDataChannels.js';
 import './mainThreadMeteredConnection.js';
-import './mainThreadBrowsers.js';
+// Browsers — removed: the browser-view contribution is not part of the web port
 import '../../contrib/extensions/browser/tauriExtensionHost.contribution.js';
 
 export class ExtensionPoints implements IWorkbenchContribution {

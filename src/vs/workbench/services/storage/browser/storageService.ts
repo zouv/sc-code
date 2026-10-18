@@ -32,24 +32,34 @@ import {
 import { isUserDataProfile, IUserDataProfile } from '../../../../platform/userDataProfile/common/userDataProfile.js';
 import { IAnyWorkspaceIdentifier } from '../../../../platform/workspace/common/workspace.js';
 import { IUserDataProfileService } from '../../userDataProfile/common/userDataProfile.js';
+import { isTauri } from '../../../../sidex-bridge.js';
+import { TauriStorageDatabase } from './tauriStorageDatabase.js';
+
+/**
+ * Storage backends used by the workbench. In the Tauri desktop app we persist
+ * to SQLite (via `TauriStorageDatabase`) so state is stored inside the profile
+ * directory and is not isolated per web origin. Plain-browser development keeps
+ * using IndexedDB.
+ */
+type WorkbenchStorageDatabase = IIndexedDBStorageDatabase | TauriStorageDatabase;
 
 export class BrowserStorageService extends AbstractStorageService {
 	private static BROWSER_DEFAULT_FLUSH_INTERVAL = 5 * 1000; // every 5s because async operations are not permitted on shutdown
 
 	private applicationStorage: IStorage | undefined;
-	private applicationStorageDatabase: IIndexedDBStorageDatabase | undefined;
+	private applicationStorageDatabase: WorkbenchStorageDatabase | undefined;
 	private readonly applicationStoragePromise = new DeferredPromise<{
-		indexedDb: IIndexedDBStorageDatabase;
+		indexedDb: WorkbenchStorageDatabase;
 		storage: IStorage;
 	}>();
 
 	private profileStorage: IStorage | undefined;
-	private profileStorageDatabase: IIndexedDBStorageDatabase | undefined;
+	private profileStorageDatabase: WorkbenchStorageDatabase | undefined;
 	private profileStorageProfile: IUserDataProfile;
 	private readonly profileStorageDisposables = this._register(new DisposableStore());
 
 	private workspaceStorage: IStorage | undefined;
-	private workspaceStorageDatabase: IIndexedDBStorageDatabase | undefined;
+	private workspaceStorageDatabase: WorkbenchStorageDatabase | undefined;
 
 	get hasPendingUpdate(): boolean {
 		return Boolean(
@@ -85,7 +95,10 @@ export class BrowserStorageService extends AbstractStorageService {
 	}
 
 	private async createApplicationStorage(): Promise<void> {
-		const applicationStorageIndexedDB = await IndexedDBStorageDatabase.createApplicationStorage(this.logService);
+		const applicationStorageIndexedDB = await this.createTauriOrIndexedDbStorage(
+			'app/',
+			() => IndexedDBStorageDatabase.createApplicationStorage(this.logService)
+		);
 
 		this.applicationStorageDatabase = this._register(applicationStorageIndexedDB);
 		this.applicationStorage = this._register(new Storage(this.applicationStorageDatabase));
@@ -127,9 +140,9 @@ export class BrowserStorageService extends AbstractStorageService {
 				this.profileStorage.onDidChangeStorage(e => this.emitDidChangeValue(StorageScope.PROFILE, e))
 			);
 		} else {
-			const profileStorageIndexedDB = await IndexedDBStorageDatabase.createProfileStorage(
-				this.profileStorageProfile,
-				this.logService
+			const profileStorageIndexedDB = await this.createTauriOrIndexedDbStorage(
+				`profile/${this.profileStorageProfile.id}/`,
+				() => IndexedDBStorageDatabase.createProfileStorage(this.profileStorageProfile, this.logService)
 			);
 
 			this.profileStorageDatabase = this.profileStorageDisposables.add(profileStorageIndexedDB);
@@ -146,9 +159,9 @@ export class BrowserStorageService extends AbstractStorageService {
 	}
 
 	private async createWorkspaceStorage(): Promise<void> {
-		const workspaceStorageIndexedDB = await IndexedDBStorageDatabase.createWorkspaceStorage(
-			this.workspace.id,
-			this.logService
+		const workspaceStorageIndexedDB = await this.createTauriOrIndexedDbStorage(
+			`workspace/${this.workspace.id}/`,
+			() => IndexedDBStorageDatabase.createWorkspaceStorage(this.workspace.id, this.logService)
 		);
 
 		this.workspaceStorageDatabase = this._register(workspaceStorageIndexedDB);
@@ -159,6 +172,38 @@ export class BrowserStorageService extends AbstractStorageService {
 		await this.workspaceStorage.init();
 
 		this.updateIsNew(this.workspaceStorage);
+	}
+
+	private async createTauriOrIndexedDbStorage(
+		prefix: string,
+		createLegacy: () => Promise<IIndexedDBStorageDatabase>
+	): Promise<WorkbenchStorageDatabase> {
+		if (!isTauri()) {
+			return createLegacy();
+		}
+
+		const database = new TauriStorageDatabase(prefix);
+		try {
+			if ((await database.getItems()).size === 0) {
+				// One-time migration of state written by builds that used IndexedDB.
+				// Only copy when the SQLite scope is still empty so we never overwrite
+				// newer data on subsequent starts.
+				const legacy = await createLegacy();
+				try {
+					const items = await legacy.getItems();
+					if (items.size > 0) {
+						await database.updateItems({ insert: items });
+						this.logService.info(`[storage] migrated ${items.size} entries from IndexedDB to ${database.name}`);
+					}
+				} finally {
+					legacy.dispose();
+				}
+			}
+		} catch (error) {
+			this.logService.warn(`[storage] ${database.name} initialization failed: ${toErrorMessage(error, true)}`);
+		}
+
+		return database;
 	}
 
 	private updateIsNew(storage: IStorage): void {

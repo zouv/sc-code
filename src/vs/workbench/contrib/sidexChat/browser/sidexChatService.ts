@@ -276,10 +276,6 @@ export class SidexChatService extends Disposable implements ISidexChatService {
 
 		// Fetch real OS info from Tauri
 		this._fetchOsInfo();
-		
-		// Fetch models immediately, don't wait for WebSocket
-		this._fetchServerInfo();
-
 
 		// A restart we asked for is not an outage: drop the dead socket and
 		// reconnect straight away instead of backing off.
@@ -293,12 +289,10 @@ export class SidexChatService extends Disposable implements ISidexChatService {
 		window.addEventListener(SERVER_RESTARTED_EVENT, onServerRestarted);
 		this._register({ dispose: () => window.removeEventListener(SERVER_RESTARTED_EVENT, onServerRestarted) });
 
-		// Give the local server a moment to bind its port before connecting.
-		setTimeout(() => {
-			if (this._connectionState === 'disconnected') {
-				this.connect();
-			}
-		}, 1500);
+		// The server is started lazily: only the chat view (or another explicit
+		// consumer) calls connect(), which resolves the endpoint and spawns it.
+		// Keeping startup free of server_endpoint avoids paying for the Go
+		// process when the AI panel is never opened.
 
 		// Workspace indexing is a LOCAL feature — it must run regardless of
 		// sign-in state or chat-socket connectivity. (It previously only

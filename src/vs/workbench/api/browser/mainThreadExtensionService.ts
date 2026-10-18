@@ -79,7 +79,31 @@ export class MainThreadExtensionService implements MainThreadExtensionServiceSha
 		internalExtHostContext._setExtensionHostProxy(
 			new ExtensionHostProxy(extHostContext.getProxy(ExtHostContext.ExtHostExtensionService))
 		);
-		internalExtHostContext._setAllMainProxyIdentifiers(Object.keys(MainContext).map(key => (<any>MainContext)[key]));
+		// The ScCode web port does not include the notebook/interactive/share/
+		// comments/timeline/browserView/externalUriOpener/customEditor
+		// contributions, so their MainThread proxies are intentionally not
+		// registered. Exclude them from the completeness assertion instead of
+		// failing the whole extension host.
+		const unsupported = new Set<unknown>([
+			MainContext.MainThreadBrowsers,
+			MainContext.MainThreadComments,
+			MainContext.MainThreadCustomEditors,
+			MainContext.MainThreadInteractive,
+			MainContext.MainThreadNotebook,
+			MainContext.MainThreadNotebookDocuments,
+			MainContext.MainThreadNotebookEditors,
+			MainContext.MainThreadNotebookKernels,
+			MainContext.MainThreadNotebookRenderers,
+			MainContext.MainThreadProfileContentHandlers,
+			MainContext.MainThreadShare,
+			MainContext.MainThreadTimeline,
+			MainContext.MainThreadUriOpeners,
+		]);
+		internalExtHostContext._setAllMainProxyIdentifiers(
+			Object.keys(MainContext)
+				.map(key => (<any>MainContext)[key])
+				.filter(identifier => !unsupported.has(identifier))
+		);
 	}
 
 	public dispose(): void {}

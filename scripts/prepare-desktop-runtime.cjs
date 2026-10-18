@@ -69,6 +69,18 @@ async function main() {
     fs.copyFileSync(file,path.join(runtime,'licenses','VSCodium-'+name));
   }
   copyHostModules(path.join(root,'src-tauri/extension-host'),path.join(runtime,'extension-host'));
+  // Real VSCode extension host bundle (built by scripts/build-ext-host.cjs).
+  const extHostBundle=path.join(root,'.runtime/ext-host/extensionHost.cjs');
+  if(!fs.existsSync(extHostBundle)) throw new Error('Real extension host bundle missing: run `npm run ext-host:build` first');
+  fs.copyFileSync(extHostBundle,path.join(runtime,'extension-host/extensionHost.cjs'));
+  // ripgrep ships as a platform package with a native binary; the bundled host
+  // resolves it through createRequire(bundle URL).
+  const ripgrepPlatform=path.join(root,'node_modules/@vscode/ripgrep-win32-x64');
+  if(fs.existsSync(ripgrepPlatform)) {
+    const destination=path.join(runtime,'extension-host/node_modules/@vscode/ripgrep-win32-x64');
+    fs.mkdirSync(path.dirname(destination),{recursive:true});
+    fs.cpSync(ripgrepPlatform,destination,{recursive:true});
+  }
   const server=buildServer();
   const resources={};
   for(const directory of ['bin','licenses','extension-host']) for(const file of files(path.join(runtime,directory))) resources[path.relative(root,file).replaceAll('\\','/')]=sha256(file);

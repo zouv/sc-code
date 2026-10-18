@@ -38,7 +38,7 @@ export class SidexCompleteService {
 	 * fresh port every time it restarts, so a URL captured at construction goes
 	 * stale the first time credentials change.
 	 */
-	constructor(private readonly _baseUrl: () => string) { }
+	constructor(private readonly _baseUrl: () => Promise<string>) { }
 
 	private async _proxyPost(url: string, body: string, signal?: AbortSignal): Promise<string | null> {
 		if (isTauri()) {
@@ -79,7 +79,7 @@ export class SidexCompleteService {
 
 		try {
 			const prompt = this._buildFimPrompt(request);
-			const url = `${this._baseUrl()}/v1/completions`;
+			const url = `${await this._baseUrl()}/v1/completions`;
 			const body = JSON.stringify({
 				model: 'sidex-complete',
 				prompt,
@@ -120,7 +120,7 @@ export class SidexCompleteService {
 
 		try {
 			const prompt = this._buildFimPrompt(request);
-			const url = `${this._baseUrl()}/v1/completions`;
+			const url = `${await this._baseUrl()}/v1/completions`;
 
 			const bodyPayload = JSON.stringify({
 				model: 'sidex-complete',

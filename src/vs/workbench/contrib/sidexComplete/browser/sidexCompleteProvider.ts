@@ -25,7 +25,7 @@ export class SidexCompleteProvider implements InlineCompletionsProvider {
 	private readonly _cache = new Map<string, string>();
 	private _inflightAbort: AbortController | null = null;
 
-	constructor(serverUrl: () => string) {
+	constructor(serverUrl: () => Promise<string>) {
 		this._service = new SidexCompleteService(serverUrl);
 	}
 

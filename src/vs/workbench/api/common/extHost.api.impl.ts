@@ -307,8 +307,21 @@ export function createApiFactoryAndRegisterActors(accessor: ServicesAccessor): I
 	);
 	const extHostBrowsers = rpcProtocol.set(ExtHostContext.ExtHostBrowsers, new ExtHostBrowsers(rpcProtocol));
 
-	// Check that no named customers are missing
-	const expected = Object.values<ProxyIdentifier<any>>(ExtHostContext);
+	// Check that no named customers are missing. The ScCode web port removed the
+	// notebook/interactive/share/profile-handler features, so their proxies are
+	// intentionally not registered here.
+	const unsupported = new Set<ProxyIdentifier<any>>([
+		ExtHostContext.ExtHostInteractive,
+		ExtHostContext.ExtHostNotebook,
+		ExtHostContext.ExtHostNotebookDocumentSaveParticipant,
+		ExtHostContext.ExtHostNotebookDocuments,
+		ExtHostContext.ExtHostNotebookEditors,
+		ExtHostContext.ExtHostNotebookKernels,
+		ExtHostContext.ExtHostNotebookRenderers,
+		ExtHostContext.ExtHostProfileContentHandlers,
+		ExtHostContext.ExtHostShare,
+	]);
+	const expected = Object.values<ProxyIdentifier<any>>(ExtHostContext).filter(identifier => !unsupported.has(identifier));
 	rpcProtocol.assertRegistered(expected);
 
 	// Other instances

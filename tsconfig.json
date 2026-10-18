@@ -28,5 +28,12 @@
     "types": ["vite/client", "@webgpu/types", "trusted-types"]
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "src-tauri", "dist", "**/test/**"]
+  "exclude": [
+    "node_modules",
+    "src-tauri",
+    "dist",
+    "**/test/**",
+    "src/vs/workbench/api/node/**",
+    "src/vs/**/node/**"
+  ]
 }

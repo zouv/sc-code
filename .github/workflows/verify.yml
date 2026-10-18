@@ -20,6 +20,8 @@ jobs:
       - run: npm test
       - run: npm run test:transport
       - run: npm run typecheck
+      - run: npm run ext-host:build
+      - run: npm run test:ext-host
       - run: npm run build
       - run: bash check-docs.sh
   runtime:

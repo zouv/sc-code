@@ -70,6 +70,10 @@ struct ServerProc {
     /// down instead of racing the new attempt for the child slot.
     generation: u64,
     connection_token: String,
+    /// Whether a spawn has ever been attempted. The agent server is started
+    /// lazily on first use (chat/completion) instead of during app startup,
+    /// which keeps idle startup time and memory down.
+    started: bool,
 }
 
 pub struct LocalServer {
@@ -85,6 +89,7 @@ impl LocalServer {
                 error: None,
                 generation: 0,
                 connection_token: String::new(),
+                started: false,
             }),
         }
     }
@@ -106,6 +111,12 @@ impl LocalServer {
     /// here or in `server_endpoint`.
     pub fn is_running(&self) -> bool {
         self.with_proc(Self::child_alive)
+    }
+
+    /// Whether a spawn has been attempted at least once. Used to decide
+    /// whether `server_endpoint` should kick off the lazy first start.
+    pub fn has_started(&self) -> bool {
+        self.with_proc(|p| p.started)
     }
 
     /// WebSocket origin the workbench should connect to.
@@ -204,9 +215,21 @@ pub struct ServerEndpoint {
 }
 
 /// Where the workbench should point. Called early by the chat service.
+///
+/// The agent server is started lazily here: the first caller (chat panel,
+/// completion, or settings) triggers the spawn. Keeping it out of app startup
+/// avoids paying process spawn + health-check time and idle memory for users
+/// who never open the AI panel.
 #[tauri::command]
 #[allow(clippy::needless_pass_by_value)]
-pub fn server_endpoint(server: tauri::State<'_, Arc<LocalServer>>) -> ServerEndpoint {
+pub fn server_endpoint(
+    app: AppHandle,
+    server: tauri::State<'_, Arc<LocalServer>>,
+) -> ServerEndpoint {
+    let server = Arc::clone(server.inner());
+    if !server.has_started() && !server.is_running() {
+        start(&app, &server);
+    }
     server.endpoint()
 }
 
@@ -537,7 +560,10 @@ fn run_supervised(
 /// so the error is recorded on `ServerProc::error` (surfaced to the UI via
 /// `server_endpoint`) and logged, rather than blocking startup.
 fn start(app: &AppHandle, server: &Arc<LocalServer>) {
-    server.with_proc(|p| p.error = None);
+    server.with_proc(|p| {
+        p.started = true;
+        p.error = None;
+    });
 
     let Some(bin) = find_server_binary(app) else {
         let msg = "sidex-server binary not found. Build it with `cd sidexai/sidex-server && \
@@ -581,11 +607,11 @@ fn start(app: &AppHandle, server: &Arc<LocalServer>) {
     std::thread::spawn(move || run_supervised(&server, &bin, &provider_env, port, generation));
 }
 
-/// Register the supervisor and start the server. Called once during setup.
-pub fn initialize(app: &AppHandle) {
+/// Register the supervisor. The server process itself starts lazily on the
+/// first `server_endpoint` / `server_restart` call so app startup stays lean.
+pub fn initialize(_app: &AppHandle) {
     let server = Arc::new(LocalServer::new());
-    app.manage(Arc::clone(&server));
-    start(app, &server);
+    _app.manage(Arc::clone(&server));
 }
 
 /// Restart the server so newly-saved provider credentials take effect.

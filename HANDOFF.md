@@ -1,14 +1,42 @@
 # 会话接力 · ScCode
 
-- 快照：2026-10-18；分支 main，origin 仅 zouv/sc-code。无进行中开发任务；本轮按用户授权首次提交与推送，实际提交号/远端状态以 Git 为准；未发布、签名、安装或委派。来源 custom-sidex/sc-browser 始终只读。
-- 仓库边界：源码/文档/构建脚本/锁文件入库；.runtime/、packages/、node_modules/、Tauri生成物和本地会话/秘密不入库。4项工作台logs源码已解除误忽略；保留生产DLL/WASM/平台图标。Bash入口LF与可执行位、BAT CRLF；无大规模目录搬动。
-- 最新验证：本地及index干净导出均Node74/74、TS通过；transport20/20、文档机械检查通过。干净导出独立npm ci与前端build通过（无下载桌面runtime，仅主题fallback）；3704来源条目/0错误，全部唯一目标在index。干净Windows检出的hash统计差异来自Git行尾转换，来源hash仍保留。证据.runtime/logs/repository-audit.json与repository-{node-tests,import,typecheck,transport,docs,clean-install,clean-import,clean-tests,clean-typecheck,clean-docs,clean-build}.log，导出位置见repository-checkout-path.txt。
-- 本轮未重跑完整Rust/Go或重打桌面包；旧源码有少量既有空白格式告警，未扩大本次修改；本轮规则/回归/根文档diff检查无空白问题。既有核心Rust358/358、桌面lib78/78与Go基线不等于所有crate已通过。CI实际运行待查。
-- 运行入口：根目录setup/run/dev/build/release/test/verify/clean.bat，支持--help/--dry-run；release默认优化Release，build默认Debug。安装包packages/dev与release，免安装packages/unpack/dev与release；中间产物.runtime，clean保留packages，不强杀或删用户profile。
-- 现有成品待验：Debug安装包为图标调色前产物；Release包完整构建日志/图标待核验。现有两份unpack各94内置扩展/823文件hash、Node22.22.3、5CJS语法和扩展服务health通过，Release Go隔离smoke10/10；证据.runtime/logs/unpack-*与unpack-inventory.json。没有新SVG配色的完整GUI/干净机器验收；需要最新源码成品须重跑build/release，而非直接用旧包。
-- unpack边界：必须搬整个目录，需系统WebView2；数据默认%APPDATA%/ScCode，不是包内portable-data。hostSourceHash含开发shim，发布资源须逐文件hash校验，不能与源码treeHash直接比较。
-- 下一步：在可交互Windows/干净机器，用合成隔离profile验收新包启动提示、标题/图标、custom GUI/VSIX/拖拽和安装升级；真实迁移须用户确认、备份并关闭旧应用，禁止自动操作真实profile/keyring。按ROADMAP S3c诊断已知Rust回归，不靠放宽断言掩盖。
-- 数据与兼容边界：Sc-Code优先只复制迁移，继承来源journal、稳定扩展凭据身份且保留keyring服务ID；真实凭据操作/旧数据GUI迁移未验。Agent仅默认收起，未移除/停止Go自启/实现ACP；替换须保留Node宿主、语言服务、文件/终端与通用聊天UI。
-- 已知回归：sidex-agent shell timeout实耗88秒超过7秒；sidex-terminal Unix绝对路径Windows用例失败；sidex-remote fixture引用不存在的russh_keys API，测试编译失败。生产构建成功不能替代这些行为验收。
-- 工具/路径：Node22/MSVC；.runtime/tools/go/bin/go.exe与.runtime/tools/llvm-mingw-20261006-ucrt-x86_64/bin/gcc.exe。桌面构建清CC/CXX并设AWS_LC_SYS_PREBUILT_NASM=1，不能用裸cargo build代替Tauri custom-protocol。check-docs用C:/Program Files/Git/bin/bash.exe。
-- 其它待验：CSP/workspace trust、持久checkpoint/跨文件事务、共享LSP/index、跨窗口Memento/change、ESM重启/崩溃锁、真keyring及模型工具矩阵；secret namespace不是授权沙箱，secure_delete不保证历史秘密页清除。已完成实现细节归CHANGELOG，规划归ROADMAP。
+- 快照：2026-10-19；分支 `feature/runtime-rebase`（未提交、未推送）。本轮在 `custom-sidex` 的评估基础上，对 ScCode 做底层调整：真实 Node 扩展宿主、存储迁移、懒启动/依赖清理、性能基线。
+- 仓库边界不变：源码/文档/脚本/锁文件入库；`.runtime/`、`packages/`、`node_modules/`、Tauri 生成物、用户 profile 不入库。来源 `custom-sidex/sc-browser` 只读。
+
+## 本轮已完成（自动化验证通过）
+
+- `npm run typecheck`、`npm test`（74/74）、`npm run test:ext-host`、`npm run verify:import`（3704 项 0 错误）、`npm run build`（分包产物 12.17MB JS）、`cargo check -p sc-code`、`sh check-docs.sh` 均通过。
+- 真实宿主 bundle 可独立启动并完成 PersistentProtocol 握手（`tests/ext-host-smoke.cjs`）。
+- 真实宿主 GUI 实测（隔离 profile `D:/Temp/sc-code-realhost-test`，`SC_CODE_REAL_EXT_HOST=1`）：
+  - 日志出现 `[extHost] real extension host initialized`；
+  - 宿主加载 63 个扩展（93 个内置 + 1 个合成用户扩展中的 Node 部分）；
+  - 合成扩展 `sc-code-test.hello` 已在首扫描前注册。
+- 存储已切到 profile SQLite；Go server 与 WASM 运行时改为懒启动/懒初始化；`jsonwebtoken` 移除后 `aws-lc-sys`/NASM 不再进入依赖图。
+
+## 真实宿主当前已知问题（下一步）
+
+1. 宿主 `MainThread*` 覆盖仍不完整：comments/timeline/browserView/externalUriOpener 相关 contribution 未移植，已从 `mainThread` 客户列表移除；使用这些 API 的扩展会得到“不可用”而非崩溃，但需逐个确认。
+2. 内置扩展 63 个在真实宿主内激活，需核对哪些应保留（`vscode.*` Node 扩展可能拉起语言服务/进程）；下一步做扩展白名单/矩阵。
+3. 真实宿主仍是实验开关（默认关闭）。需要在 `SC_CODE_REAL_EXT_HOST=1` 下回归 VAC、Claude Code、VSIX 安装、树视图、webview、对话框、配置读取。
+4. 多窗口仍未建模：`real_ext_host_start` 是应用级单进程；后续按窗口或按窗口组切分。
+5. ~~`sidex-server` 仍会被聊天服务在启动时触发~~（已修）：聊天服务不再在构造时 `_fetchServerInfo`/定时连；补全 provider 改为首次请求时 resolve endpoint。实测启动后 2 分钟无 `sidex-server` 进程，打开聊天/触发补全时才启动。
+6. ESM 扩展热重载仍不完整；真实宿主随窗口 reload 重建后需验证。
+
+## 运行/验证
+
+```powershell
+npm run setup
+npm run runtime:prepare        # 内含 ext-host:build
+$env:SC_CODE_HOME='D:\Temp\sc-code-realhost-test'
+$env:SC_CODE_REAL_EXT_HOST='1'
+npm run desktop:dev
+# 无 GUI 时：
+npm run ext-host:build; npm run test:ext-host
+npm run perf:baseline
+```
+
+## 数据与兼容边界
+
+- 真实宿主 bundle 输出在 `.runtime/ext-host/extensionHost.cjs`；prepare 时复制到运行资源 `extension-host/extensionHost.cjs`，ripgrep 平台包复制到 `extension-host/node_modules/@vscode/ripgrep-win32-x64`。
+- 工作台存储首次启动从 IndexedDB 复制到 SQLite（`app/`、`profile/<id>/`、`workspace/<id>/` 前缀），空库才迁移。
+- 旧 `host.cjs` 保留作为默认回退；不要在真实宿主验证完成前删除。

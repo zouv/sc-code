@@ -25,10 +25,17 @@ export class MainThreadWebviewManager extends Disposable {
 		);
 		context.set(extHostProtocol.MainContext.MainThreadWebviewPanels, webviewPanels);
 
-		const customEditors = this._register(
-			instantiationService.createInstance(MainThreadCustomEditors, context, webviews, webviewPanels)
-		);
-		context.set(extHostProtocol.MainContext.MainThreadCustomEditors, customEditors);
+		// Custom editors are not part of the ScCode web port (the customEditors
+		// contribution/service was removed). Keep webviews/webview views working
+		// instead of letting the missing service abort this whole customer.
+		try {
+			const customEditors = this._register(
+				instantiationService.createInstance(MainThreadCustomEditors, context, webviews, webviewPanels)
+			);
+			context.set(extHostProtocol.MainContext.MainThreadCustomEditors, customEditors);
+		} catch (error) {
+			console.warn('[ScCode] custom editor API unavailable:', error);
+		}
 
 		const webviewViews = this._register(
 			instantiationService.createInstance(MainThreadWebviewsViews, context, webviews)

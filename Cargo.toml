@@ -6,7 +6,6 @@ members = [
   "crates/sidex-syntax",
   "crates/sidex-lsp",
   "crates/sidex-workspace",
-  "crates/sidex-terminal",
   "crates/sidex-git",
   "crates/sidex-extensions",
   "crates/sidex-extension-api",

@@ -46,7 +46,7 @@ function validateExtensions(directory) {
 function copyHostModules(source, target) {
   fs.mkdirSync(target, { recursive: true });
   const names = fs.readdirSync(source).filter(f => f.endsWith('.cjs') && !f.endsWith('.test.cjs'));
-  for (const old of fs.readdirSync(target)) if (!names.includes(old)) fs.rmSync(path.join(target,old), { recursive: false, force: true });
+  for (const old of fs.readdirSync(target)) if (!names.includes(old)) fs.rmSync(path.join(target,old), { recursive: true, force: true });
   for (const name of names) fs.copyFileSync(path.join(source,name),path.join(target,name));
   return names;
 }

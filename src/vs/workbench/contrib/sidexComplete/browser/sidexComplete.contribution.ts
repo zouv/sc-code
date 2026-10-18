@@ -16,14 +16,19 @@ class SidexCompleteContribution implements IWorkbenchContribution {
 		@IConfigurationService configurationService: IConfigurationService,
 	) {
 		// Defaults to the agent server the app runs locally; an explicit
-		// setting points completions somewhere else. Registration waits for
-		// the port to be known, but the URL is re-read per request so a server
-		// restart doesn't strand the provider on a dead port.
-		const resolveUrl = () => serverHttpUrl(configurationService.getValue<string>('sidex.complete.serverUrl'));
-		void resolveServerEndpoint().then(() => {
-			const provider = new SidexCompleteProvider(resolveUrl);
-			languageFeaturesService.inlineCompletionsProvider.register('*', provider);
-		});
+		// setting points completions somewhere else. The endpoint is resolved on
+		// the first completion request (not at startup) so merely opening the
+		// editor does not spawn the Go agent server. The URL is re-read per
+		// request, so a server restart doesn't strand the provider on a dead port.
+		const resolveUrl = async () => {
+			const explicit = configurationService.getValue<string>('sidex.complete.serverUrl');
+			if (!explicit) {
+				await resolveServerEndpoint();
+			}
+			return serverHttpUrl(explicit);
+		};
+		const provider = new SidexCompleteProvider(resolveUrl);
+		languageFeaturesService.inlineCompletionsProvider.register('*', provider);
 	}
 }
 

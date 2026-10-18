@@ -2,6 +2,7 @@
 
 ## 总进度
 2026-10-18：starter 初始化和 3704 项完整源码导入完成；独立运行、安全基础、扩展状态与 Windows debug NSIS 链路已实现并做自动化回归。**完整无缝迁移尚未验收，未签名、未发布。**
+2026-10-19：完成真实 Node 扩展宿主 PoC（实验开关）、profile SQLite 存储迁移、Go/WASM 懒启动、依赖清理与性能基线；真实宿主已在隔离 profile 中启动并激活合成扩展，默认仍走旧宿主。
 
 ## 开发大纲
 | 编号 | 优先级 | 任务 | 状态 |
@@ -25,6 +26,10 @@
 | S8 | P1 | ~~日常 BAT（含独立Release入口与packages/dev、release安装包和unpack/dev、release免安装目录）、.runtime 收拢、ScCode profile迁移与凭据身份、Agent默认收起~~ | ✅ 2026-10-18；自动化与包信息见HANDOFF，真实GUI/keyring待验 |
 | S9 | P1 | ~~仓库布局、源码/生成物Git边界与首次提交~~ | ✅ 2026-10-18；干净检出验收通过，提交/推送记录以Git为准 |
 | S6 | P2 | 扩展 API/服务/许可矩阵、性能基准与新特性 | 待开发 |
+| S10a | P0 | ~~真实 Node 扩展宿主：bundle、Rust 监管、PersistentProtocol/WS、工作台 `IExtensionHost`、磁盘扩展先行注册、开关~~ | ✅ 2026-10-19；实验开关，默认关闭 |
+| S10b | P0 | 真实宿主全量验收：VAC/Claude Code 等第三方扩展、内置扩展矩阵、多窗口宿主隔离、异常恢复 | 待开发 |
+| S10c | P1 | ~~设置/UI 状态迁到 profile SQLite + IndexedDB 一次性迁移~~ | ✅ 2026-10-19 |
+| S10d | P1 | ~~Go agent 懒启动、WASM 运行时懒初始化、前端分包、性能基线脚本、IPC 桥修复、依赖清理~~ | ✅ 2026-10-19 |
 
 ## 移植验收矩阵
 | 兼容场景 | 当前证据 | 尚待验收 |

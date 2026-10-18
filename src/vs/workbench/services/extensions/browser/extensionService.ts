@@ -8,7 +8,7 @@ import { Schemas } from '../../../../base/common/network.js';
 import { IConfigurationService } from '../../../../platform/configuration/common/configuration.js';
 import { IDialogService } from '../../../../platform/dialogs/common/dialogs.js';
 import { ExtensionKind } from '../../../../platform/environment/common/environment.js';
-import { ExtensionIdentifier, IExtensionDescription } from '../../../../platform/extensions/common/extensions.js';
+import { ExtensionIdentifier, ExtensionType, IExtensionDescription } from '../../../../platform/extensions/common/extensions.js';
 import { IFileService } from '../../../../platform/files/common/files.js';
 import { InstantiationType, registerSingleton } from '../../../../platform/instantiation/common/extensions.js';
 import { IInstantiationService } from '../../../../platform/instantiation/common/instantiation.js';
@@ -23,14 +23,15 @@ import { ITelemetryService } from '../../../../platform/telemetry/common/telemet
 import { IWorkspaceContextService } from '../../../../platform/workspace/common/workspace.js';
 import { IWorkspaceTrustManagementService } from '../../../../platform/workspace/common/workspaceTrust.js';
 import { IBrowserWorkbenchEnvironmentService } from '../../environment/browser/environmentService.js';
-import { IWebExtensionsScannerService, IWorkbenchExtensionEnablementService, IWorkbenchExtensionManagementService } from '../../extensionManagement/common/extensionManagement.js';
+import { IWebExtensionsScannerService, IExtensionManagementServerService, IWorkbenchExtensionEnablementService, IWorkbenchExtensionManagementService } from '../../extensionManagement/common/extensionManagement.js';
 import { IWebWorkerExtensionHostDataProvider, IWebWorkerExtensionHostInitData, WebWorkerExtensionHost } from './webWorkerExtensionHost.js';
 import { FetchFileSystemProvider } from './webWorkerFileSystemProvider.js';
 import { AbstractExtensionService, IExtensionHostFactory, LocalExtensions, RemoteExtensions, ResolvedExtensions, ResolverExtensions, checkEnabledAndProposedAPI, isResolverExtension } from '../common/abstractExtensionService.js';
 import { ExtensionDescriptionRegistrySnapshot } from '../common/extensionDescriptionRegistry.js';
 import { ExtensionHostKind, ExtensionRunningPreference, IExtensionHostKindPicker, extensionHostKindToString, extensionRunningPreferenceToString } from '../common/extensionHostKind.js';
 import { IExtensionManifestPropertiesService } from '../common/extensionManifestPropertiesService.js';
-import { ExtensionRunningLocation } from '../common/extensionRunningLocation.js';
+import { ExtensionRunningLocation, LocalProcessRunningLocation } from '../common/extensionRunningLocation.js';
+import { TauriProcessExtensionHost, isRealExtensionHostEnabled } from './tauriProcessExtensionHost.js';
 import { ExtensionRunningLocationTracker, filterExtensionDescriptions } from '../common/extensionRunningLocationTracker.js';
 import { ExtensionHostExtensions, ExtensionHostStartup, IExtensionHost, IExtensionService, toExtensionDescription } from '../common/extensions.js';
 import { ExtensionsProposedApi } from '../common/extensionsProposedApi.js';
@@ -42,6 +43,9 @@ import { IRemoteExplorerService } from '../../remote/common/remoteExplorerServic
 import { IUserDataInitializationService } from '../../userData/browser/userDataInit.js';
 import { IUserDataProfileService } from '../../userDataProfile/common/userDataProfile.js';
 import { AsyncIterableEmitter, AsyncIterableProducer } from '../../../../base/common/async.js';
+import { toErrorMessage } from '../../../../base/common/errorMessage.js';
+import { URI } from '../../../../base/common/uri.js';
+import { logToHost } from '../../../../sidex-bridge.js';
 
 export class ExtensionService extends AbstractExtensionService implements IExtensionService {
 
@@ -58,6 +62,7 @@ export class ExtensionService extends AbstractExtensionService implements IExten
 		@IConfigurationService configurationService: IConfigurationService,
 		@IExtensionManifestPropertiesService extensionManifestPropertiesService: IExtensionManifestPropertiesService,
 		@IWebExtensionsScannerService private readonly _webExtensionsScannerService: IWebExtensionsScannerService,
+		@IExtensionManagementServerService private readonly _extensionManagementServerService: IExtensionManagementServerService,
 		@ILogService logService: ILogService,
 		@IRemoteAgentService remoteAgentService: IRemoteAgentService,
 		@IRemoteExtensionsScannerService remoteExtensionsScannerService: IRemoteExtensionsScannerService,
@@ -81,10 +86,12 @@ export class ExtensionService extends AbstractExtensionService implements IExten
 			logService
 		);
 		super(
-			{ hasLocalProcess: false, allowRemoteExtensionsInLocalWebWorker: true },
+			{ hasLocalProcess: isRealExtensionHostEnabled(), allowRemoteExtensionsInLocalWebWorker: true },
 			extensionsProposedApi,
 			extensionHostFactory,
-			new BrowserExtensionHostKindPicker(logService),
+			isRealExtensionHostEnabled()
+				? new ScCodeExtensionHostKindPicker(logService)
+				: new BrowserExtensionHostKindPicker(logService),
 			instantiationService,
 			notificationService,
 			_browserEnvironmentService,
@@ -127,6 +134,13 @@ export class ExtensionService extends AbstractExtensionService implements IExten
 	private async _scanWebExtensions(): Promise<IExtensionDescription[]> {
 		if (!this._scanWebExtensionsPromise) {
 			this._scanWebExtensionsPromise = (async () => {
+				if (isRealExtensionHostEnabled()) {
+					// The extension service is initialized before AfterRestored
+					// contributions run, so the disk extensions must be registered
+					// with the profile before this first scan. Otherwise the real
+					// Node host would start with an empty extension set.
+					await this._registerDiskExtensions();
+				}
 				const system: IExtensionDescription[] = [], user: IExtensionDescription[] = [], development: IExtensionDescription[] = [];
 				try {
 					await Promise.all([
@@ -140,6 +154,7 @@ export class ExtensionService extends AbstractExtensionService implements IExten
 				this._logService.info(
 					`[ScCode-Extensions] scanned system=${system.length} user=${user.length} dev=${development.length}`
 				);
+				logToHost(3, `[ScCode-Extensions] scanned system=${system.length} user=${user.length} dev=${development.length}`);
 				const rustSys = system.find(e => e.identifier?.value?.toLowerCase?.() === 'vscode.rust');
 				this._logService.info(
 					`[ScCode-Extensions] vscode.rust in system? ${rustSys ? 'YES' : 'NO'}`
@@ -148,6 +163,47 @@ export class ExtensionService extends AbstractExtensionService implements IExten
 			})();
 		}
 		return this._scanWebExtensionsPromise;
+	}
+
+	/**
+	 * Register extensions installed on disk with the current profile before the
+	 * real Node extension host scans them. In the legacy web-worker model this
+	 * was done by the `extensionSync` contribution after restore, which is too
+	 * late for the real host's initial extension snapshot.
+	 */
+	private async _registerDiskExtensions(): Promise<void> {
+		logToHost(3, '[ScCode-Extensions] registering disk extensions before first scan');
+		try {
+			const { invoke } = await import('@tauri-apps/api/core');
+			const disk = (await invoke<Array<{ id: string; name: string; version: string; path: string }>>('list_installed_extensions')) ?? [];
+			logToHost(3, `[ScCode-Extensions] disk extensions: ${disk.length}`);
+			if (disk.length === 0) {
+				return;
+			}
+			const server = this._extensionManagementServerService.webExtensionManagementServer;
+			if (!server) {
+				return;
+			}
+			const profileLocation = this._userDataProfileService.currentProfile.extensionsResource;
+			const installed = await server.extensionManagementService.getInstalled(ExtensionType.User, profileLocation);
+			const installedIds = new Set(installed.map(extension => extension.identifier.id.toLowerCase()));
+			for (const extension of disk) {
+				if (!extension?.path || installedIds.has(extension.id.toLowerCase())) {
+					continue;
+				}
+				try {
+					await server.extensionManagementService.installFromLocation(URI.file(extension.path), profileLocation);
+					this._logService.info(`[ScCode-Extensions] registered disk extension ${extension.id} (${extension.version})`);
+					logToHost(3, `[ScCode-Extensions] registered disk extension ${extension.id} (${extension.version})`);
+				} catch (error) {
+					this._logService.warn(`[ScCode-Extensions] failed to register ${extension.id}: ${toErrorMessage(error)}`);
+					logToHost(2, `[ScCode-Extensions] failed to register ${extension.id}: ${toErrorMessage(error)}`);
+				}
+			}
+		} catch (error) {
+			this._logService.warn(`[ScCode-Extensions] disk extension registration failed: ${toErrorMessage(error)}`);
+			logToHost(1, `[ScCode-Extensions] disk extension registration failed: ${toErrorMessage(error)}`);
+		}
 	}
 
 	private async _resolveExtensionsDefault(emitter: AsyncIterableEmitter<ResolvedExtensions>) {
@@ -247,6 +303,16 @@ class BrowserExtensionHostFactory implements IExtensionHostFactory {
 	createExtensionHost(runningLocations: ExtensionRunningLocationTracker, runningLocation: ExtensionRunningLocation, isInitialStart: boolean): IExtensionHost | null {
 		switch (runningLocation.kind) {
 			case ExtensionHostKind.LocalProcess: {
+				if (isRealExtensionHostEnabled()) {
+					const startup = ExtensionHostStartup.LazyAutoStart;
+					logToHost(3, '[ScCode-Extensions] creating real local-process extension host');
+					return this._instantiationService.createInstance(
+						TauriProcessExtensionHost,
+						runningLocation as LocalProcessRunningLocation,
+						startup,
+						this._createLocalExtensionHostDataProvider(runningLocations, runningLocation, isInitialStart)
+					);
+				}
 				return null;
 			}
 			case ExtensionHostKind.LocalWebWorker: {
@@ -360,6 +426,41 @@ export class BrowserExtensionHostKindPicker implements IExtensionHostKindPicker 
 			result.push(ExtensionHostKind.Remote);
 		}
 		return (result.length > 0 ? result[0] : null);
+	}
+}
+
+/**
+ * Desktop-equivalent host-kind picker used when the real Node extension host
+ * is enabled. Every locally-installed extension (ui / workspace / web) runs in
+ * the local process, mirroring VSCode desktop without a web-worker host.
+ */
+export class ScCodeExtensionHostKindPicker implements IExtensionHostKindPicker {
+
+	constructor(
+		@ILogService private readonly _logService: ILogService,
+	) { }
+
+	pickExtensionHostKind(extensionId: ExtensionIdentifier, extensionKinds: ExtensionKind[], isInstalledLocally: boolean, isInstalledRemotely: boolean, preference: ExtensionRunningPreference): ExtensionHostKind | null {
+		const result = ScCodeExtensionHostKindPicker.pickRunningLocation(extensionKinds, isInstalledLocally, isInstalledRemotely, preference);
+		this._logService.trace(`pickRunningLocation for ${extensionId.value}, extension kinds: [${extensionKinds.join(', ')}], isInstalledLocally: ${isInstalledLocally}, isInstalledRemotely: ${isInstalledRemotely}, preference: ${extensionRunningPreferenceToString(preference)} => ${extensionHostKindToString(result)}`);
+		return result;
+	}
+
+	public static pickRunningLocation(extensionKinds: ExtensionKind[], isInstalledLocally: boolean, _isInstalledRemotely: boolean, preference: ExtensionRunningPreference): ExtensionHostKind | null {
+		const result: ExtensionHostKind[] = [];
+		for (const extensionKind of extensionKinds) {
+			const runsLocally = extensionKind === 'ui' && isInstalledLocally
+				|| extensionKind === 'workspace'
+				|| extensionKind === 'web';
+			if (!runsLocally) {
+				continue;
+			}
+			if (preference === ExtensionRunningPreference.None || preference === ExtensionRunningPreference.Local) {
+				return ExtensionHostKind.LocalProcess;
+			}
+			result.push(ExtensionHostKind.LocalProcess);
+		}
+		return result.length > 0 ? result[0] : null;
 	}
 }
 

@@ -48,6 +48,13 @@ class ExtensionSyncContribution extends Disposable implements IWorkbenchContribu
 		if (!isSidexTauri) {
 			return;
 		}
+		const { isRealExtensionHostEnabled } = await import('vs/workbench/services/extensions/browser/tauriProcessExtensionHost.js');
+		if (isRealExtensionHostEnabled()) {
+			// The extension service registers disk extensions before its first
+			// scan when the real host is enabled; doing it here as well would
+			// duplicate the work after restore.
+			return;
+		}
 		try {
 			const { invoke } = await import('@tauri-apps/api/core');
 			const disk = (await invoke<DiskExtension[]>('list_installed_extensions')) ?? [];

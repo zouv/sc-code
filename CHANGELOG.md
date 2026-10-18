@@ -1,6 +1,23 @@
 # 变更记录 · ScCode
 
 ## [未发布]
+- 新增：真实 VSCode Node 扩展宿主（`extensionHost.cjs`，由 `src/vs/workbench/api/node/` 构建），通过 `PersistentProtocol`+WebSocket 与工作台通信；`SC_CODE_REAL_EXT_HOST=1` 或 `?realExtHost=1` 启用，默认仍走旧宿主。为构建该宿主，从 VSCode 1.110.1 引入 `src/vs/**/node` 与 `workbench/api/node` 源码（MIT，保留版权头）。
+- 新增：磁盘扩展在扩展服务首次扫描前注册（`ExtensionService._registerDiskExtensions`），修复真实宿主启动时扩展列表为空；真实宿主模式下 `extensionSync` 自动让路。
+- 新增：Rust `real_ext_host_start/real_ext_host_stop` 监管真实宿主进程；修复 Windows `\\?\` 路径传给 Node 导致 `EISDIR` 的问题；宿主启动握手失败时回传 stderr。
+- 新增：`npm run perf:baseline` 冷启动/进程树内存基线；`npm run ext-host:build`、`npm run test:ext-host`；CI 增加宿主构建与冒烟。
+- 变更：工作台设置/UI 状态在 Tauri 下改用 profile 内 SQLite（`storage_list/set/delete`），首次启动从 IndexedDB 一次性迁移；普通浏览器开发仍用 IndexedDB。
+- 变更：`src/vs/sidex-bridge.ts` 改用官方 `@tauri-apps/api/core`，修复未启用 `withGlobalTauri` 时所有 `invoke` 返回 `null`；新增 `logToHost` 把前端诊断写入宿主日志。
+- 变更：Go agent server 改为首次调用 `server_endpoint` 时懒启动；WASM 运行时改为首次加载 WASM 扩展时才创建 wasmtime engine。
+- 变更：前端手动分包为 `base`/`platform`/`monaco`/`terminal`，替代单一 `core` chunk；`SC_CODE_SOURCEMAP=1` 可生成 hidden sourcemap。
+- 移除：`jsonwebtoken` 依赖（未被引用，且它是 aws-lc-sys/NASM 构建要求的唯一来源）。
+- 变更：`sidex-terminal` 移出 Cargo workspace 成员（源码保留）；`vite` 配置增加 `SC_CODE_` 环境前缀。
+- 修复：`storage_list` 命令未在 `lib.rs` 注册，导致 SQLite 存储读取恒为空。
+- 修复：真实宿主下移除未移植的 `mainThreadComments/Timeline/Browsers/UriOpeners` 客户与宿主侧未注册的 notebook/share 代理断言。
+
+### 已知边界
+- 真实宿主仍为实验开关：第三方扩展 API 矩阵、评论/时间线/浏览器视图等未移植功能、多窗口宿主隔离尚未验收。
+- CSP/workspace trust、持久 journal、跨文件事务、共享 LSP/index 仍按 ROADMAP 待办。
+
 - 新增 setup/run/dev/build/release/test/verify/clean 日常 BAT，前台运行、保留退出码，支持 --help/--dry-run；清理不强杀应用，不删除用户配置。
 - 本地 runtime、打包输出、前端生成物、元数据和日志统一放 .runtime 并忽略；终端集成仅保留规范源，7 项重复来源仍保留完整清单校验。
 - 默认用户数据目录改为 ScCode，优先只复制旧 Sc-Code；继承迁移来源历史，稳定扩展凭据身份，保留旧目录及 keyring 服务 ID。

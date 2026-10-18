@@ -1,4 +1,5 @@
 import { Disposable, IDisposable } from '../../../../base/common/lifecycle.js';
+import { isRealExtensionHostEnabled } from '../../../services/extensions/browser/tauriProcessExtensionHost.js';
 import { registerWorkbenchContribution2, WorkbenchPhase } from '../../../common/contributions.js';
 import type { IWorkbenchContribution } from '../../../common/contributions.js';
 import { ILogService } from '../../../../platform/log/common/log.js';
@@ -224,6 +225,11 @@ class TauriExtensionHostContribution extends Disposable implements IWorkbenchCon
 
 	private async _init(): Promise<void> {
 		if ((globalThis as any).__SIDEX_TAURI__ !== true) {
+			return;
+		}
+		if (isRealExtensionHostEnabled()) {
+			// The real VSCode extension host owns activation/commands/views in
+			// this mode; running the legacy shim would double-activate them.
 			return;
 		}
 		this._register(this.extensionManagementService.onDidInstallExtensions((results) => {

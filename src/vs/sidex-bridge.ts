@@ -1,41 +1,39 @@
 /*---------------------------------------------------------------------------------------------
- *  SideX — Low-level Tauri IPC bridge.
- *  Wraps `window.__TAURI__` with a graceful fallback when running outside
- *  the Tauri webview (e.g. in a plain browser during development).
+ *  ScCode — Low-level Tauri IPC bridge.
+ *
+ *  Uses the official `@tauri-apps/api/core` invoke implementation. The previous
+ *  implementation relied on `window.__TAURI__`, which is only injected when
+ *  `app.withGlobalTauri` is enabled; it is not, so every caller received `null`.
+ *
+ *  When running outside the Tauri webview (plain browser dev server) the bridge
+ *  degrades gracefully: `invoke` returns `null` and logs a warning, matching the
+ *  old contract.
  *--------------------------------------------------------------------------------------------*/
 
-declare global {
-	interface Window {
-		__TAURI__?: {
-			core: {
-				invoke: (cmd: string, args?: Record<string, unknown>) => Promise<unknown>;
-			};
-		};
-	}
-}
+import { invoke as tauriInvoke } from '@tauri-apps/api/core';
 
-let _invoke: ((cmd: string, args?: Record<string, unknown>) => Promise<unknown>) | null = null;
-
-function getInvoke(): ((cmd: string, args?: Record<string, unknown>) => Promise<unknown>) | null {
-	if (_invoke) {
-		return _invoke;
-	}
-	if (window.__TAURI__?.core?.invoke) {
-		_invoke = window.__TAURI__.core.invoke;
-		return _invoke;
-	}
-	return null;
+export function isTauri(): boolean {
+	return typeof globalThis !== 'undefined' && !!(globalThis as { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__;
 }
 
 export async function invoke<T = any>(cmd: string, args: Record<string, unknown> = {}): Promise<T> {
-	const fn = getInvoke();
-	if (!fn) {
+	if (!isTauri()) {
 		console.warn(`[ScCode] invoke(${cmd}) — Tauri not available`);
 		return null as unknown as T;
 	}
-	return fn(cmd, args) as Promise<T>;
+	return tauriInvoke<T>(cmd, args);
 }
 
-export function isTauri(): boolean {
-	return !!getInvoke();
+/**
+ * Write a line to the host log file (`%LOCALAPPDATA%/<identifier>/logs`).
+ * The workbench's own `ILogService` only reaches devtools; this bridge makes
+ * native-integration diagnostics visible in dev and release builds.
+ */
+export function logToHost(level: number, message: string): void {
+	if (!isTauri()) {
+		return;
+	}
+	void tauriInvoke('plugin:log|log', { level, message }).catch(() => {
+		// Logging must never break the caller.
+	});
 }
