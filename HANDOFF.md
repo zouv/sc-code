@@ -5,13 +5,21 @@
 
 ## 本轮已完成（自动化验证通过）
 
-- `npm run typecheck`、`npm test`（74/74）、`npm run test:ext-host`、`npm run verify:import`（3704 项 0 错误）、`npm run build`（分包产物 12.17MB JS）、`cargo check -p sc-code`、`sh check-docs.sh` 均通过。
+- `npm run typecheck`、`npm test`（74/74）、`npm run test:ext-host`、`npm run verify:import`（3704 项 0 错误）、`npm run build`（分包产物 12.17MB JS）、`npm run smoke:dist`、`cargo check -p sc-code`、`sh check-docs.sh` 均通过。
 - 真实宿主 bundle 可独立启动并完成 PersistentProtocol 握手（`tests/ext-host-smoke.cjs`）。
 - 真实宿主 GUI 实测（隔离 profile `D:/Temp/sc-code-realhost-test`，`SC_CODE_REAL_EXT_HOST=1`）：
   - 日志出现 `[extHost] real extension host initialized`；
   - 宿主加载 63 个扩展（93 个内置 + 1 个合成用户扩展中的 Node 部分）；
   - 合成扩展 `sc-code-test.hello` 已在首扫描前注册。
 - 存储已切到 profile SQLite；Go server 与 WASM 运行时改为懒启动/懒初始化；`jsonwebtoken` 移除后 `aws-lc-sys`/NASM 不再进入依赖图。
+
+## 最新修复：Release 黑屏（2026-10-19）
+
+- 现象：新 Release 包启动后黑屏。CDP 抓到 `ReferenceError: Cannot access 'ua' before initialization`（`assets/monaco-*.js`）。
+- 根因：上一轮把 `base/platform/editor` 拆成独立 chunk，VSCode 三层存在运行时循环（platform ↔ editor），生产包出现 TDZ。
+- 修复：`vite.config.ts` 只拆 `terminal/xterm`，其余回到单一 `core`（由 `nls` 优先加载）；新增 `npm run smoke:dist`（Vite preview + Playwright headless，断言 `didStartWorkbench`），CI 增加 Playwright chromium 安装与该冒烟。
+- 验证：`npm run build` 后 `smoke:dist` 通过；`npm run desktop:release` 重建的 `packages/unpack/release/ScCode.exe` 在隔离 profile 下启动，工作台渲染、`didStartWorkbench`/`Restored`/`didLoadExtensions` 均出现；新安装包 `packages/release/ScCode_0.1.0_x64-setup.exe`（10:25）。
+- 注意：不要把 base/platform/editor 再拆成不同 chunk；详见 ARCHITECTURE §3.6 末尾约束。
 
 ## 真实宿主当前已知问题（下一步）
 

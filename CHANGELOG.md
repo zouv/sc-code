@@ -8,9 +8,10 @@
 - 变更：工作台设置/UI 状态在 Tauri 下改用 profile 内 SQLite（`storage_list/set/delete`），首次启动从 IndexedDB 一次性迁移；普通浏览器开发仍用 IndexedDB。
 - 变更：`src/vs/sidex-bridge.ts` 改用官方 `@tauri-apps/api/core`，修复未启用 `withGlobalTauri` 时所有 `invoke` 返回 `null`；新增 `logToHost` 把前端诊断写入宿主日志。
 - 变更：Go agent server 改为首次调用 `server_endpoint` 时懒启动；WASM 运行时改为首次加载 WASM 扩展时才创建 wasmtime engine。
-- 变更：前端手动分包为 `base`/`platform`/`monaco`/`terminal`，替代单一 `core` chunk；`SC_CODE_SOURCEMAP=1` 可生成 hidden sourcemap。
+- 变更：前端把 `terminal/xterm` 拆为独立 chunk，其余 `base/platform/editor` 保持单一 `core`（由 `nls` 优先加载）；`SC_CODE_SOURCEMAP=1` 可生成 hidden sourcemap。
 - 移除：`jsonwebtoken` 依赖（未被引用，且它是 aws-lc-sys/NASM 构建要求的唯一来源）。
-- 变更：`sidex-terminal` 移出 Cargo workspace 成员（源码保留）；`vite` 配置增加 `SC_CODE_` 环境前缀。
+- 变更：`sidex-terminal` 移出 Cargo workspace 成员（源码保留）；`vite` 配置增加 `SC_CODE_REAL_EXT_HOST` 环境前缀（仅暴露该开关）。
+- 修复：Release 包启动黑屏——把 `base/platform/editor` 拆成独立 chunk 后与 `nls` 形成循环依赖，生产包报 `Cannot access 'ua' before initialization`；现已恢复为无环分组，并用无 Tauri 的 headless 浏览器验证工作台完整启动。
 - 修复：`storage_list` 命令未在 `lib.rs` 注册，导致 SQLite 存储读取恒为空。
 - 修复：真实宿主下移除未移植的 `mainThreadComments/Timeline/Browsers/UriOpeners` 客户与宿主侧未注册的 notebook/share 代理断言。
 

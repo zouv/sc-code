@@ -110,24 +110,22 @@ export default defineConfig({
           if (id.endsWith('/vs/nls.mock.js')) {
             return 'nls';
           }
-          // Split the former single ~10MB "core" chunk along VSCode's own
-          // architectural layers. base has no imports from platform/editor,
-          // platform only depends on base, and editor depends on both, so the
-          // chunk graph stays acyclic and browsers can load/cache them
-          // independently.
-          if (id.endsWith('/vs/amdX.ts') || id.endsWith('/vs/amdX.js') ||
-            id.endsWith('/vs/sidex-bridge.ts') || id.endsWith('/vs/sidex-bridge.js') ||
-            id.includes('/vs/base/')) {
-            return 'base';
-          }
+          // Keep base/platform/editor together: VSCode's layers contain
+          // runtime import cycles (notably platform <-> editor), so splitting
+          // them into separate chunks produced "Cannot access 'ua' before
+          // initialization" (TDZ) in production builds. Only terminal/xterm is
+          // split out, because core never imports it.
           if (id.includes('xterm') || id.includes('/terminal/')) {
             return 'terminal';
           }
-          if (id.includes('/vs/editor/') && !id.includes('/workbench/')) {
-            return 'monaco';
-          }
-          if (id.includes('/vs/platform/')) {
-            return 'platform';
+          if (
+            id.includes('/vs/base/') ||
+            id.endsWith('/vs/amdX.ts') || id.endsWith('/vs/amdX.js') ||
+            id.endsWith('/vs/sidex-bridge.ts') || id.endsWith('/vs/sidex-bridge.js') ||
+            (id.includes('/vs/editor/') && !id.includes('/workbench/')) ||
+            id.includes('/vs/platform/')
+          ) {
+            return 'core';
           }
         },
       },

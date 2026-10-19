@@ -33,7 +33,8 @@
     "test:server": "node scripts/smoke-local-server.cjs",
     "desktop:release": "node scripts/daily.cjs release",
     "ext-host:build": "node scripts/build-ext-host.cjs",
-    "test:ext-host": "node --test tests/ext-host-smoke.cjs"
+    "test:ext-host": "node --test tests/ext-host-smoke.cjs",
+    "smoke:dist": "node scripts/smoke-dist.cjs"
   },
   "dependencies": {
     "@microsoft/1ds-core-js": "^4.3.11",

@@ -124,6 +124,8 @@
 
 约束：宿主侧 `extHost.api.impl` 的代理断言需排除未移植的 notebook/interactive/share/profile；工作台侧不要注册依赖缺失服务的 `mainThreadComments/Timeline/Browsers/UriOpeners`。Node 进程不能在安装目录写文件；ESM shim/状态写 profile。
 
+前端分包约束：**不要把 `vs/base`、`vs/platform`、`vs/editor` 拆成不同 chunk**。三者存在运行时循环（platform ↔ editor），拆开会在生产包触发 `Cannot access '…' before initialization`（TDZ）并黑屏；只允许把 `terminal/xterm` 这类 core 不反向依赖的模块单独拆出，且必须用生产构建做 headless 启动验证。
+
 ## 4. 接口契约与边界
 - buildPaths = {mode,targetRoot,build,bundle,packages,unpack}；unpack-manifest.json={format:1,product:ScCode,mode,platform,builtinCount,createdAt,files:[{path,size,sha256}]}，路径为包内相对路径。成品只支持准备好的Windows x64；免安装不改变SC_CODE_HOME/profile/WebView2前提。unpack校验/暂存完成后才导出安装包；发布unpack失败可能已输出新安装包，报错保留/回滚旧unpack，不宣称两个成品跨目录事务。
 - 产品 0.1.0 与 VS Code API 1.110.0 分离；保留原 command/settings IDs。
