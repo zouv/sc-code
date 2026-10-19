@@ -5,7 +5,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const os = require('node:os');
 const { buildPaths } = require('../scripts/package-output.cjs');
-const { exportUnpack, validateUnpack, requiredFiles, resourceDirs, removeStage } = require('../scripts/unpack-output.cjs');
+const { exportUnpack, archiveUnpack, validateUnpack, requiredFiles, resourceDirs, removeStage } = require('../scripts/unpack-output.cjs');
 const { buildDesktop } = require('../scripts/build-desktop.cjs');
 const { clean } = require('../scripts/daily.cjs');
 const { sha256 } = require('../scripts/desktop-runtime.cjs');
@@ -18,6 +18,7 @@ function fixture(t) {
     assert.ok(path.basename(resolved).startsWith('sc unpack 中文-'));
     fs.rmSync(resolved, { recursive: true, force: true });
   });
+  fs.writeFileSync(path.join(base, 'package.json'), JSON.stringify({ version: '0.1.1' }));
   return base;
 }
 test('unpack resources match both Tauri resource configurations', () => {
@@ -103,6 +104,7 @@ test('extra user files/directories and unmanaged unpack block replacement withou
 });
 test('unpack rejects destination and resource junctions without following them', t => {
   const base = fixture(t), outside = fixture(t), paths = buildPaths([], base);
+  fs.unlinkSync(path.join(outside, 'package.json'));
   runtimeFixture(base, paths); fs.mkdirSync(path.dirname(paths.unpack), { recursive: true });
   fs.symlinkSync(outside, paths.unpack, process.platform === 'win32' ? 'junction' : 'dir');
   assert.throws(() => exportUnpack(base, paths), /link/); fs.unlinkSync(paths.unpack);
@@ -128,6 +130,17 @@ test('shipped host uses file hashes, not source tree fingerprint containing deve
   assert.throws(() => exportUnpack(base, paths), /stale unpack resource/);
 });
 
+test('published unpack is archived beside installers with one root folder', t => {
+  const base = fixture(t), paths = buildPaths([], base);
+  runtimeFixture(base, paths); exportUnpack(base, paths);
+  const output = archiveUnpack(base, paths);
+  assert.equal(output, path.join(base, 'packages/release/ScCode_0.1.1_x64-unpack.zip'));
+  const archive = fs.readFileSync(output);
+  assert.equal(archive.subarray(0, 4).toString('hex'), '504b0304');
+  const text = archive.toString('latin1');
+  for (const entry of ['ScCode_0.1.1_x64-unpack/ScCode.exe', 'ScCode_0.1.1_x64-unpack/unpack-manifest.json', 'ScCode_0.1.1_x64-unpack/extensions/git/main.js']) assert.ok(text.includes(entry), entry);
+  assert.equal(archive.subarray(-22, -18).toString('hex'), '504b0506');
+});
 test('failed staged publish restores the previous unpack and removes the temporary new tree', t => {
   const base = fixture(t), paths = buildPaths([], base);
   runtimeFixture(base, paths, 'old good'); exportUnpack(base, paths);

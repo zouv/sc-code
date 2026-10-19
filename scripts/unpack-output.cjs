@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { assertLocalPath } = require('./package-output.cjs');
 const { sha256, treeHash, validateExtensions } = require('./desktop-runtime.cjs');
+const { writeZip } = require('./zip-writer.cjs');
 const resourceDirs = ['bin', 'extension-host', 'extensions', 'licenses', 'shell-integration'];
 const requiredFiles = ['ScCode.exe', 'bin/node.exe', 'sidex-server.exe', 'runtime-manifest.json', 'extension-host/extensionHost.cjs',
   ...['server', 'host', 'configuration', 'transport-auth', 'storage'].map(name => 'extension-host/' + name + '.cjs'),
@@ -155,4 +156,24 @@ function exportUnpack(base, paths) {
   try { return publishUnpack(prepared); }
   finally { removeStage(base, prepared.stage); }
 }
-module.exports = { resourceDirs, requiredFiles, validateUnpack, prepareUnpack, publishUnpack, exportUnpack, removeStage };
+function archiveUnpack(base, paths) {
+  const source = assertLocalPath(base, paths.unpack);
+  if (!fs.existsSync(source) || !fs.statSync(source).isDirectory()) throw new Error('Unpack directory is missing: ' + source);
+  const version = JSON.parse(fs.readFileSync(path.join(fs.realpathSync(base), 'package.json'), 'utf8')).version;
+  if (typeof version !== 'string' || !/^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/.test(version)) throw new Error('Invalid product version for unpack archive: ' + version);
+  const folder = 'ScCode_' + version + '_x64-unpack';
+  const destination = assertLocalPath(base, paths.packages);
+  const output = assertLocalPath(base, path.join(destination, folder + '.zip'));
+  const files = inventory(base, source);
+  if (files.length >= 0xffff) throw new Error('Too many unpack files for ZIP: ' + files.length);
+  const entries = files.map(file => {
+    const stat = fs.statSync(file);
+    if (stat.size > 0xffffffff) throw new Error('Unpack file too large for ZIP: ' + file);
+    return { name: folder + '/' + path.relative(source, file).replaceAll('\\', '/'), file, mtime: stat.mtime };
+  });
+  fs.mkdirSync(destination, { recursive: true });
+  const result = writeZip(output, entries);
+  console.log('[ARCHIVE] ' + result.output);
+  return result.output;
+}
+module.exports = { resourceDirs, requiredFiles, validateUnpack, prepareUnpack, publishUnpack, exportUnpack, archiveUnpack, removeStage };

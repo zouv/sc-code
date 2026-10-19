@@ -1,6 +1,8 @@
 # 变更记录 · ScCode
 
-## [未发布]
+## [0.1.1] - 2026-10-19
+- 新增：打包成功后同时生成 `ScCode_<version>_x64-unpack.zip`（带单一根目录的完整免安装目录），与安装包一起放在 `packages/dev` 或 `packages/release`；GitHub Release 必须同时上传安装包与该 zip。
+- 变更：产品版本升至 0.1.1（`package.json`、`package-lock.json`、`tauri.conf.json`/WiX、`src-tauri/Cargo.toml`、About 回退值同步）。
 - 新增：真实 VSCode Node 扩展宿主（`extensionHost.cjs`，由 `src/vs/workbench/api/node/` 构建），通过 `PersistentProtocol`+WebSocket 与工作台通信；`SC_CODE_REAL_EXT_HOST=1` 或 `?realExtHost=1` 启用，默认仍走旧宿主。为构建该宿主，从 VSCode 1.110.1 引入 `src/vs/**/node` 与 `workbench/api/node` 源码（MIT，保留版权头）。
 - 新增：磁盘扩展在扩展服务首次扫描前注册（`ExtensionService._registerDiskExtensions`），修复真实宿主启动时扩展列表为空；真实宿主模式下 `extensionSync` 自动让路。
 - 新增：Rust `real_ext_host_start/real_ext_host_stop` 监管真实宿主进程；修复 Windows `\\?\` 路径传给 Node 导致 `EISDIR` 的问题；宿主启动握手失败时回传 stderr。

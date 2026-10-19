@@ -11,6 +11,7 @@ const { runtimeFixture } = require('./unpack-fixture.cjs');
 function fixture(t) {
   const base = fs.mkdtempSync(path.join(os.tmpdir(), 'sc packages-'));
   t.after(() => fs.rmSync(base, { recursive: true, force: true }));
+  fs.writeFileSync(path.join(base, 'package.json'), JSON.stringify({ version: '0.1.1' }));
   return base;
 }
 function write(file, contents = 'installer') {
@@ -64,6 +65,7 @@ test('same-name rebuilt installer replaces exported copy and cleanup preserves b
 });
 test('export rejects outside destinations and junctions without writing outside the project', t => {
   const base = fixture(t), outside = fixture(t), paths = buildPaths([], base);
+  fs.unlinkSync(path.join(outside, 'package.json'));
   write(path.join(paths.bundle, 'nsis/ScCode-setup.exe'));
   assert.throws(() => exportPackages(base, { ...paths, packages: outside }, new Map()), /escapes project/);
   fs.symlinkSync(outside, path.join(base, 'packages'), process.platform === 'win32' ? 'junction' : 'dir');
@@ -87,6 +89,7 @@ test('desktop build exports only after a successful runner and pins intermediate
   assert.deepEqual(events, ['preflight', 'runner']);
   assert.equal(fs.readFileSync(path.join(paths.unpack, 'ScCode.exe'), 'utf8'), 'built desktop');
   assert.equal(fs.readFileSync(path.join(paths.packages, 'ScCode-setup.exe'), 'utf8'), 'successful build');
+  assert.ok(fs.existsSync(path.join(paths.packages, 'ScCode_0.1.1_x64-unpack.zip')));
   assert.throws(() => buildDesktop(args, { base, preflight() {}, runCommand() {
     write(path.join(paths.bundle, 'nsis/ScCode-setup.exe'), 'failed rebuild');
     write(path.join(paths.build, 'ScCode.exe'), 'failed executable');

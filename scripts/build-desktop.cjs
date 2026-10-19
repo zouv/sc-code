@@ -2,7 +2,7 @@
 const path = require('node:path');
 const { root, runtimeConfig, run, assertPrepared } = require('./desktop-runtime.cjs');
 const { buildPaths, installerSnapshot, freshInstallers, exportPackages } = require('./package-output.cjs');
-const { prepareUnpack, publishUnpack, removeStage } = require('./unpack-output.cjs');
+const { prepareUnpack, publishUnpack, archiveUnpack, removeStage } = require('./unpack-output.cjs');
 function buildDesktop(args, { base = root, preflight = assertPrepared, runCommand = run } = {}) {
   const paths = buildPaths(args, base);
   const noBundle = args.includes('--no-bundle') || args.some(arg => ['--help', '-h', '--version', '-V'].includes(arg));
@@ -14,7 +14,7 @@ function buildDesktop(args, { base = root, preflight = assertPrepared, runComman
   if (!noBundle) {
     freshInstallers(base, paths, before); // Reject old installers before copying an unpack tree.
     const prepared = prepareUnpack(base, paths); // Validate all runtime resources before changing finished packages.
-    try { exportPackages(base, paths, before); publishUnpack(prepared); }
+    try { exportPackages(base, paths, before); publishUnpack(prepared); archiveUnpack(base, paths); }
     finally { removeStage(base, prepared.stage); }
   }
   return paths;

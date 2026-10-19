@@ -36,8 +36,8 @@
 - src-tauri/src/commands/secrets.rs + Workbench 扩展桥：extension_secret 命令与请求/结果转发；不把秘密写入 Memento。
 - sidexai/sidex-server/：Go agent 和受认证本地 HTTP/WS。
 - scripts/daily.cjs + 8 个 BAT：setup/run/dev/build/release/test/verify/clean；foreground+exitCode，sourceFingerprint 拒绝旧源码包；cleanTargets 先验证全部绝对路径/链接，仅删允许生成物，不强杀、不碰用户 profile。
-- scripts/build-desktop.cjs / package-output.cjs：buildDesktop成功后按构建前快照只选新NSIS/MSI及签名；先prepareUnpack验证，再exportPackages至packages/dev或release、publishUnpack至unpack对应通道；buildPaths解析Debug/target并固定.runtime输出；失败/--no-bundle不导出旧包。tests/package-output.test.cjs隔离验证分类、旧包、失败、清理保留与链接拒绝。
-- scripts/unpack-output.cjs：validateUnpack校验已构建profile内Node/Go/5CJS逐文件hash、扩展treeHash/94项清单；prepareUnpack复制EXE+运行资源+同级DLL+许可证至.runtime/package-staging，publishUnpack暂存rename/旧目录备份；拒绝链接、未管理目录和额外用户文件。tests/unpack-output.test.cjs与unpack-fixture.cjs验证资源契约、搬离源码、dev/release、失败保护；不复制Cargo/PDB或真实profile。
+- scripts/build-desktop.cjs / package-output.cjs：buildDesktop成功后按构建前快照只选新NSIS/MSI及签名；先prepareUnpack验证，再exportPackages至packages/dev或release、publishUnpack至unpack对应通道，最后archiveUnpack把免安装目录打成packages/<通道>/ScCode_<version>_x64-unpack.zip；buildPaths解析Debug/target并固定.runtime输出；失败/--no-bundle不导出旧包。tests/package-output.test.cjs隔离验证分类、旧包、失败、清理保留与链接拒绝。
+- scripts/unpack-output.cjs：validateUnpack校验已构建profile内Node/Go/5CJS逐文件hash、扩展treeHash/94项清单；prepareUnpack复制EXE+运行资源+同级DLL+许可证至.runtime/package-staging，publishUnpack暂存rename/旧目录备份；archiveUnpack用scripts/zip-writer.cjs（纯Node deflate，无系统zip/tar依赖）生成带单一根目录的发布zip。拒绝链接、未管理目录和额外用户文件。tests/unpack-output.test.cjs与unpack-fixture.cjs验证资源契约、搬离源码、dev/release、zip条目、失败保护；不复制Cargo/PDB或真实profile。
 - .cargo/config.toml / vite.config.ts / scripts/dev-desktop.cjs：Cargo 输出 .runtime/target，前端 .runtime/dist、public，开发扩展 URL 指向 .runtime/desktop/extensions；runtime overlay .runtime/tauri.runtime.conf.json。
 - scripts/runtime-lock.json：固定 Windows Node/内置扩展下载与 SHA256；生成资源不纳入版本管理。
 - docs/import-manifest.json + scripts/verify-import.cjs：3704 项来源校验，允许独立修改但不许遗漏；7 个重复 shell-integration 以 consolidated-source 指向已有同 hash 终端源，只有一个 canonical 条目且 hash 相同才允许目标复用。
@@ -51,7 +51,7 @@
 | 迁移源选择、确认 | src-tauri/src/app_dirs.rs / migration_sources、deduplicate_migration_sources、confirm_first_migration、resolve_and_migrate |
 | 日常操作/安全清理 | scripts/daily.cjs / main、launch、sourceFingerprint、cleanTargets、clean |
 | 成品包分类/安全导出 | scripts/build-desktop.cjs / buildDesktop → scripts/package-output.cjs / buildPaths、installerSnapshot、freshInstallers、exportPackages、assertLocalPath |
-| 免安装完整性/发布 | scripts/unpack-output.cjs / validateUnpack、prepareUnpack、publishUnpack、exportUnpack、validateDestination、removeStage |
+| 免安装完整性/发布 | scripts/unpack-output.cjs / validateUnpack、prepareUnpack、publishUnpack、exportUnpack、archiveUnpack、validateDestination、removeStage；scripts/zip-writer.cjs / writeZip |
 | 稳定凭据身份 | src-tauri/src/commands/secrets.rs / SecretsStore::new、select_extension_profile_id、profile_hash |
 | Agent默认收起 | src/vs/workbench/browser/layout.ts / WorkbenchLayoutStateModel.load、LayoutStateKeys.SIDEX_HIDDEN |
 | 只复制与 SQLite 一致快照 | crates/sc-code-runtime/src/migration.rs / migrate_once、copy_file_missing |
@@ -127,8 +127,8 @@
 前端分包约束：**不要把 `vs/base`、`vs/platform`、`vs/editor` 拆成不同 chunk**。三者存在运行时循环（platform ↔ editor），拆开会在生产包触发 `Cannot access '…' before initialization`（TDZ）并黑屏；只允许把 `terminal/xterm` 这类 core 不反向依赖的模块单独拆出，且必须用生产构建做 headless 启动验证。
 
 ## 4. 接口契约与边界
-- buildPaths = {mode,targetRoot,build,bundle,packages,unpack}；unpack-manifest.json={format:1,product:ScCode,mode,platform,builtinCount,createdAt,files:[{path,size,sha256}]}，路径为包内相对路径。成品只支持准备好的Windows x64；免安装不改变SC_CODE_HOME/profile/WebView2前提。unpack校验/暂存完成后才导出安装包；发布unpack失败可能已输出新安装包，报错保留/回滚旧unpack，不宣称两个成品跨目录事务。
-- 产品 0.1.0 与 VS Code API 1.110.0 分离；保留原 command/settings IDs。
+- buildPaths = {mode,targetRoot,build,bundle,packages,unpack}；unpack-manifest.json={format:1,product:ScCode,mode,platform,builtinCount,createdAt,files:[{path,size,sha256}]}，路径为包内相对路径。成品只支持准备好的Windows x64；免安装不改变SC_CODE_HOME/profile/WebView2前提。发布zip固定为packages/<dev|release>/ScCode_<version>_x64-unpack.zip，条目统一以ScCode_<version>_x64-unpack/为根，包含unpack-manifest.json与全部运行资源，不含Cargo缓存/PDB/用户profile。unpack校验/暂存完成后才导出安装包；发布unpack或zip失败可能已输出新安装包，报错保留/回滚旧unpack，不宣称成品间跨目录事务。
+- 产品 0.1.1 与 VS Code API 1.110.0 分离；保留原 command/settings IDs。
 - ServerEndpoint = {url, port, running, token?}；token 仅运行中返回，前端只能向精确受监督 origin附凭据。
 - SC_CODE_HOME 指定隔离 profile；设置该变量时不隐式导入真实用户数据；SC_CODE_MIGRATION_SOURCES 使用平台 path delimiter显式选源。
 - workspaceIdentity 为 .code-workspace configuration URI；无 identity 时使用有序多根路径 hash。空工作区 storageUri undefined/workspaceState仅内存；globalState始终按扩展持久化。

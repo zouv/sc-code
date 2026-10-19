@@ -103,6 +103,7 @@ function help() {
   Any script --help / --dry-run: explain/preview without installing, building or launching.
 Installers: packages/dev (Debug), packages/release (Release).
 Runnable unpack: packages/unpack/dev or packages/unpack/release (ScCode.exe + all resources).
+Release zip: packages/<dev|release>/ScCode_<version>_x64-unpack.zip (must be uploaded with the installer).
 Intermediate output: .runtime/{desktop,target,dist,public,metadata,logs,package-staging}.
 clean.bat preserves packages/, tools/downloads and user profiles.
 Known sidex-agent timeout, sidex-terminal Unix and sidex-remote test failures are NOT part of test.bat.

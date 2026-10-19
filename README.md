@@ -2,7 +2,7 @@
 
 独立桌面代码编辑器与 AI 开发工作台。以 custom-sidex 功能为迁移基线，后续独立迭代，不使用 Custom overlay，也不跟随上游同步或更新渠道。
 
-**当前：0.1.0 开发验收版本，未签名、未发布。源码完整导入不等于全部行为验收完成。**
+**当前：0.1.1 开发验收版本，未签名；Windows x64 产物可本地打包并上传 GitHub Release。源码完整导入不等于全部行为验收完成。**
 
 ## Windows 开发和构建
 
@@ -37,11 +37,13 @@ npm run desktop:build -- --debug --target x86_64-pc-windows-msvc --bundles nsis
 
 正常安装/运行请使用桌面构建；`npm run dev` 只是 web 工作台开发服务器，不包含原生服务，不代表完整编辑器运行。首次准备需要网络；构建中间产物统一收拢至 `.runtime/`：`desktop/` 是 Node、94 个内置扩展、Go exe、生产宿主及许可证，`target/` 是 Cargo/安装包，`dist/` 是前端，`public/metadata/` 是静态资源和扩展元数据，`logs/` 是本地验证日志。`downloads/tools/` 保存缓存/工具。上述不入库；`scripts/`、扩展宿主源文件、锁文件和终端集成源仍需入库。Tauri 的 `src-tauri/gen/` 是工具强制生成的 schema，也忽略；npm 依赖仍按标准放 `node_modules/`。
 
-Release 成品包路径：`packages/release/ScCode_0.1.0_x64-setup.exe`。
+Release 成品包路径：`packages/release/ScCode_0.1.1_x64-setup.exe`（NSIS 安装包）与 `packages/release/ScCode_0.1.1_x64-unpack.zip`（免安装目录压缩包）。
 
-Debug（dev）成品包路径：`packages/dev/ScCode_0.1.0_x64-setup.exe`。
+Debug（dev）成品包路径：`packages/dev/ScCode_0.1.1_x64-setup.exe` 与 `packages/dev/ScCode_0.1.1_x64-unpack.zip`。
 
-`build.bat`、`release.bat` 及 `npm run desktop:build` 均在构建成功后导出本次新生成的安装包（NSIS `.exe`、MSI `.msi` 及其新签名），同时生成包含主程序与完整运行资源的 unpack 目录；源包保留在 `.runtime/target/.../bundle/`。`--no-bundle` 只编译，不导出历史安装包或 unpack；构建命令失败/资源缺失不覆盖成品。同名安装包更新、其它版本保留；unpack 按 Debug/Release 分开替换。`packages/` 已加入 `.gitignore`，`clean.bat` 不删除成品包。安装包文件名随版本和架构变化。
+`build.bat`、`release.bat` 及 `npm run desktop:build` 均在构建成功后导出本次新生成的安装包（NSIS `.exe`、MSI `.msi` 及其新签名），同时生成包含主程序与完整运行资源的 unpack 目录，并把该目录打成带单一根目录的 `ScCode_<version>_x64-unpack.zip`；安装包与 zip 一起放在 `packages/dev` 或 `packages/release`。源包保留在 `.runtime/target/.../bundle/`。`--no-bundle` 只编译，不导出历史安装包、unpack 或 zip；构建命令失败/资源缺失不覆盖成品。同名安装包更新、其它版本保留；unpack 与 zip 按 Debug/Release 分开替换。`packages/` 已加入 `.gitignore`，`clean.bat` 不删除成品包。安装包与 zip 文件名随版本和架构变化。
+
+**发布产物（GitHub Release）必须同时上传**：`ScCode_<version>_x64-setup.exe` 与 `ScCode_<version>_x64-unpack.zip`。只上传安装包视为发布未完成。
 
 **免安装运行入口（Windows x64）：**
 - Release：`packages/unpack/release/ScCode.exe`（推荐日常使用）。

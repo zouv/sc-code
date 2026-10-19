@@ -153,7 +153,7 @@ async function boot() {
 	//（webExtensionsScannerService → validateExtensionManifest），改成 0.1.3-custom.4 会让
 	// VAC(^1.85.0)/Claude Code(^1.94.0) 被判 DisabledByInvalidExtension，扩展视图全部失效。
 	// 真正的 Sc-Code 版本号放到全局 __SIDEX_VERSION__，由 About 对话框读取。
-	let sidexVersion = '0.1.0';
+	let sidexVersion = '0.1.1';
 	if ((globalThis as any).__SIDEX_TAURI__) {
 		try {
 			const { getVersion } = await import('@tauri-apps/api/app');
