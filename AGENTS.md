@@ -42,7 +42,7 @@
 - **`doc-record`**：把对话结论沉淀进 `docs/`（面向人：怎么用/为什么/有什么坑）。触发词如「doc-record 一下」「记进 docs」「归档到文档」。
 - **`doc-audit`**：核对文档体系与代码/彼此是否漂移（图谱过期、HANDOFF/CHANGELOG 堆积、占位符残留、交叉引用失效），产出漂移清单并按确认修文档。触发词如「审一下文档」「检查文档漂移」。
 - **`init-docs`**：手动触发本模板初始化（自动自举没生效时的兜底）。触发词如「初始化文档」「把模板配好」。
-- **`sc-code-release`**：本地打包 Windows x64 Release（版本号落点、预检、NSIS 安装包、unpack 目录与 zip、验收）。触发词如「打包」「出 Release 包」。
+- **`sc-code-release`**：本地打包 Windows x64 成品（版本号落点、预检、Debug unpack zip / Release setup + unpack zip、验收）。触发词如「打包」「出 Release 包」。
 - **`sc-code-publish`**：把本地成品发布到 GitHub Releases（版本一致性、notes、commit/tag/push、上传 setup exe + unpack zip、核验）。触发词如「发布」「上传 Release」「打 tag」。
 - 以上技能详见 `.claude/skills/<name>/SKILL.md`。
 

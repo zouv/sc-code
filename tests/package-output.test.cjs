@@ -7,6 +7,7 @@ const os = require('node:os');
 const { buildPaths, installerSnapshot, exportPackages } = require('../scripts/package-output.cjs');
 const { buildDesktop } = require('../scripts/build-desktop.cjs');
 const { clean } = require('../scripts/daily.cjs');
+const { readZipEntries, readZipEntry } = require('../scripts/zip-writer.cjs');
 const { runtimeFixture } = require('./unpack-fixture.cjs');
 function fixture(t) {
   const base = fs.mkdtempSync(path.join(os.tmpdir(), 'sc packages-'));
@@ -24,6 +25,7 @@ test('package paths separate Debug/dev and Release/release and resolve target op
   const debug = buildPaths(['--debug', '--target', 'x86_64-pc-windows-msvc'], base);
   assert.equal(debug.packages, path.join(base, 'packages/dev'));
   assert.equal(debug.build, path.join(base, '.runtime/target/x86_64-pc-windows-msvc/debug'));
+  assert.equal('unpack' in debug, false);
   const release = buildPaths(['-t', 'x86_64-pc-windows-msvc'], base);
   assert.equal(release.packages, path.join(base, 'packages/release'));
   assert.equal(buildPaths(['-d', '--target=x86_64-pc-windows-msvc'], base).bundle, debug.bundle);
@@ -32,7 +34,7 @@ test('package paths separate Debug/dev and Release/release and resolve target op
   for (const args of [['--target'], ['--target='], ['--target', '../outside']]) assert.throws(() => buildPaths(args, base), /target/);
 });
 test('only fresh installers and signatures are exported, build cache and old versions stay untouched', t => {
-  const base = fixture(t), paths = buildPaths(['--debug'], base);
+  const base = fixture(t), paths = buildPaths([], base);
   const old = write(path.join(paths.bundle, 'nsis/ScCode_old-setup.exe'), 'old');
   const before = installerSnapshot(base, paths.bundle);
   write(path.join(paths.bundle, 'nsis/ScCode_new-setup.exe'), 'new package');
@@ -73,7 +75,7 @@ test('export rejects outside destinations and junctions without writing outside 
   assert.deepEqual(fs.readdirSync(outside), []);
   fs.unlinkSync(path.join(base, 'packages'));
 });
-test('desktop build exports only after a successful runner and pins intermediate output inside .runtime', t => {
+test('Debug build publishes only its unpack zip and keeps intermediate output inside .runtime', t => {
   const base = fixture(t), args = ['--debug', '--target', 'x86_64-pc-windows-msvc', '--bundles', 'nsis'];
   const paths = buildPaths(args, base), events = [];
   buildDesktop(args, { base, preflight: () => events.push('preflight'), runCommand(command, cliArgs, options) {
@@ -83,26 +85,44 @@ test('desktop build exports only after a successful runner and pins intermediate
     assert.equal(options.env.CC, undefined);
     assert.equal(options.env.CXX, undefined);
     assert.equal(fs.existsSync(paths.packages), false);
-    write(path.join(paths.bundle, 'nsis/ScCode-setup.exe'), 'successful build');
+    write(path.join(paths.bundle, 'nsis/ScCode_0.1.1_x64-setup.exe'), 'debug installer is not exported');
     runtimeFixture(base, paths, 'built desktop');
   }});
   assert.deepEqual(events, ['preflight', 'runner']);
-  assert.equal(fs.readFileSync(path.join(paths.unpack, 'ScCode.exe'), 'utf8'), 'built desktop');
-  assert.equal(fs.readFileSync(path.join(paths.packages, 'ScCode-setup.exe'), 'utf8'), 'successful build');
-  assert.ok(fs.existsSync(path.join(paths.packages, 'ScCode_0.1.1_x64-unpack.zip')));
+  const zip = path.join(paths.packages, 'ScCode_0.1.1_x64-unpack-debug.zip');
+  assert.ok(fs.existsSync(zip));
+  assert.equal(readZipEntry(zip, 'ScCode_0.1.1_x64-unpack-debug/ScCode.exe').toString(), 'built desktop');
+  assert.deepEqual(fs.readdirSync(paths.packages), ['ScCode_0.1.1_x64-unpack-debug.zip']);
   assert.throws(() => buildDesktop(args, { base, preflight() {}, runCommand() {
-    write(path.join(paths.bundle, 'nsis/ScCode-setup.exe'), 'failed rebuild');
+    write(path.join(paths.bundle, 'nsis/ScCode_0.1.1_x64-setup.exe'), 'failed rebuild');
     write(path.join(paths.build, 'ScCode.exe'), 'failed executable');
     throw Error('build failed');
   }}), /build failed/);
-  assert.equal(fs.readFileSync(path.join(paths.packages, 'ScCode-setup.exe'), 'utf8'), 'successful build');
-  assert.equal(fs.readFileSync(path.join(paths.unpack, 'ScCode.exe'), 'utf8'), 'built desktop');
+  assert.equal(readZipEntry(zip, 'ScCode_0.1.1_x64-unpack-debug/ScCode.exe').toString(), 'built desktop');
 });
-test('successful runner with no installer fails, while --no-bundle never exports stale packages', t => {
-  const base = fixture(t), args = ['--debug'], paths = buildPaths(args, base);
-  write(path.join(paths.bundle, 'nsis/old-setup.exe'), 'old package');
-  assert.throws(() => buildDesktop(args, { base, preflight() {}, runCommand() {} }), /No new installer/);
-  buildDesktop([...args, '--no-bundle'], { base, preflight() {}, runCommand() {} });
+test('Release build publishes both the installer and the unpack zip', t => {
+  const base = fixture(t), args = ['--target', 'x86_64-pc-windows-msvc'];
+  const paths = buildPaths(args, base);
+  buildDesktop(args, { base, preflight() {}, runCommand() {
+    write(path.join(paths.bundle, 'nsis/ScCode_0.1.1_x64-setup.exe'), 'release installer');
+    runtimeFixture(base, paths, 'release exe');
+  }});
+  assert.deepEqual(fs.readdirSync(paths.packages).sort(), ['ScCode_0.1.1_x64-setup.exe', 'ScCode_0.1.1_x64-unpack.zip']);
+  assert.equal(fs.readFileSync(path.join(paths.packages, 'ScCode_0.1.1_x64-setup.exe'), 'utf8'), 'release installer');
+  assert.equal(readZipEntry(path.join(paths.packages, 'ScCode_0.1.1_x64-unpack.zip'), 'ScCode_0.1.1_x64-unpack/ScCode.exe').toString(), 'release exe');
+});
+test('Release without a fresh installer fails, Debug without one still publishes its zip, and --no-bundle exports nothing', t => {
+  const base = fixture(t), releaseArgs = ['--target', 'x86_64-pc-windows-msvc'];
+  const release = buildPaths(releaseArgs, base);
+  write(path.join(release.bundle, 'nsis/old-setup.exe'), 'old package');
+  assert.throws(() => buildDesktop(releaseArgs, { base, preflight() {}, runCommand() { runtimeFixture(base, release, 'release exe'); } }), /No new installer/);
+
+  const debugArgs = ['--debug', '--target', 'x86_64-pc-windows-msvc'], debug = buildPaths(debugArgs, base);
+  buildDesktop(debugArgs, { base, preflight() {}, runCommand() { runtimeFixture(base, debug, 'debug exe'); } });
+  assert.deepEqual(fs.readdirSync(debug.packages), ['ScCode_0.1.1_x64-unpack-debug.zip']);
+
+  const noBundle = ['--no-bundle', '--target', 'x86_64-pc-windows-msvc'], paths = buildPaths(noBundle, base);
+  fs.rmSync(paths.packages, { recursive: true, force: true });
+  buildDesktop(noBundle, { base, preflight() {}, runCommand() {} });
   assert.equal(fs.existsSync(paths.packages), false);
-  assert.equal(fs.existsSync(paths.unpack), false);
 });

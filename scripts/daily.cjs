@@ -95,15 +95,14 @@ function help() {
   setup.bat               Install npm dependencies and prepare pinned desktop runtime
   run.bat [app args...]    Launch current Debug desktop; build if missing/stale
   dev.bat [tauri args...]  Desktop development with the prepared resource overlay
-  build.bat [Debug|Release] [tauri args...]  Build NSIS installer (default Debug)
-  release.bat [tauri args...]  Build optimized Release NSIS installer (local only)
+  build.bat [Debug|Release] [tauri args...]  Build packages (default Debug: unpack zip only)
+  release.bat [tauri args...]  Build optimized Release setup exe + unpack zip (local only)
   test.bat                Node, transport, TypeScript and selected native regressions
   verify.bat              test + import + runtime preflight + server smoke + docs
   clean.bat               Delete allowlisted generated output, not caches or profiles
   Any script --help / --dry-run: explain/preview without installing, building or launching.
-Installers: packages/dev (Debug), packages/release (Release).
-Runnable unpack: packages/unpack/dev or packages/unpack/release (ScCode.exe + all resources).
-Release zip: packages/<dev|release>/ScCode_<version>_x64-unpack.zip (must be uploaded with the installer).
+Packages: packages/dev (Debug unpack zip only), packages/release (Release setup exe + unpack zip).
+Unpack zip names: ScCode_<version>_x64-unpack-debug.zip (dev), ScCode_<version>_x64-unpack.zip (release).
 Intermediate output: .runtime/{desktop,target,dist,public,metadata,logs,package-staging}.
 clean.bat preserves packages/, tools/downloads and user profiles.
 Known sidex-agent timeout, sidex-terminal Unix and sidex-remote test failures are NOT part of test.bat.
@@ -127,7 +126,7 @@ function main(action, args) {
   }
   if (['setup', 'test', 'verify', 'clean'].includes(action) && args.length) throw Object.assign(new Error(`Unexpected ${action} arguments: ${args.join(' ')}`), { exitCode: 2 });
   if (action === 'clean') return clean(root, dry);
-  if (dry) { console.log(`[DRY RUN] ScCode ${action} ${mode}: ${args.join(' ')}\nRoot: ${root}\nRuntime: ${runtime}\nOverlay: ${runtimeConfig}\nBuild output: ${path.join(root, '.runtime/target', target, mode.toLowerCase())}\nInstaller output: ${buildPaths([...(mode === 'Debug' ? ['--debug'] : []), '--target', target, ...args], root).packages}\nUnpack output: ${buildPaths([...(mode === 'Debug' ? ['--debug'] : []), '--target', target, ...args], root).unpack}\nNo files, applications or profiles changed.`); return; }
+  if (dry) { console.log(`[DRY RUN] ScCode ${action} ${mode}: ${args.join(' ')}\nRoot: ${root}\nRuntime: ${runtime}\nOverlay: ${runtimeConfig}\nBuild output: ${path.join(root, '.runtime/target', target, mode.toLowerCase())}\nPackage output: ${buildPaths([...(mode === 'Debug' ? ['--debug'] : []), '--target', target, ...args], root).packages}\nNo files, applications or profiles changed.`); return; }
   if (Number(process.versions.node.split('.')[0]) < 22) throw new Error('Node.js 22+ required.');
   switch (action) {
     case 'setup': npm('ci', '--ignore-scripts', '--no-audit', '--no-fund'); prepare(true); npm('run', 'setup'); break;

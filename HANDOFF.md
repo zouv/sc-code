@@ -16,10 +16,10 @@
 
 - 本地打包：`npm run desktop:release`（或 `release.bat`）。
 - 产物：
+  - `packages/dev/ScCode_<version>_x64-unpack-debug.zip`（Debug，含 PDB）
   - `packages/release/ScCode_<version>_x64-setup.exe`
   - `packages/release/ScCode_<version>_x64-unpack.zip`
-  - `packages/unpack/release/`（免安装目录本体）
-- 打包前关闭正在运行的 `packages/unpack/release/ScCode.exe`；脚本不会强杀，目录被占用会以 `EBUSY` 失败并保留旧 unpack。
+- 不再生成 `packages/unpack` 目录；zip 校验通过后暂存目录会被删除。
 - 发布 skill：`.claude/skills/sc-code-release`、`.claude/skills/sc-code-publish`。
 
 ## 运行/验证
@@ -30,8 +30,9 @@ npm run runtime:prepare        # 内含 ext-host:build
 npm test
 npm run typecheck
 npm run desktop:release
+# 解压 packages/release/ScCode_<version>_x64-unpack.zip 后：
 $env:SC_CODE_HOME='D:\Temp\sc-code-smoke'
-.\packages\unpack\release\ScCode.exe
+.\ScCode_<version>_x64-unpack\ScCode.exe
 ```
 
 ## 数据与兼容边界

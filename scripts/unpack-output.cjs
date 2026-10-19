@@ -1,15 +1,15 @@
 'use strict';
-// Windows unpacked distribution: copy the built profile, never mix a stale EXE with source runtime.
+// Windows unpacked distribution: archive the built profile, never mix a stale EXE with source runtime.
+// Published layout: packages/dev only has the Debug unpack zip; packages/release has the setup exe and Release unpack zip.
 const fs = require('node:fs');
 const path = require('node:path');
 const { assertLocalPath } = require('./package-output.cjs');
 const { sha256, treeHash, validateExtensions } = require('./desktop-runtime.cjs');
-const { writeZip } = require('./zip-writer.cjs');
+const { writeZip, readZipEntries } = require('./zip-writer.cjs');
 const resourceDirs = ['bin', 'extension-host', 'extensions', 'licenses', 'shell-integration'];
 const requiredFiles = ['ScCode.exe', 'bin/node.exe', 'sidex-server.exe', 'runtime-manifest.json', 'extension-host/extensionHost.cjs',
   ...['server', 'host', 'configuration', 'transport-auth', 'storage'].map(name => 'extension-host/' + name + '.cjs'),
   'shell-integration/shellIntegration.ps1'];
-const markerName = 'unpack-manifest.json';
 function relativeFile(value) {
   if (typeof value !== 'string' || !value || value.includes('\\') || value.includes(':') ||
       value.split('/').some(part => !part || part === '.' || part === '..')) throw new Error('Invalid unpack relative path: ' + value);
@@ -56,29 +56,6 @@ function validateUnpack(base, directory) {
   if (fs.readdirSync(path.join(directory, 'extension-host')).some(name => name.endsWith('.test.cjs'))) throw new Error('Test modules must not ship in unpack');
   return manifest;
 }
-function validateDestination(base, destination) {
-  assertLocalPath(base, destination);
-  if (!fs.existsSync(destination)) return;
-  const marker = assertLocalPath(base, path.join(destination, markerName));
-  if (!fs.existsSync(marker)) throw new Error('Refusing to replace an unmanaged unpack directory: ' + destination);
-  const manifest = JSON.parse(fs.readFileSync(marker, 'utf8'));
-  if (manifest.format !== 1 || manifest.product !== 'ScCode' || !Array.isArray(manifest.files)) throw new Error('Invalid unpack ownership manifest');
-  const allowedFiles = new Set([markerName, ...manifest.files.map(file => relativeFile(file.path))]);
-  const allowedDirs = new Set();
-  for (const file of allowedFiles) for (let dir = path.posix.dirname(file); dir !== '.'; dir = path.posix.dirname(dir)) allowedDirs.add(dir);
-  for (const file of inventory(base, destination)) {
-    const relative = path.relative(destination, file).replaceAll('\\', '/');
-    if (!allowedFiles.has(relative)) throw new Error('Unpack contains extra/user files; move them before rebuilding: ' + file);
-  }
-  function checkDirs(folder) {
-    for (const entry of fs.readdirSync(folder, { withFileTypes: true })) if (entry.isDirectory()) {
-      const child = path.join(folder, entry.name);
-      if (!allowedDirs.has(path.relative(destination, child).replaceAll('\\', '/'))) throw new Error('Unpack contains extra/user directory: ' + child);
-      checkDirs(child);
-    }
-  }
-  checkDirs(destination);
-}
 function removeStage(base, folder) {
   const stagingRoot = path.join(fs.realpathSync(base), '.runtime/package-staging');
   if (!path.resolve(folder).startsWith(stagingRoot + path.sep)) throw new Error('Refusing cleanup outside package staging: ' + folder);
@@ -88,17 +65,15 @@ function removeStage(base, folder) {
   fs.rmSync(folder, { recursive: true, force: true });
 }
 function prepareUnpack(base, paths) {
-  const destination = assertLocalPath(base, paths.unpack);
-  const expected = path.join(fs.realpathSync(base), 'packages/unpack', paths.mode === 'Debug' ? 'dev' : 'release');
-  if (destination !== expected) throw new Error('Unexpected unpack output directory: ' + destination);
   assertLocalPath(base, paths.build);
   const targetRoot = path.join(fs.realpathSync(base), '.runtime/target');
   if (![path.join(targetRoot, paths.mode.toLowerCase()), path.join(targetRoot, 'x86_64-pc-windows-msvc', paths.mode.toLowerCase())].includes(paths.build)) throw new Error('Unpack currently supports native Windows x64 builds only');
-  validateDestination(base, destination);
   const runtime = validateUnpack(base, paths.build);
   const selected = ['ScCode.exe', 'sidex-server.exe', 'runtime-manifest.json',
     ...resourceDirs.flatMap(name => inventory(base, path.join(paths.build, name)).map(file => path.relative(paths.build, file))),
     ...fs.readdirSync(paths.build).filter(name => name.toLowerCase().endsWith('.dll'))];
+  // Debug packages keep PDB symbols for local diagnostics; Release packages never ship Cargo caches or symbols.
+  if (paths.mode === 'Debug') selected.push(...fs.readdirSync(paths.build).filter(name => name.toLowerCase().endsWith('.pdb')));
   const sources = selected.map(relative => ({ source: assertLocalPath(base, path.join(paths.build, relative)), relative }));
   for (const [source, relative] of [['LICENSE', 'licenses/ScCode-LICENSE.txt']]) {
     const file = assertLocalPath(base, path.join(base, source));
@@ -122,46 +97,20 @@ function prepareUnpack(base, paths) {
       'Microsoft Edge WebView2 Runtime must already be installed on this computer.\r\n' +
       'Move/copy the WHOLE folder; do not move only ScCode.exe.\r\n' +
       'User data: %APPDATA%\\ScCode by default (or SC_CODE_HOME). This is NOT an in-folder data-portable mode.\r\n' +
-      'Close this unpacked app before rebuilding. Extra/user files in this folder block replacement.\r\n' +
+      (paths.mode === 'Debug' ? 'Debug build: unoptimized binaries and PDB symbols may be included for local diagnostics.\r\n' : '') +
       'Local unsigned build; no signing, installation or publishing was performed.\r\n');
     const files = inventory(base, stage).map(file => ({ path: path.relative(stage, file).replaceAll('\\', '/'), size: fs.statSync(file).size, sha256: sha256(file) }));
-    fs.writeFileSync(path.join(stage, markerName), JSON.stringify({ format: 1, product: 'ScCode', mode: paths.mode,
+    fs.writeFileSync(path.join(stage, 'unpack-manifest.json'), JSON.stringify({ format: 1, product: 'ScCode', mode: paths.mode,
       platform: runtime.platform, builtinCount: runtime.builtinCount, createdAt: new Date().toISOString(), files }, null, 2) + '\n');
-    return { base, stage, destination };
+    return { base, stage };
   } catch (error) { removeStage(base, stage); throw error; }
 }
-function publishUnpack(prepared) {
-  const { base, stage, destination } = prepared;
-  validateDestination(base, destination);
-  assertLocalPath(base, stage);
-  const backup = assertLocalPath(base, stage + '-previous');
-  if (fs.existsSync(backup)) throw new Error('Unpack backup already exists: ' + backup);
-  fs.mkdirSync(path.dirname(destination), { recursive: true });
-  const hadPrevious = fs.existsSync(destination);
-  if (hadPrevious) fs.renameSync(destination, backup); // A running app can block this: never kill it.
-  try { fs.renameSync(stage, destination); }
-  catch (error) {
-    if (hadPrevious) {
-      try { fs.renameSync(backup, destination); }
-      catch (restoreError) { throw new Error('Unpack publish/restore failed; previous package preserved at ' + backup + ': ' + restoreError.message); }
-    }
-    throw error;
-  }
-  if (hadPrevious) removeStage(base, backup);
-  console.log('[UNPACK] ' + path.join(destination, 'ScCode.exe'));
-  return destination;
-}
-function exportUnpack(base, paths) {
-  const prepared = prepareUnpack(base, paths);
-  try { return publishUnpack(prepared); }
-  finally { removeStage(base, prepared.stage); }
-}
-function archiveUnpack(base, paths) {
-  const source = assertLocalPath(base, paths.unpack);
-  if (!fs.existsSync(source) || !fs.statSync(source).isDirectory()) throw new Error('Unpack directory is missing: ' + source);
+function archiveUnpack(base, paths, stage) {
+  const source = assertLocalPath(base, stage);
+  if (!fs.existsSync(source) || !fs.statSync(source).isDirectory()) throw new Error('Unpack staging directory is missing: ' + source);
   const version = JSON.parse(fs.readFileSync(path.join(fs.realpathSync(base), 'package.json'), 'utf8')).version;
   if (typeof version !== 'string' || !/^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/.test(version)) throw new Error('Invalid product version for unpack archive: ' + version);
-  const folder = 'ScCode_' + version + '_x64-unpack';
+  const folder = 'ScCode_' + version + '_x64-unpack' + (paths.mode === 'Debug' ? '-debug' : '');
   const destination = assertLocalPath(base, paths.packages);
   const output = assertLocalPath(base, path.join(destination, folder + '.zip'));
   const files = inventory(base, source);
@@ -173,7 +122,15 @@ function archiveUnpack(base, paths) {
   });
   fs.mkdirSync(destination, { recursive: true });
   const result = writeZip(output, entries);
+  const archived = readZipEntries(output).map(entry => entry.name).sort();
+  const expected = entries.map(entry => entry.name).sort();
+  if (JSON.stringify(archived) !== JSON.stringify(expected)) throw new Error('Unpack archive entry mismatch: ' + output);
   console.log('[ARCHIVE] ' + result.output);
   return result.output;
 }
-module.exports = { resourceDirs, requiredFiles, validateUnpack, prepareUnpack, publishUnpack, exportUnpack, archiveUnpack, removeStage };
+function exportUnpack(base, paths) {
+  const prepared = prepareUnpack(base, paths);
+  try { return archiveUnpack(base, paths, prepared.stage); }
+  finally { removeStage(base, prepared.stage); }
+}
+module.exports = { resourceDirs, requiredFiles, validateUnpack, prepareUnpack, archiveUnpack, exportUnpack, removeStage };

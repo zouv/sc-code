@@ -30,7 +30,7 @@ function buildPaths(args, base) {
   const profile = mode.toLowerCase();
   const targetRoot = path.join(root, '.runtime/target');
   const build = path.join(targetRoot, ...(target ? [target] : []), profile);
-  return { mode, targetRoot, build, bundle: path.join(build, 'bundle'), packages: path.join(root, 'packages', mode === 'Debug' ? 'dev' : 'release'), unpack: path.join(root, 'packages/unpack', mode === 'Debug' ? 'dev' : 'release') };
+  return { mode, targetRoot, build, bundle: path.join(build, 'bundle'), packages: path.join(root, 'packages', mode === 'Debug' ? 'dev' : 'release') };
 }
 function installerSnapshot(base, bundle) {
   assertLocalPath(base, bundle);

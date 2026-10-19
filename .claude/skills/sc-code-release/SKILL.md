@@ -1,6 +1,6 @@
 ---
 name: sc-code-release
-description: 构建 ScCode 的 Windows x64 Release 成品（版本号同步、预检、NSIS 安装包、unpack 目录与 unpack zip、冒烟与文档收尾）。仅当用户明确要求「打包 / 构建安装包 / 出 Release 包 / release build」时调用。
+description: 构建 ScCode 的 Windows x64 成品（版本号同步、预检、Debug unpack zip / Release setup + unpack zip、冒烟与文档收尾）。仅当用户明确要求「打包 / 构建安装包 / 出 Release 包 / release build」时调用。
 ---
 
 # ScCode 打包 Skill
@@ -55,41 +55,52 @@ npm run desktop:release -- --dry-run   # 只打印路径，不构建
 ```bash
 npm run typecheck
 npm test                       # 至少跑完；失败必须如实报告
-npm run desktop:release        # prepare → Tauri Release → NSIS
+npm run desktop:release        # prepare → Tauri Release → setup exe + unpack zip
 ```
 
 等价入口：`release.bat`。需要先能准备固定 Node/Go/内置扩展；构建中间产物都在 `.runtime/`。
 
-## 产物（缺一不可）
+## 产物（按通道）
 
 ```
+packages/dev/
+└── ScCode_<version>_x64-unpack-debug.zip   # Debug unpack 包（含 PDB），仅用于开发测试
+
 packages/release/
-├── ScCode_<version>_x64-setup.exe       # NSIS 安装包
-└── ScCode_<version>_x64-unpack.zip      # 完整免安装目录的 zip（发布必须上传）
-packages/unpack/release/                  # 免安装目录本体
-├── ScCode.exe
-├── bin/node.exe
-├── sidex-server.exe
-├── extension-host/
-├── extensions/
-├── licenses/
-├── runtime-manifest.json
-└── unpack-manifest.json                 # SHA256 文件清单
+├── ScCode_<version>_x64-setup.exe          # NSIS 安装包
+└── ScCode_<version>_x64-unpack.zip         # Release 免安装 zip（发布必须上传）
 ```
 
-构建脚本在 `scripts/build-desktop.cjs`：只有本次新生成的安装包才会导出；unpack 先逐文件 hash 校验再替换；随后 `scripts/unpack-output.cjs / archiveUnpack` 生成 zip（`scripts/zip-writer.cjs`，纯 Node，跨平台、不依赖系统 zip/tar）。
+zip 内部统一以一个根目录开头（`ScCode_<version>_x64-unpack[-debug]/`），包含：
+
+```
+ScCode.exe
+bin/node.exe
+sidex-server.exe
+extension-host/
+extensions/
+licenses/
+runtime-manifest.json
+unpack-manifest.json                 # SHA256 文件清单
+README.txt
+```
+
+**不再生成 `packages/unpack` 目录**；暂存目录在校验与 zip 写入后删除。
+
+构建脚本在 `scripts/build-desktop.cjs`：Release 只有本次新生成的安装包才会导出；Debug 只写 unpack zip，不导出 setup。unpack 先逐文件 hash 校验，随后 `scripts/unpack-output.cjs / archiveUnpack` 生成 zip（`scripts/zip-writer.cjs`，纯 Node，跨平台、不依赖系统 zip/tar）。
 
 ## 构建后验收
 
 ```bash
-ls -la packages/release/
+ls -la packages/dev/ packages/release/
 # zip 必须存在且关键条目可检索（压缩数据中文件名可读）
 grep -a -o 'ScCode_<version>_x64-unpack/ScCode.exe' packages/release/ScCode_<version>_x64-unpack.zip
 grep -a -o 'ScCode_<version>_x64-unpack/unpack-manifest.json' packages/release/ScCode_<version>_x64-unpack.zip
+grep -a -o 'ScCode_<version>_x64-unpack-debug/ScCode.pdb' packages/dev/ScCode_<version>_x64-unpack-debug.zip
 ```
 
-- 冒烟：用隔离 profile 启动 `packages/unpack/release/ScCode.exe`（`SC_CODE_HOME=D:\Temp\sc-code-smoke`），确认能启动；GUI 不可用时至少报告未做 GUI 验收。
-- 检查安装包与 zip 的文件大小非 0；unpack zip 不应包含 Cargo 缓存、PDB 或用户 profile。
+- 冒烟：把 Release zip 解压到临时目录，用隔离 profile 启动其中的 `ScCode.exe`（`SC_CODE_HOME=D:\Temp\sc-code-smoke`）；GUI 不可用时至少报告未做 GUI 验收。
+- 检查 setup exe 与 zip 大小非 0；Release zip 不应包含 Cargo 缓存、PDB 或用户 profile；Debug zip 应包含 PDB（若本次构建产出）。
 - 失败/`--no-bundle` 不导出历史成品；失败时不得宣称打包成功。
 
 ## 文档收尾

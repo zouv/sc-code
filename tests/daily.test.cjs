@@ -56,10 +56,10 @@ test('BAT works from another cwd and invalid arguments keep nonzero status', { s
   const help = invoke('run.bat', '--help'); assert.equal(help.status, 0, help.stderr + help.stdout); assert.match(help.stdout, /ScCode daily scripts/);
   const dry = invoke('clean.bat', '--dry-run'); assert.equal(dry.status, 0, dry.stderr + dry.stdout); assert.match(dry.stdout, /DRY RUN/);
   const invalid = invoke('build.bat', 'Nonsense'); assert.equal(invalid.status, 2, invalid.stderr + invalid.stdout);
-  const release = invoke('release.bat', '--dry-run'); assert.equal(release.status, 0, release.stderr + release.stdout); assert.match(release.stdout, /ScCode release Release/); assert.match(release.stdout, /packages[\\/]release/); assert.match(release.stdout, /Unpack output: .*packages[\\/]unpack[\\/]release/);
+  const release = invoke('release.bat', '--dry-run'); assert.equal(release.status, 0, release.stderr + release.stdout); assert.match(release.stdout, /ScCode release Release/); assert.match(release.stdout, /Package output: .*packages[\\/]release/); assert.doesNotMatch(release.stdout, /packages[\\/]unpack/i);
   const debug = invoke('release.bat', '--debug --dry-run'); assert.equal(debug.status, 2, debug.stderr + debug.stdout);
   const shortDebug = invoke('release.bat', '-d --dry-run'); assert.equal(shortDebug.status, 2, shortDebug.stderr + shortDebug.stdout);
-  const dev = invoke('build.bat', 'Debug --dry-run'); assert.equal(dev.status, 0, dev.stderr + dev.stdout); assert.match(dev.stdout, /packages[\\/]dev/); assert.match(dev.stdout, /Unpack output: .*packages[\\/]unpack[\\/]dev/);
+  const dev = invoke('build.bat', 'Debug --dry-run'); assert.equal(dev.status, 0, dev.stderr + dev.stdout); assert.match(dev.stdout, /Package output: .*packages[\\/]dev/); assert.doesNotMatch(dev.stdout, /packages[\\/]unpack/i);
   const conflict = invoke('build.bat', 'Release --debug --dry-run'); assert.equal(conflict.status, 2, conflict.stderr + conflict.stdout);
 });
 test('old profile migration precedes SideX and stable credentials are persisted after migration', () => {

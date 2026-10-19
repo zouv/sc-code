@@ -15,8 +15,8 @@
 | `setup.bat` | 安装依赖、准备固定 Node/Go/内置扩展并生成元数据 |
 | `run.bat [应用参数]` | 前台启动当前 Debug 桌面；缺失或源码变化时自动重建 |
 | `dev.bat` | Tauri 热更新开发，带完整 runtime 资源配置 |
-| `build.bat [Debug或Release]` | 构建 NSIS 安装包及完整 unpack 免安装目录；默认 Debug |
-| `release.bat` | 一键构建优化 Release 安装包及 unpack 免安装目录，不自动签名/发布 |
+| `build.bat [Debug或Release]` | 构建成品包；Debug 只生成 unpack zip（含 PDB 调试信息），Release 生成 setup 安装包 + unpack zip；默认 Debug |
+| `release.bat` | 一键构建优化 Release setup 安装包与 unpack zip，不自动签名/发布 |
 | `test.bat` | Node/transport/TS + 选定原生模块和桌面 lib 回归 |
 | `verify.bat` | 上述测试 + 来源清单/runtime/真实本地服务/文档检查 |
 | `clean.bat` | 清理生成输出；保留 packages/ 成品包、工具下载缓存、node_modules 和所有用户配置 |
@@ -39,19 +39,24 @@ npm run desktop:build -- --debug --target x86_64-pc-windows-msvc --bundles nsis
 
 Release 成品包路径：`packages/release/ScCode_0.1.1_x64-setup.exe`（NSIS 安装包）与 `packages/release/ScCode_0.1.1_x64-unpack.zip`（免安装目录压缩包）。
 
-Debug（dev）成品包路径：`packages/dev/ScCode_0.1.1_x64-setup.exe` 与 `packages/dev/ScCode_0.1.1_x64-unpack.zip`。
+Debug（dev）成品包路径：`packages/dev/ScCode_0.1.1_x64-unpack-debug.zip`（仅 Debug unpack 包，不含 setup）。
 
-`build.bat`、`release.bat` 及 `npm run desktop:build` 均在构建成功后导出本次新生成的安装包（NSIS `.exe`、MSI `.msi` 及其新签名），同时生成包含主程序与完整运行资源的 unpack 目录，并把该目录打成带单一根目录的 `ScCode_<version>_x64-unpack.zip`；安装包与 zip 一起放在 `packages/dev` 或 `packages/release`。源包保留在 `.runtime/target/.../bundle/`。`--no-bundle` 只编译，不导出历史安装包、unpack 或 zip；构建命令失败/资源缺失不覆盖成品。同名安装包更新、其它版本保留；unpack 与 zip 按 Debug/Release 分开替换。`packages/` 已加入 `.gitignore`，`clean.bat` 不删除成品包。安装包与 zip 文件名随版本和架构变化。
+`build.bat`、`release.bat` 及 `npm run desktop:build` 在构建成功后先校验已构建的资源，再把完整运行资源打成带单一根目录的 unpack zip；**不再保留 `packages/unpack` 目录**。目录结构：
+
+- `packages/dev/`：仅 `ScCode_<version>_x64-unpack-debug.zip`（Debug 构建，含 PDB 等调试信息，用于开发测试）。
+- `packages/release/`：`ScCode_<version>_x64-unpack.zip` + 本次新生成的 `ScCode_<version>_x64-setup.exe`（NSIS），用于发布上传。
+
+源包保留在 `.runtime/target/.../bundle/`。`--no-bundle` 只编译，不导出安装包或 zip；构建命令失败/资源缺失不覆盖已导出的成品。同名成品更新、其它版本保留；Debug/Release 分别写入 `packages/dev` 与 `packages/release`。`packages/` 已加入 `.gitignore`，`clean.bat` 不删除成品包。文件名随版本和架构变化。
 
 **发布产物（GitHub Release）必须同时上传**：`ScCode_<version>_x64-setup.exe` 与 `ScCode_<version>_x64-unpack.zip`。只上传安装包视为发布未完成。
 
-**免安装运行入口（Windows x64）：**
-- Release：`packages/unpack/release/ScCode.exe`（推荐日常使用）。
-- Debug：`packages/unpack/dev/ScCode.exe`（开发调试）。
+**免安装包（Windows x64）使用方式：**
+- Release：解压 `packages/release/ScCode_<version>_x64-unpack.zip`，进入 `ScCode_<version>_x64-unpack/`，双击 `ScCode.exe`（推荐日常使用）。
+- Debug：解压 `packages/dev/ScCode_<version>_x64-unpack-debug.zip`，进入对应目录运行 `ScCode.exe`（开发调试；包含 PDB 等调试信息）。
 
-双击对应 `ScCode.exe` 即可；迁移到其它位置时复制**整个目录**，不能只复制 EXE。目录包含内置 Node、Agent 侧车、扩展宿主、94 个内置扩展、终端集成、许可证、运行说明和 SHA256 文件清单，不含 Cargo 缓存、PDB 或用户配置。无需另外安装 Node 或保留源码仓库，但电脑必须已有 **Microsoft Edge WebView2 Runtime**；unpack 不执行安装器的 WebView2 引导下载。
+迁移到其它位置时复制**整个解压目录**，不能只复制 EXE。目录包含内置 Node、Agent 侧车、扩展宿主、94 个内置扩展、终端集成、许可证、运行说明和 SHA256 文件清单；Release 包不含 Cargo 缓存、PDB 或用户配置。无需另外安装 Node 或保留源码仓库，但电脑必须已有 **Microsoft Edge WebView2 Runtime**；unpack 不执行安装器的 WebView2 引导下载。
 
-免安装不等于数据内置的 portable 模式：默认用户数据仍是 `%APPDATA%\ScCode`，可用 `SC_CODE_HOME` 指定其它目录。不要在 unpack 目录内存放项目/用户数据；检测到额外文件或目录会拒绝替换，避免重打包误删。重打包前关闭该 unpack 应用；脚本不会强杀占用进程。
+免安装不等于数据内置的 portable 模式：默认用户数据仍是 `%APPDATA%\ScCode`，可用 `SC_CODE_HOME` 指定其它目录。不要把项目/用户数据放进解压目录；升级时直接解压新版本 zip 即可，不会触碰用户 profile。
 
 ## 数据迁移
 

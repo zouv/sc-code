@@ -33,8 +33,8 @@ function arg(name, fallback) {
 const keep = process.argv.includes('--keep');
 const seconds = Number(arg('seconds', '30'));
 const exe = path.resolve(arg('exe', firstExisting([
-	path.join(root, 'packages/unpack/release/ScCode.exe'),
-	path.join(root, 'packages/unpack/dev/ScCode.exe'),
+	path.join(root, '.runtime/target/x86_64-pc-windows-msvc/release/ScCode.exe'),
+	path.join(root, '.runtime/target/x86_64-pc-windows-msvc/debug/ScCode.exe'),
 	path.join(root, '.runtime/target/release/ScCode.exe'),
 	path.join(root, '.runtime/target/debug/ScCode.exe'),
 ])));

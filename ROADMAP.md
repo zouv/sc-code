@@ -4,6 +4,7 @@
 2026-10-18：starter 初始化和 3704 项完整源码导入完成；独立运行、安全基础、扩展状态与 Windows debug NSIS 链路已实现并做自动化回归。**完整无缝迁移尚未验收，未签名、未发布。**
 2026-10-19：完成真实 Node 扩展宿主 PoC（实验开关）、profile SQLite 存储迁移、Go/WASM 懒启动、依赖清理与性能基线；真实宿主已在隔离 profile 中启动并激活合成扩展，默认仍走旧宿主。
 2026-10-19：v0.1.1 已打包并上传 GitHub Release（prerelease）：Windows x64 NSIS 安装包 + unpack zip；版本号、About 回退值与打包文档同步。
+2026-10-19：packages 目录精简为 dev（仅 Debug unpack zip，含 PDB）与 release（setup + unpack zip），移除 packages/unpack。
 
 ## 开发大纲
 | 编号 | 优先级 | 任务 | 状态 |
@@ -33,6 +34,7 @@
 | S10d | P1 | ~~Go agent 懒启动、WASM 运行时懒初始化、前端分包、性能基线脚本、IPC 桥修复、依赖清理~~ | ✅ 2026-10-19 |
 | S10e | P0 | ~~修复 Release 黑屏（分包循环 TDZ）：恢复 base/platform/editor 单一 core，仅拆 terminal；新增 `smoke:dist` 生产包 headless 冒烟并接入 CI~~ | ✅ 2026-10-19 |
 | S11 | P0 | ~~v0.1.1 发布链路：版本号同步、unpack zip、打包/发布 skill、GitHub Release 上传~~ | ✅ 2026-10-19；安装包 + unpack zip 均已上传 |
+| S12 | P1 | ~~packages 目录精简：dev 仅 Debug unpack zip（含 PDB），release 为 setup + unpack zip，移除 packages/unpack~~ | ✅ 2026-10-19 |
 
 ## 移植验收矩阵
 | 兼容场景 | 当前证据 | 尚待验收 |

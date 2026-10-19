@@ -102,7 +102,7 @@ gh release create v<version> \
 ```
 
 - 当前版本未签名、为开发验收版，默认 `--prerelease`。
-- 只上传当前平台能产出的产物；不要上传 unpack 目录本体、`.runtime/` 或源码。
+- 只上传当前平台能产出的产物；不要上传 `packages/dev/` 的 Debug 包、解压目录本体、`.runtime/` 或源码。
 - 漏传资产可用 `gh release upload v<version> <file> --repo zouv/sc-code` 补齐；重传同名文件加 `--clobber`。
 
 ### 5. 核验
@@ -115,7 +115,7 @@ gh release view v<version> --repo zouv/sc-code --json assets --jq '.assets[] | "
 必须确认：
 
 1. 资产列表同时包含 `-setup.exe` 与 `-unpack.zip`；
-2. 两个文件 size 均非 0，且 zip 明显大于安装包（unpack 约 200MB+）；
+2. 两个文件 size 均非 0，且 zip 明显大于安装包（当前 Release zip 约 95MB，setup 约 69MB）；
 3. 正文来自 `docs/releases/v<version>.md`，不是模板。
 
 ## 重要约束

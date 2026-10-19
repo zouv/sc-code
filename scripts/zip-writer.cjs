@@ -93,4 +93,42 @@ function writeZip(output, entries) {
   }
   return { output: path.resolve(output), entries: entries.length, size: fs.statSync(output).size };
 }
-module.exports = { crc32, dosDateTime, validateEntryName, writeZip };
+function readZipEntries(source) {
+  const buffer = Buffer.isBuffer(source) ? source : fs.readFileSync(source);
+  let end = -1;
+  for (let cursor = buffer.length - 22; cursor >= Math.max(0, buffer.length - 22 - 0xffff); cursor--) {
+    if (buffer.readUInt32LE(cursor) === 0x06054b50) { end = cursor; break; }
+  }
+  if (end < 0) throw new Error('ZIP end of central directory not found');
+  const count = buffer.readUInt16LE(end + 10);
+  let cursor = buffer.readUInt32LE(end + 16);
+  const entries = [];
+  for (let index = 0; index < count; index++) {
+    if (buffer.readUInt32LE(cursor) !== 0x02014b50) throw new Error('Invalid ZIP central directory');
+    const method = buffer.readUInt16LE(cursor + 10);
+    const crc = buffer.readUInt32LE(cursor + 16);
+    const compressedSize = buffer.readUInt32LE(cursor + 20);
+    const size = buffer.readUInt32LE(cursor + 24);
+    const nameLength = buffer.readUInt16LE(cursor + 28);
+    const extraLength = buffer.readUInt16LE(cursor + 30);
+    const commentLength = buffer.readUInt16LE(cursor + 32);
+    const localOffset = buffer.readUInt32LE(cursor + 42);
+    const name = buffer.subarray(cursor + 46, cursor + 46 + nameLength).toString('utf8');
+    entries.push({ name, method, crc32: crc, compressedSize, size, localOffset });
+    cursor += 46 + nameLength + extraLength + commentLength;
+  }
+  return entries;
+}
+function readZipEntry(source, name) {
+  const buffer = Buffer.isBuffer(source) ? source : fs.readFileSync(source);
+  const entry = readZipEntries(buffer).find(item => item.name === name);
+  if (!entry) throw new Error('ZIP entry not found: ' + name);
+  const cursor = entry.localOffset;
+  if (buffer.readUInt32LE(cursor) !== 0x04034b50) throw new Error('Invalid ZIP local header');
+  const nameLength = buffer.readUInt16LE(cursor + 26);
+  const extraLength = buffer.readUInt16LE(cursor + 28);
+  const start = cursor + 30 + nameLength + extraLength;
+  const compressed = buffer.subarray(start, start + entry.compressedSize);
+  return entry.method === 8 ? zlib.inflateRawSync(compressed) : Buffer.from(compressed);
+}
+module.exports = { crc32, dosDateTime, validateEntryName, writeZip, readZipEntries, readZipEntry };

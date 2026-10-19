@@ -67,7 +67,7 @@ test('local runtime, packages, generated metadata, secrets and editor state stay
   const files = [
     '.runtime/tools/node.exe', '.runtime/logs/smoke.json', '.runtime/tests/fixture.json',
     'packages/dev/ScCode-setup.exe', 'packages/release/ScCode.msi',
-    'packages/unpack/dev/ScCode.exe', 'packages/unpack/release/resources/node.exe',
+    'packages/dev/ScCode_0.1.1_x64-unpack-debug.zip', 'packages/release/ScCode_0.1.1_x64-unpack.zip',
     'node_modules/vite/package.json', 'src-tauri/target/debug/ScCode.exe',
     'src-tauri/gen/schemas/desktop-schema.json', 'dist/assets/main.js', 'out/cache.json',
     'build/output.js', 'logs/startup.txt', 'extensions/builtin/package.json',
