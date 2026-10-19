@@ -1693,7 +1693,7 @@ export class ExtensionsWorkbenchService extends Disposable implements IExtension
 	}
 
 	private getRuntimeState(extension: IExtension): ExtensionRuntimeState | undefined {
-		if ((globalThis as any).__SIDEX_TAURI__) {
+		if ((globalThis as any).__SC_CODE_TAURI__) {
 			return undefined;
 		}
 

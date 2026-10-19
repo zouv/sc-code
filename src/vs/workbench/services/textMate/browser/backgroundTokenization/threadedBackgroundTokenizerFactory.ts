@@ -166,7 +166,7 @@ export class ThreadedBackgroundTokenizerFactory implements IDisposable {
 	}
 
 	private async _createWorkerProxy(): Promise<Proxied<TextMateTokenizationWorker> | null> {
-		// In SideX / web builds, use the public directory copy of onig.wasm
+		// In ScCode / web builds, use the public directory copy of onig.wasm
 		const isTauri = typeof (globalThis as any).__TAURI_INTERNALS__ !== 'undefined';
 		const onigurumaWASMUri =
 			isWeb || isTauri

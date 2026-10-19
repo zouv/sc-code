@@ -59,7 +59,7 @@ export interface IRemoteConnectionLatencyMeasurement {
 	readonly high: boolean;
 }
 
-// Stub: latency measurement now handled by sidex-remote Rust crate
+// Stub: latency measurement now handled by sc-code-remote Rust crate
 export const remoteConnectionLatencyMeasurer = {
 	lastMeasurement: undefined as IRemoteConnectionLatencyMeasurement | undefined,
 	get latency() {

@@ -3,12 +3,12 @@ import type { NormalizedExtension } from './types';
 /**
  * Shape the merged results back into something that looks like
  * Open VSX's `/api/-/search` response. This exists so the existing
- * `sidex-extensions` Rust client (which parses Open VSX JSON) can
+ * `sc-code-extensions` Rust client (which parses Open VSX JSON) can
  * point at this Worker without any code changes.
  *
  * Field names are a deliberate subset of what Open VSX actually
  * returns — enough for `OpenVsxSearchResponse` + `MarketplaceExtension`
- * in `crates/sidex-extensions/src/marketplace.rs` to deserialize.
+ * in `crates/sc-code-extensions/src/marketplace.rs` to deserialize.
  */
 export interface OpenVsxCompatItem {
 	url: string;

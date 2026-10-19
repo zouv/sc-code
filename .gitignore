@@ -24,7 +24,7 @@ node_modules/
 # Library lock files should not be committed (Cargo best practice).
 # The workspace application lock (/Cargo.lock) IS committed.
 # Keep src-tauri/Cargo.lock as imported provenance; it is not the workspace lock.
-sidex-extension-sdk/Cargo.lock
+sc-code-extension-sdk/Cargo.lock
 extensions-rust/Cargo.lock
 examples/**/Cargo.lock
 
@@ -90,12 +90,12 @@ venv/
 # ── Cloudflare Wrangler (marketplace-proxy dev state) ────────────────────────
 infrastructure/marketplace-proxy/.wrangler/
 
-# ── Sidex ephemeral state (never commit) ─────────────────────────────────────
-# Memory, bench results, and other generated state live in ~/.sidex/.
-# Only .sidex/rules/ and .sidex/skills/ are meant to be committed.
-.sidex/*
-!.sidex/rules/
-!.sidex/skills/
+# ── ScCode ephemeral project state (never commit) ─────────────────────────────────────
+# Memory, bench results, and other generated state live in ~/.sc-code/.
+# Only .sc-code/rules/ and .sc-code/skills/ are meant to be committed.
+.sc-code/*
+!.sc-code/rules/
+!.sc-code/skills/
 MEMORY.md
 .kilo/
 
@@ -134,5 +134,5 @@ MEMORY.md
 /.history/
 
 # Local service state / database sidecars (not source fixtures)
-/sidexai/**/*.db-shm
-/sidexai/**/*.db-wal
+/agent/**/*.db-shm
+/agent/**/*.db-wal

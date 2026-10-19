@@ -1,8 +1,8 @@
-use sidex_extension_sdk::prelude::*;
+use sc_code_extension_sdk::prelude::*;
 
 pub struct RustLanguageExtension;
 
-impl SidexExtension for RustLanguageExtension {
+impl ScCodeExtension for RustLanguageExtension {
     fn activate() -> Result<(), String> {
         Ok(())
     }
@@ -19,7 +19,7 @@ impl SidexExtension for RustLanguageExtension {
         "0.1.0".to_string()
     }
     fn get_publisher() -> String {
-        "sidex".to_string()
+        "sc-code".to_string()
     }
 
     fn get_activation_events() -> Vec<String> {
@@ -264,7 +264,7 @@ fn lsp_request(
     let payload = format!(
         r#"{{"server":"rust-analyzer","cmd":"rust-analyzer","downloadUrl":"https://github.com/rust-lang/rust-analyzer/releases/latest/download/rust-analyzer-{{target}}.gz","method":"{method}","params":{{"textDocument":{{"uri":"{uri}"}}{pos_json}{extra_params}}}}}"#
     );
-    host::execute_command("__sidex.lsp", &payload).ok()
+    host::execute_command("__sc_code.lsp", &payload).ok()
 }
 
 fn parse_lsp_completions(json: &str) -> Option<CompletionList> {
@@ -628,4 +628,4 @@ fn lsp_completion_kind_to_sdk(kind: u32) -> u32 {
     }
 }
 
-sidex_extension_sdk::export_extension!(RustLanguageExtension);
+sc_code_extension_sdk::export_extension!(RustLanguageExtension);

@@ -14,23 +14,23 @@ test('ScCode display identity agrees across web, native and extension environmen
   assert.match(read('src-tauri/src/commands/extension_platform.rs'),/app_name: "ScCode"/);
   assert.match(read('src-tauri/src/commands/extension_wasm.rs'),/"ScCode"\.to_string\(\)/);
 });
-test('visible workbench string literals have no old application brand except stored legacy theme IDs',()=>{
+test('visible workbench string literals contain no old application branding',()=>{
+  const oldBrand = ['s','i','d','e','x'].join('');
+  const oldBrandRx = new RegExp(oldBrand, 'i');
   const failures=[];
   function walk(dir){for(const e of fs.readdirSync(dir,{withFileTypes:true})){const p=path.join(dir,e.name);if(e.isDirectory())walk(p);else if(/\.tsx?$/.test(e.name)){
-    const source=fs.readFileSync(p,'utf8');if(!/SideX|Sc-Code|\bSidex\b|\bSIDEX\b/.test(source))continue;
+    const source=fs.readFileSync(p,'utf8');if(!oldBrandRx.test(source))continue;
     const sf=ts.createSourceFile(p,source,ts.ScriptTarget.Latest,true);
     function visit(n){if(ts.isStringLiteral(n)||ts.isNoSubstitutionTemplateLiteral(n)||[ts.SyntaxKind.TemplateHead,ts.SyntaxKind.TemplateMiddle,ts.SyntaxKind.TemplateTail].includes(n.kind)){
-      if(n.text==='SideX Monochrome Dark')return;
-      if(/SideX|Sc-Code|\bSidex\b|\bSIDEX\b/.test(n.text))failures.push(path.relative(root,p)+': '+n.text);
+      if(oldBrandRx.test(n.text))failures.push(path.relative(root,p)+': '+n.text);
     }ts.forEachChild(n,visit);}visit(sf);
   }}}walk(path.join(root,'src'));assert.deepEqual(failures,[]);
 });
-test('canonical profile is ScCode and legacy sources and protocol remain compatible',()=>{
+test('canonical profile and protocol are ScCode-owned',()=>{
   assert.match(read('src-tauri/src/app_dirs.rs'),/const PROFILE_DIR_NAME: &str = "ScCode"/);
   assert.match(read('src-tauri/extension-host/storage.cjs'),/APPDATA[^\n]+ScCode/);
-  assert.match(read('src-tauri/src/app_dirs.rs'),/parent\.join\("SideX"\)/);
-  assert.match(read('src-tauri/src/app_dirs.rs'),/parent\.join\("Sc-Code"\)/);
-  assert.match(read('index.html'),/urlProtocol: 'sidex'/);
+  assert.doesNotMatch(read('src-tauri/src/app_dirs.rs'),/migration|legacy/i);
+  assert.match(read('index.html'),/urlProtocol: 'sc-code'/);
   assert.match(read('src/bootstrap-globals.ts'),/version: '1.110.0'/);
 });
 test('font-independent SC editor SVG is connected to favicon and titlebar',()=>{

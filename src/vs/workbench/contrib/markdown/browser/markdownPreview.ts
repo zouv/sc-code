@@ -17,7 +17,7 @@ import { ITextFileService } from '../../../services/textfile/common/textfiles.js
 import { DEFAULT_MARKDOWN_STYLES } from './markdownDocumentRenderer.js';
 import * as marked from '../../../../base/common/marked/marked.js';
 
-const MARKDOWN_PREVIEW_VIEW_TYPE = 'sidex.markdown.preview';
+const MARKDOWN_PREVIEW_VIEW_TYPE = 'sc-code.markdown.preview';
 const PREVIEW_OPEN_FILES_KEY = 'markdown.preview.openFiles';
 
 const HAS_SCHEME = /^\w[\w\d+.-]*:/;

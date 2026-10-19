@@ -123,8 +123,8 @@ export abstract class CommontExtensionManagementService extends Disposable imple
 		}
 
 		if (!(await this.isExtensionPlatformCompatible(extension))) {
-			// SideX with Node.js host supports all platforms
-			if ((globalThis as any).__SIDEX_TAURI__ === true) {
+			// ScCode with Node.js host supports all platforms
+			if ((globalThis as any).__SC_CODE_TAURI__ === true) {
 				return true;
 			}
 			const learnLink = isWeb
@@ -145,7 +145,7 @@ export abstract class CommontExtensionManagementService extends Disposable imple
 	}
 
 	protected async isExtensionPlatformCompatible(extension: IGalleryExtension): Promise<boolean> {
-		if ((globalThis as any).__SIDEX_TAURI__ === true) {
+		if ((globalThis as any).__SC_CODE_TAURI__ === true) {
 			return true;
 		}
 		const currentTargetPlatform = await this.getTargetPlatform();
@@ -1061,8 +1061,8 @@ export abstract class AbstractExtensionManagementService
 			}
 		} else {
 			if ((await this.canInstall(extension)) !== true) {
-				if ((globalThis as any).__SIDEX_TAURI__ === true) {
-					// SideX has a Node.js extension host — skip platform compatibility check
+				if ((globalThis as any).__SC_CODE_TAURI__ === true) {
+					// ScCode has a Node.js extension host — skip platform compatibility check
 				} else {
 					const targetPlatform = await this.getTargetPlatform();
 					throw new ExtensionManagementError(
@@ -1193,7 +1193,7 @@ export abstract class AbstractExtensionManagementService
 			}
 		}
 
-		if (!compatibleExtension && (globalThis as any).__SIDEX_TAURI__ === true) {
+		if (!compatibleExtension && (globalThis as any).__SC_CODE_TAURI__ === true) {
 			compatibleExtension = extension;
 		}
 

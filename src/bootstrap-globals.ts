@@ -1,5 +1,5 @@
 /*---------------------------------------------------------------------------------------------
- *  SideX — Tauri-based VSCode port
+ *  ScCode — Tauri-based VSCode port
  *  Bootstrap: sets globals that VSCode needs BEFORE any VSCode code loads
  *--------------------------------------------------------------------------------------------*/
 
@@ -13,7 +13,7 @@
 	nameLong: 'ScCode',
 	applicationName: 'sc-code',
 	dataFolderName: '.sc-code',
-	urlProtocol: 'sidex',
+	urlProtocol: 'sc-code',
 	version: '1.110.0',
 	commit: '',
 	date: new Date().toISOString(),

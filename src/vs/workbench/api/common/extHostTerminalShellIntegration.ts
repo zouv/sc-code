@@ -1,5 +1,5 @@
 /*---------------------------------------------------------------------------------------------
- *  SideX — ExtHost terminal shell integration stub. Shell integration is handled by the
+ *  ScCode — ExtHost terminal shell integration stub. Shell integration is handled by the
  *  Tauri terminal backend; extension subscriptions are accepted but never fire.
  *--------------------------------------------------------------------------------------------*/
 

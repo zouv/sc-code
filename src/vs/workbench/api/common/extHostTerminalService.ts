@@ -1,5 +1,5 @@
 /*---------------------------------------------------------------------------------------------
- *  SideX — ExtHost terminal service stub. Terminal operations are handled by the Tauri
+ *  ScCode — ExtHost terminal service stub. Terminal operations are handled by the Tauri
  *  backend's terminal subsystem; extension-level terminal APIs accept registrations but
  *  return inert objects.
  *--------------------------------------------------------------------------------------------*/

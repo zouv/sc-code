@@ -78,7 +78,7 @@
 	outline: none; /* never show outline for empty group if it is the last */
 }
 
-/* Watermark & shortcuts — SideX minimal */
+/* Watermark & shortcuts — ScCode minimal */
 
 .monaco-workbench .part.editor > .content .editor-group-container > .editor-group-watermark  {
 	display: flex;

@@ -1,0 +1,77 @@
+package paths
+
+import (
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+)
+
+func TestWorkspaceSlug(t *testing.T) {
+	tests := []struct {
+		input string
+		want  string
+	}{
+		{"/Users/bob/code/myapp", "Users-bob-code-myapp"},
+		{"/home/alice/projects/web", "home-alice-projects-web"},
+		{"/tmp/test", "tmp-test"},
+	}
+
+	for _, tt := range tests {
+		got := WorkspaceSlug(tt.input)
+		if got != tt.want {
+			t.Errorf("WorkspaceSlug(%q) = %q, want %q", tt.input, got, tt.want)
+		}
+	}
+}
+
+func TestProjectDir(t *testing.T) {
+	os.Setenv("SC_CODE_HOME", "/tmp/test-sc-code-home")
+	defer os.Unsetenv("SC_CODE_HOME")
+
+	got := ProjectDir("/Users/bob/code/myapp")
+	want := filepath.Join("/tmp/test-sc-code-home", "projects", "Users-bob-code-myapp")
+	if got != want {
+		t.Errorf("ProjectDir = %q, want %q", got, want)
+	}
+}
+
+func TestProjectMemoryMD(t *testing.T) {
+	os.Setenv("SC_CODE_HOME", "/tmp/test-sc-code-home")
+	defer os.Unsetenv("SC_CODE_HOME")
+
+	got := ProjectMemoryMD("/Users/bob/code/myapp")
+	want := filepath.Join("/tmp/test-sc-code-home", "projects", "Users-bob-code-myapp", "memory.md")
+	if got != want {
+		t.Errorf("ProjectMemoryMD = %q, want %q", got, want)
+	}
+}
+
+func TestScCodeHomeDefault(t *testing.T) {
+	t.Setenv("SC_CODE_HOME", "")
+	os.Unsetenv("SC_CODE_HOME")
+	home, _ := os.UserHomeDir()
+	got := ScCodeHome()
+	want := filepath.Join(home, ".sc-code")
+	if got != want {
+		t.Errorf("ScCodeHome() = %q, want %q", got, want)
+	}
+}
+
+func TestScCodeHomeOverride(t *testing.T) {
+	os.Setenv("SC_CODE_HOME", "/custom/path")
+	defer os.Unsetenv("SC_CODE_HOME")
+
+	got := ScCodeHome()
+	if got != "/custom/path" {
+		t.Errorf("ScCodeHome() = %q, want /custom/path", got)
+	}
+}
+
+func TestWorkspaceSlugWindowsDriveIsSafeAndDistinct(t *testing.T) {
+	c := WorkspaceSlug(`C:\Users\alice\project`)
+	d := WorkspaceSlug(`D:\Users\alice\project`)
+	if c == d || strings.ContainsAny(c, `:<>"|?*\`) || strings.ContainsAny(d, `:<>"|?*\`) {
+		t.Fatalf("unsafe/colliding drive paths: %q %q", c, d)
+	}
+}

@@ -1,4 +1,4 @@
-//! Tauri commands that expose the `sidex-remote` crate to the frontend.
+//! Tauri commands that expose the `sc-code-remote` crate to the frontend.
 //!
 //! A single [`RemoteManagerStore`] is held as Tauri state and wraps the
 //! `RemoteManager` in a `tokio::Mutex` so connections can be shared across
@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 use tauri::State;
 use tokio::sync::Mutex;
 
-use sidex_remote::{
+use sc_code_remote::{
     codespaces::list_codespace_info,
     ssh::{parse_ssh_config, SshAuth},
     ConnectionId, ConnectionInfo, ConnectionKind, RemoteManager,
@@ -219,8 +219,8 @@ pub async fn remote_exec_ssh(
 pub fn remote_list_wsl_distros() -> Result<Vec<WslDistroInfo>, String> {
     #[cfg(target_os = "windows")]
     {
-        let distros =
-            sidex_remote::wsl::list_distributions().map_err(|e| format!("WSL list failed: {e}"))?;
+        let distros = sc_code_remote::wsl::list_distributions()
+            .map_err(|e| format!("WSL list failed: {e}"))?;
         Ok(distros
             .into_iter()
             .map(|d| WslDistroInfo {

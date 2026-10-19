@@ -1,5 +1,5 @@
 /*---------------------------------------------------------------------------------------------
- *  SideX: Stub for removed comments controller.
+ *  ScCode: Stub for removed comments controller.
  *--------------------------------------------------------------------------------------------*/
 
 export function revealCommentThread(

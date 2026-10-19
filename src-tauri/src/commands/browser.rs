@@ -4,7 +4,7 @@ use tauri::{AppHandle, Manager, State, WebviewUrl, WebviewWindowBuilder};
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
-const BROWSER_WINDOW_LABEL: &str = "sidex-browser-tool";
+const BROWSER_WINDOW_LABEL: &str = "sc-code-browser-tool";
 const MAX_CONSOLE_BUFFER: usize = 500;
 
 // ─── State ──────────────────────────────────────────────────────────────────
@@ -540,8 +540,8 @@ fn ensure_browser_window(app: &AppHandle, state: &State<'_, BrowserState>) -> Re
 fn inject_console_capture(window: &tauri::WebviewWindow) -> Result<(), String> {
     let script = r#"
         (function() {
-            if (window.__sidex_console_hooked) return;
-            window.__sidex_console_hooked = true;
+            if (window.__sc_code_console_hooked) return;
+            window.__sc_code_console_hooked = true;
             const orig = {
                 log: console.log.bind(console),
                 warn: console.warn.bind(console),

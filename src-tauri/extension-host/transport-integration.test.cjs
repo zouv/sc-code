@@ -17,7 +17,7 @@ test('real extension host rejects unauthenticated websocket and health does not 
   const home = fs.mkdtempSync(path.join(os.tmpdir(), 'sc-code-host-'));
   const token = crypto.randomUUID();
   const child = spawn(process.execPath, [path.join(__dirname, 'server.cjs')], {
-    env: { ...process.env, SC_CODE_HOME: home, SC_CODE_EXT_HOST_TOKEN: token, SIDEX_EXTENSION_SEARCH_PATHS: '[]', SIDEX_INIT_DATA_FILE: '' },
+    env: { ...process.env, SC_CODE_HOME: home, SC_CODE_EXT_HOST_TOKEN: token, SC_CODE_EXTENSION_SEARCH_PATHS: '[]', SC_CODE_INIT_DATA_FILE: '' },
     stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true,
   });
   t.after(async () => {

@@ -1,6 +1,6 @@
+use sc_code_extension_api::CommandRegistry;
+use sc_code_extension_api::ExtensionApiHandler;
 use serde::Serialize;
-use sidex_extension_api::CommandRegistry;
-use sidex_extension_api::ExtensionApiHandler;
 use std::env;
 use std::sync::Arc;
 use tauri::State;
@@ -40,7 +40,7 @@ pub fn ext_api_get_commands(registry: State<'_, Arc<CommandRegistry>>) -> Vec<Ex
 
 /// Dispatch an extension-API call ("namespace/action") to the appropriate
 /// subsystem handler. This is the command the workbench-side
-/// SidexExtensionApiService invokes — without it the entire extension API
+/// ScCodeExtensionApiService invokes — without it the entire extension API
 /// surface was unreachable.
 #[tauri::command]
 #[allow(clippy::needless_pass_by_value)]

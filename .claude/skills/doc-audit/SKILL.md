@@ -16,7 +16,7 @@ description: 核对「AI 协作文档体系」与代码/彼此之间是否发生
 ### 1. 采集现状（只读，先看再说）
 
 - **先跑机械体检**：`sh check-docs.sh`——占位符残留 / HANDOFF·ARCHITECTURE 体量 / 根文档缺失 / CHANGELOG 疑似漏记这几项它会直接判出来，把结果作为本次审计的起点，省得手工数行数。
-- 读 5 份根文档（`AGENTS.md` / `ARCHITECTURE.md` / `ROADMAP.md` / `CHANGELOG.md` / `HANDOFF.md`）与 `docs/00-目录.md`。
+- 读 5 份根文档（`AGENTS.md` / `ARCHITECTURE.md` / `ROADMAP.md` / `CHANGELOG.md` / `HANDOFF.md`）与 `docs/` 实际文件（`import-manifest.json`、`assets/`）。
 - 用 Glob/Grep 列出 `src/`（或该栈源码根）的顶层文件/目录与关键函数名，作为「真实代码现状」。
 - 若近期有提交，`git log --oneline -20` 看有没有「改了代码却没进 CHANGELOG」的迹象。
 
@@ -35,7 +35,7 @@ description: 核对「AI 协作文档体系」与代码/彼此之间是否发生
 | **HANDOFF 堆积** | 行数 + 「待归档暂存区」 | 超 150 行，或暂存区残留已写入 CHANGELOG 的完成项 |
 | **CHANGELOG 漏记** | git log vs `[未发布]`/版本区 | 有对使用者有意义的改动没记入 |
 | **交叉引用失效** | 各文档里的相对链接与文件名 | 指向不存在的文件（如 skill 指向已改名的 docs 篇章） |
-| **docs 目录一致** | `docs/00-目录.md` vs `docs/` 实际文件 | 目录登记与实际文件对不上 |
+| **docs 目录一致** | `docs/` 实际文件 vs 文档中的相对链接 | 存在历史残留、占位文件或失效链接 |
 
 ### 3. 产出漂移清单（先报告，不擅自大改）
 

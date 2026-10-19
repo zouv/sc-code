@@ -282,7 +282,7 @@ export async function handleGalleryQuery(request: Request, origin: string): Prom
 			headers: {
 				accept: MS_GALLERY_ACCEPT,
 				'content-type': 'application/json',
-				'user-agent': 'sidex-marketplace-proxy/1.0'
+				'user-agent': 'sc-code-marketplace-proxy/1.0'
 			},
 			body: JSON.stringify(queryBody)
 		});
@@ -373,7 +373,7 @@ async function fetchMsGallery(
 		headers: {
 			accept: MS_GALLERY_ACCEPT,
 			'content-type': 'application/json',
-			'user-agent': 'sidex-marketplace-proxy/1.0'
+			'user-agent': 'sc-code-marketplace-proxy/1.0'
 		},
 		body: JSON.stringify(originalBody),
 		signal
@@ -412,7 +412,7 @@ async function fetchOpenVsx(
 	url.searchParams.set('includeAllVersions', 'false');
 
 	const res = await fetch(url.toString(), {
-		headers: { accept: 'application/json', 'user-agent': 'sidex-marketplace-proxy/1.0' },
+		headers: { accept: 'application/json', 'user-agent': 'sc-code-marketplace-proxy/1.0' },
 		signal
 	});
 	if (!res.ok) {

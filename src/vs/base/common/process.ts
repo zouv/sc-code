@@ -54,8 +54,8 @@ else {
 			return isWindows ? 'win32' : isMacintosh ? 'darwin' : 'linux';
 		},
 		get arch() {
-			if ((globalThis as any).__SIDEX_TAURI__) {
-				return (globalThis as any).__SIDEX_ARCH__ || undefined;
+			if ((globalThis as any).__SC_CODE_TAURI__) {
+				return (globalThis as any).__SC_CODE_ARCH__ || undefined;
 			}
 			return undefined;
 		},

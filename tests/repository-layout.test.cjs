@@ -5,8 +5,8 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 const root = path.resolve(__dirname, '..');
-const ignoreFiles = ['.gitignore', 'src-tauri/.gitignore', 'sidexai/.gitignore',
-  'sidexai/sidex-server/.gitignore', 'infrastructure/marketplace-proxy/.gitignore'];
+const ignoreFiles = ['.gitignore', 'src-tauri/.gitignore', 'agent/.gitignore',
+  'agent/server/.gitignore', 'infrastructure/marketplace-proxy/.gitignore'];
 
 // A fresh repository avoids the real index, global ignores and developer settings.
 // Tests also work from a source archive without .git. All scratch stays in .runtime.
@@ -49,7 +49,7 @@ test('source directories, checked-in runtime assets and reproducible locks are n
   const files = [
     'src/vs/workbench/contrib/logs/browser/logs.contribution.ts',
     'src/sc-code/build/index.ts', 'docs/logs/troubleshooting.md',
-    'crates/sidex-context/src/bin/format_bench.rs',
+    'crates/sc-code-context/src/bin/format_bench.rs',
     'extensions-rust/git-extension/src/lib.rs',
     'extensions-rust/css-language-extension/src/css_data.rs',
     'extensions-rust/css-language-extension/css-data.json',
@@ -76,9 +76,9 @@ test('local runtime, packages, generated metadata, secrets and editor state stay
     '.env', '.env.local', '.env.production', 'aws-credentials.json', 'local.pem',
     '.claude/settings.local.json', '.claude/sessions/current.json', '.codex/config.local.toml',
     '.vscode/settings.json', 'infrastructure/marketplace-proxy/.wrangler/state.json',
-    'sidexai/sidex-server/sidex.db', 'sidexai/sidex-server/sidex.db-shm',
-    'sidexai/sidex-server/sidex.db-wal', 'sidexai/sidex-server/sidex-server.exe',
-    'extensions-rust/Cargo.lock', 'sidex-extension-sdk/Cargo.lock',
+    'agent/server/sc-code.db', 'agent/server/sc-code.db-shm',
+    'agent/server/sc-code.db-wal', 'agent/server/sc-code-agent.exe',
+    'extensions-rust/Cargo.lock', 'sc-code-extension-sdk/Cargo.lock',
     'examples/demo/Cargo.lock', 'coverage/results.json', 'test-results/results.json',
   ];
   assert.deepEqual(ignoredPaths(dir, files).sort(), files.sort());

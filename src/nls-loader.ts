@@ -1,6 +1,6 @@
 type Translations = Record<string, string>;
 
-const sidexTranslations: Record<string, Translations> = {
+const scCodeTranslations: Record<string, Translations> = {
 	'zh-cn': {
 		'remote.pick.placeholder': '选择一个选项来打开远程窗口',
 		'remote.pick.connectToTunnel': '连接到隧道…',
@@ -21,8 +21,8 @@ const sidexTranslations: Record<string, Translations> = {
 		'explorerViewlet.cloneRepository': '你可以在本地克隆一个仓库。\n{0}',
 		remoteExplorer: '远程资源管理器',
 		remoteExplorerViewIcon: '远程资源管理器视图图标。',
-		'sidex.remote.refresh': '刷新远程资源管理器',
-		'sidex.remote.openExplorer': '远程资源管理器',
+		'sc-code.remote.refresh': '刷新远程资源管理器',
+		'sc-code.remote.openExplorer': '远程资源管理器',
 		'remote.signInMicrosoft': '使用 Microsoft 登录',
 		'remote.signInGitHub': '使用 GitHub 登录',
 		'remote.ssh.noHosts': '未在 ~/.ssh/config 中找到 SSH 目标',
@@ -92,10 +92,10 @@ export async function loadNlsMessages(): Promise<void> {
 			return;
 		}
 
-		// Merge SideX-specific translations for strings not in the VS Code language pack
-		const sidexExtra = sidexTranslations[locale.toLowerCase()];
-		if (sidexExtra) {
-			for (const [key, val] of Object.entries(sidexExtra)) {
+		// Merge ScCode-specific translations for strings not in the VS Code language pack
+		const scCodeExtra = scCodeTranslations[locale.toLowerCase()];
+		if (scCodeExtra) {
+			for (const [key, val] of Object.entries(scCodeExtra)) {
 				if (!(key in translations)) {
 					translations[key] = val;
 				}
@@ -136,7 +136,7 @@ async function loadFromDisk(extensionId: string): Promise<Translations | null> {
 			return null;
 		}
 
-		const path = `${homedir}/.sidex/extensions/${extensionId}/translations/main.i18n.json`;
+		const path = `${homedir}/.sc-code/extensions/${extensionId}/translations/main.i18n.json`;
 		const raw = await invoke<string>('read_file', { path });
 		const result = parseBundle(raw);
 		if (result) {
@@ -227,7 +227,7 @@ async function detectInstalledLanguagePack(locale: string): Promise<string | nul
 		if (!homedir) {
 			return null;
 		}
-		const path = `${homedir}/.sidex/extensions/${knownId}/translations/main.i18n.json`;
+		const path = `${homedir}/.sc-code/extensions/${knownId}/translations/main.i18n.json`;
 		await invoke<string>('read_file', { path });
 		return knownId;
 	} catch {

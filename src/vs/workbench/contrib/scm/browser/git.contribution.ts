@@ -1,5 +1,5 @@
 /*---------------------------------------------------------------------------------------------
- *  Tauri Git SCM Provider for SideX
+ *  Tauri Git SCM Provider for ScCode
  *  Registers a native Git source control provider using Tauri's invoke() API
  *  instead of the VS Code extension host protocol.
  *--------------------------------------------------------------------------------------------*/
@@ -225,7 +225,7 @@ class TauriGitResource implements ISCMResource {
 	}
 
 	async open(_preserveFocus: boolean): Promise<void> {
-		const commandService = (globalThis as any).__sidex_commandService;
+		const commandService = (globalThis as any).__sc_code_commandService;
 		if (!commandService) {
 			return;
 		}
@@ -1092,14 +1092,14 @@ class TauriGitContribution extends Disposable implements IWorkbenchContribution 
 		@IQuickInputService quickInputService: IQuickInputService
 	) {
 		super();
-		(globalThis as any).__sidex_quickInputService = quickInputService;
+		(globalThis as any).__sc_code_quickInputService = quickInputService;
 		this._init();
 	}
 
 	private async _init(): Promise<void> {
 		const folders = this.workspaceContextService.getWorkspace().folders;
 
-		(window as any).__sidex_workspaceFolders = folders.map(f => f.uri.fsPath);
+		(window as any).__sc_code_workspaceFolders = folders.map(f => f.uri.fsPath);
 
 		if (folders.length === 0) {
 			return;
@@ -1183,7 +1183,7 @@ class TauriGitContribution extends Disposable implements IWorkbenchContribution 
 		this._register(
 			CommandsRegistry.registerCommand('git.openDiff', async (_accessor, ...args: any[]) => {
 				try {
-					const commandService = (globalThis as any).__sidex_commandService;
+					const commandService = (globalThis as any).__sc_code_commandService;
 					if (!commandService) {
 						return;
 					}
@@ -1210,7 +1210,7 @@ class TauriGitContribution extends Disposable implements IWorkbenchContribution 
 		this._register(
 			CommandsRegistry.registerCommand('git.openChange', async (_accessor, ...args: any[]) => {
 				try {
-					const commandService = (globalThis as any).__sidex_commandService;
+					const commandService = (globalThis as any).__sc_code_commandService;
 					if (!commandService) {
 						return;
 					}
@@ -1294,7 +1294,7 @@ class TauriGitContribution extends Disposable implements IWorkbenchContribution 
 		this._register(
 			CommandsRegistry.registerCommand('git.openAllChanges', async () => {
 				try {
-					const commandService = (globalThis as any).__sidex_commandService;
+					const commandService = (globalThis as any).__sc_code_commandService;
 					if (!commandService) {
 						return;
 					}
@@ -1377,7 +1377,7 @@ class TauriGitContribution extends Disposable implements IWorkbenchContribution 
 					const resource = args[0];
 					const uri = resource?.sourceUri ?? resource;
 					if (uri) {
-						const commandService = (globalThis as any).__sidex_commandService;
+						const commandService = (globalThis as any).__sc_code_commandService;
 						if (commandService) {
 							const status = (resource as any)?._status;
 							if (status && status !== 'untracked' && status !== 'added' && status !== 'deleted') {
@@ -1431,7 +1431,7 @@ CommandsRegistry.registerCommand('git.init', async () => {
 
 		const { open } = await import('@tauri-apps/plugin-dialog');
 		// Use the current workspace folder if available, otherwise ask
-		const folders = (window as any).__sidex_workspaceFolders;
+		const folders = (window as any).__sc_code_workspaceFolders;
 		let targetPath: string | undefined;
 
 		if (folders && folders.length > 0) {
@@ -1475,7 +1475,7 @@ CommandsRegistry.registerCommand('git.openOnGitHub', async (_accessor, remoteUrl
 			return;
 		}
 		const commitUrl = `https://github.com/${match[1]}/commit/${hash}`;
-		const openerService = (globalThis as any).__sidex_openerService;
+		const openerService = (globalThis as any).__sc_code_openerService;
 		if (openerService) {
 			await openerService.open(URI.parse(commitUrl), { openExternal: true });
 		} else {
@@ -1491,7 +1491,7 @@ registerWorkbenchContribution2(TauriGitContribution.ID, TauriGitContribution, Wo
 // ─── Repository-level commands ──────────────────────────────────────────────
 
 function getWorkspacePath(): string | undefined {
-	const folders = (window as any).__sidex_workspaceFolders;
+	const folders = (window as any).__sc_code_workspaceFolders;
 	return folders && folders.length > 0 ? folders[0] : undefined;
 }
 
@@ -1536,7 +1536,7 @@ CommandsRegistry.registerCommand('git.fetch', async () => {
 
 async function doGitClone(): Promise<void> {
 	try {
-		const quickInputService = (globalThis as any).__sidex_quickInputService;
+		const quickInputService = (globalThis as any).__sc_code_quickInputService;
 		if (!quickInputService) {
 			return;
 		}
@@ -1578,7 +1578,7 @@ CommandsRegistry.registerCommand('git.checkoutTo', async () => {
 			return;
 		}
 
-		const quickInputService = (globalThis as any).__sidex_quickInputService;
+		const quickInputService = (globalThis as any).__sc_code_quickInputService;
 		if (!quickInputService) {
 			return;
 		}
@@ -1836,7 +1836,7 @@ CommandsRegistry.registerCommand('git.commitAndPush', async () => {
 	try {
 		const invoke = await getTauriInvoke();
 		if (invoke) {
-			const message = (window as any).__sidex_scmInputValue?.() || '';
+			const message = (window as any).__sc_code_scmInputValue?.() || '';
 			if (!message.trim()) {
 				return;
 			}
@@ -1857,7 +1857,7 @@ CommandsRegistry.registerCommand('git.commitAndSync', async () => {
 	try {
 		const invoke = await getTauriInvoke();
 		if (invoke) {
-			const message = (window as any).__sidex_scmInputValue?.() || '';
+			const message = (window as any).__sc_code_scmInputValue?.() || '';
 			if (!message.trim()) {
 				return;
 			}
@@ -1880,7 +1880,7 @@ CommandsRegistry.registerCommand('git.commitAll', async () => {
 		const invoke = await getTauriInvoke();
 		if (invoke) {
 			await invoke('git_run', { path, args: ['add', '.'] });
-			const message = (window as any).__sidex_scmInputValue?.() || '';
+			const message = (window as any).__sc_code_scmInputValue?.() || '';
 			if (!message.trim()) {
 				return;
 			}
@@ -1980,7 +1980,7 @@ CommandsRegistry.registerCommand('git.deleteTag', async () => {
 
 CommandsRegistry.registerCommand('git.showOutput', async () => {
 	try {
-		const commandService = (globalThis as any).__sidex_commandService;
+		const commandService = (globalThis as any).__sc_code_commandService;
 		if (commandService) {
 			await commandService.executeCommand('workbench.action.output.toggleOutput');
 		}

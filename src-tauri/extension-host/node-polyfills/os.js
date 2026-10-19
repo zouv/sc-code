@@ -18,7 +18,7 @@ function getInfo() {
 function platform() {
   const info = getInfo();
   if (info.platform) return info.platform;
-  if (typeof globalThis.__sidexPlatform === 'string') return globalThis.__sidexPlatform;
+  if (typeof globalThis.__scCodePlatform === 'string') return globalThis.__scCodePlatform;
   return 'linux';
 }
 
@@ -204,5 +204,5 @@ module.exports = {
   EOL,
   constants,
   devNull: platform() === 'win32' ? '\\\\.\\nul' : '/dev/null',
-  version: 'sidex-polyfill',
+  version: 'sc-code-polyfill',
 };

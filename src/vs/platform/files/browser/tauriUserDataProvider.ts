@@ -1,5 +1,5 @@
 /*---------------------------------------------------------------------------------------------
- *  SideX — Tauri-backed provider for the `vscode-userdata:` scheme.
+ *  ScCode — Tauri-backed provider for the `vscode-userdata:` scheme.
  *  Maps user-data URIs (e.g. `vscode-userdata:/User/settings.json`) to real
  *  paths under the OS app-data directory, so user settings, installed
  *  extensions, themes, keybindings, etc. persist across sessions.

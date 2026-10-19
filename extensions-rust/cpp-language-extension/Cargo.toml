@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-sidex-extension-sdk = { workspace = true }
+sc-code-extension-sdk = { workspace = true }
 
 [lib]
 crate-type = ["cdylib"]

@@ -1,7 +1,7 @@
 use serde::Serialize;
 use std::path::Path;
 
-use sidex_workspace::path_util;
+use sc_code_workspace::path_util;
 
 #[derive(Debug, Serialize)]
 pub struct PathInfo {
@@ -62,7 +62,7 @@ pub fn ext_category(path: String) -> String {
 #[allow(clippy::needless_pass_by_value)]
 #[tauri::command]
 pub fn is_binary_file(path: String) -> Result<bool, String> {
-    sidex_workspace::file_ops::is_binary_file(Path::new(&path)).map_err(|e| e.to_string())
+    sc_code_workspace::file_ops::is_binary_file(Path::new(&path)).map_err(|e| e.to_string())
 }
 
 #[allow(clippy::needless_pass_by_value)]

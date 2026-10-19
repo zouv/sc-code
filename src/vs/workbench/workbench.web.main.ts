@@ -44,7 +44,7 @@ import './services/extensionManagement/browser/extensionGalleryManifestService.j
 import './services/telemetry/browser/telemetryService.js';
 import './services/url/browser/urlService.js';
 import './services/update/browser/updateService.js';
-import './contrib/sidexUpdate/browser/sidexUpdate.contribution.js';
+import './contrib/scCodeUpdate/browser/scCodeUpdate.contribution.js';
 import './services/workspaces/browser/workspacesService.js';
 import './services/workspaces/browser/workspaceEditingService.js';
 import './services/dialogs/browser/fileDialogService.js';
@@ -56,7 +56,7 @@ import './services/localization/browser/localeService.js';
 import './services/path/browser/pathService.js';
 import './services/themes/browser/browserHostColorSchemeService.js';
 import './services/encryption/browser/encryptionService.js';
-// SideX: removed — image resize not essential
+// ScCode: removed — image resize not essential
 // import './services/imageResize/browser/imageResizeService.js';
 import './services/secrets/browser/secretStorageService.js';
 import './services/workingCopy/browser/workingCopyBackupService.js';
@@ -117,7 +117,7 @@ import './contrib/logs/browser/logs.contribution.js';
 
 import './contrib/localization/browser/localization.contribution.js';
 
-// Performance — removed: SideX has its own performance monitoring
+// Performance — removed: ScCode has its own performance monitoring
 // import './contrib/performance/browser/performance.web.contribution.js';
 
 // Preferences
@@ -126,7 +126,7 @@ import './contrib/preferences/browser/keyboardLayoutPicker.js';
 // Debug
 import './contrib/debug/browser/extensionHostDebugService.js';
 
-// SideX: removed — welcome banner
+// ScCode: removed — welcome banner
 // import './contrib/welcomeBanner/browser/welcomeBanner.contribution.js';
 
 // Webview
@@ -142,19 +142,19 @@ import './contrib/terminal/browser/terminalInstanceService.js';
 // Tasks
 import './contrib/tasks/browser/taskService.js';
 
-// SideX: removed — tags
+// ScCode: removed — tags
 // import './contrib/tags/browser/workspaceTagsService.js';
 
-// Issues — removed: SideX has its own issue reporter
+// Issues — removed: ScCode has its own issue reporter
 // import './contrib/issue/browser/issue.contribution.js';
 
-// Splash — removed: SideX has its own splash screen
+// Splash — removed: ScCode has its own splash screen
 // import './contrib/splash/browser/splash.contribution.js';
 
-// SideX: removed — process explorer
+// ScCode: removed — process explorer
 // import './contrib/processExplorer/browser/processExplorer.web.contribution.js';
 
-// SideX: removed — browser view
+// ScCode: removed — browser view
 // import './contrib/browserView/browser/browserView.contribution.js';
 
 //#endregion

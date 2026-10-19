@@ -17,7 +17,7 @@
 	padding-left: 8px;
 }
 
-/* Sidex: tighter title-actions in panel for compact header */
+/* ScCode: tighter title-actions in panel for compact header */
 .monaco-workbench .part.panel > .composite.title > .title-actions {
 	padding-left: 4px;
 }

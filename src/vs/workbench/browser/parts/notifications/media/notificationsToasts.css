@@ -3,19 +3,19 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-/* Sidex Notification Toasts — layout, animation, and toast-specific shape */
+/* ScCode Notification Toasts — layout, animation, and toast-specific shape */
 
-@keyframes sidex-toast-slide-in {
+@keyframes sc-code-toast-slide-in {
 	from { transform: translateX(100%); opacity: 0; }
 	to   { transform: translateX(0); opacity: 1; }
 }
 
-@keyframes sidex-toast-slide-in-top {
+@keyframes sc-code-toast-slide-in-top {
 	from { transform: translateY(-100%); opacity: 0; }
 	to   { transform: translateY(0); opacity: 1; }
 }
 
-@keyframes sidex-toast-fade-out {
+@keyframes sc-code-toast-fade-out {
 	from { opacity: 1; transform: translateX(0); }
 	to   { opacity: 0; transform: translateX(40px); }
 }

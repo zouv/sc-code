@@ -1,10 +1,10 @@
 /*---------------------------------------------------------------------------------------------
- *  custom-sidex —— 启动时把磁盘扩展同步进当前 profile 的已安装列表
+ *  ScCode —— 启动时把磁盘扩展同步进当前 profile 的已安装列表
  *
  *  为什么需要这个模块：
- *  SideX 前端跑在 Web 模式，扩展的「已安装」记录由 web 扩展扫描器维护，而这份记录按
+ *  ScCode 前端跑在 Web 模式，扩展的「已安装」记录由 web 扩展扫描器维护，而这份记录按
  *  origin 隔离：dev 是 http://localhost:1420，release 是 https://tauri.localhost。
- *  扩展本体在磁盘 %APPDATA%\SideX\extensions（Rust 后端扫描并激活），但扩展视图列表与
+ *  扩展本体在磁盘 %APPDATA%\ScCode\extensions（Rust 后端扫描并激活），但扩展视图列表与
  *  活动栏图标 / 视图容器（contributes.viewsContainers / contributes.views）只认当前
  *  origin 的记录。因此在 dev 里安装的扩展，装到 release 包后看不到。
  *
@@ -21,7 +21,7 @@ import { IWorkbenchContribution, registerWorkbenchContribution2, WorkbenchPhase 
 import { IExtensionManagementServerService } from 'vs/workbench/services/extensionManagement/common/extensionManagement.js';
 import { IUserDataProfileService } from 'vs/workbench/services/userDataProfile/common/userDataProfile.js';
 
-const isSidexTauri = (globalThis as any).__SIDEX_TAURI__ === true;
+const isScCodeTauri = (globalThis as any).__SC_CODE_TAURI__ === true;
 
 /** Rust `list_installed_extensions` 返回项（见 src-tauri/src/commands/extensions.rs） */
 interface DiskExtension {
@@ -33,7 +33,7 @@ interface DiskExtension {
 
 class ExtensionSyncContribution extends Disposable implements IWorkbenchContribution {
 
-	static readonly ID = 'sidex.extensionSync';
+	static readonly ID = 'sc-code.extensionSync';
 
 	constructor(
 		@ILogService private readonly logService: ILogService,
@@ -45,7 +45,7 @@ class ExtensionSyncContribution extends Disposable implements IWorkbenchContribu
 	}
 
 	private async syncDiskExtensions(): Promise<void> {
-		if (!isSidexTauri) {
+		if (!isScCodeTauri) {
 			return;
 		}
 		const { isRealExtensionHostEnabled } = await import('vs/workbench/services/extensions/browser/tauriProcessExtensionHost.js');
@@ -88,7 +88,7 @@ class ExtensionSyncContribution extends Disposable implements IWorkbenchContribu
 	}
 }
 
-if (isSidexTauri) {
+if (isScCodeTauri) {
 	registerWorkbenchContribution2(
 		ExtensionSyncContribution.ID,
 		ExtensionSyncContribution,

@@ -899,7 +899,7 @@ export class QuickInputController extends Disposable {
 			: localize('quickInput.back', 'Back');
 
 		ui.container.style.display = '';
-		ui.container.classList.remove('sidex-visible');
+		ui.container.classList.remove('sc-code-visible');
 		if (this.backdrop) {
 			this.backdrop.style.display = '';
 			this.backdrop.classList.remove('visible');
@@ -916,7 +916,7 @@ export class QuickInputController extends Disposable {
 
 		// Trigger fade-in on next frame so the transition plays
 		requestAnimationFrame(() => {
-			ui.container.classList.add('sidex-visible');
+			ui.container.classList.add('sc-code-visible');
 			if (this.backdrop) {
 				this.backdrop.classList.add('visible');
 			}
@@ -993,7 +993,7 @@ export class QuickInputController extends Disposable {
 		this.controller = null;
 		this.onHideEmitter.fire();
 		if (container) {
-			container.classList.remove('sidex-visible');
+			container.classList.remove('sc-code-visible');
 		}
 		if (this.backdrop) {
 			this.backdrop.classList.remove('visible');

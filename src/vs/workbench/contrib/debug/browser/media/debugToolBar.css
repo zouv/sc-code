@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-/* Sidex: Debug toolbar — floating, rounded, semi-transparent */
+/* ScCode: Debug toolbar — floating, rounded, semi-transparent */
 .monaco-workbench .debug-toolbar {
 	position: absolute;
 	z-index: 2520;

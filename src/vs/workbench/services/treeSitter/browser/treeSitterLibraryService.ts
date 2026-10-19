@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------------------------
- *  SideX - Tree-sitter library service stub.
+ *  ScCode - Tree-sitter library service stub.
  *
- *  Native tree-sitter parsing lives in the `sidex-syntax` Rust crate and is
+ *  Native tree-sitter parsing lives in the `sc-code-syntax` Rust crate and is
  *  exposed through the `syntax_tokenize` Tauri command. The webview no
  *  longer loads `@vscode/tree-sitter-wasm`; instead this service reports
  *  every language as unsupported so editor code falls back to the
@@ -22,7 +22,7 @@ export class TreeSitterLibraryService extends Disposable implements ITreeSitterL
 	}
 
 	async getParserClass(): Promise<typeof Parser> {
-		throw new Error('[sidex] tree-sitter WASM parser disabled; use the Rust backend');
+		throw new Error('[sc-code] tree-sitter WASM parser disabled; use the Rust backend');
 	}
 
 	getLanguage(_languageId: string, _ignoreSupportsCheck: boolean, _reader: IReader | undefined): Language | undefined {
@@ -42,6 +42,6 @@ export class TreeSitterLibraryService extends Disposable implements ITreeSitterL
 	}
 
 	async createQuery(_language: Language, _querySource: string): Promise<Query> {
-		throw new Error('[sidex] tree-sitter WASM parser disabled; use the Rust backend');
+		throw new Error('[sc-code] tree-sitter WASM parser disabled; use the Rust backend');
 	}
 }

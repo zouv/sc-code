@@ -1,10 +1,10 @@
-use sidex_extension_sdk::prelude::*;
+use sc_code_extension_sdk::prelude::*;
 
 pub struct CssLanguageExtension;
 
 const SERVER_SCRIPT: &str = "extension-host/css-language-server/out/node/cssServerMain.js";
 
-impl SidexExtension for CssLanguageExtension {
+impl ScCodeExtension for CssLanguageExtension {
     fn activate() -> Result<(), String> {
         Ok(())
     }
@@ -19,7 +19,7 @@ impl SidexExtension for CssLanguageExtension {
         "0.1.0".to_string()
     }
     fn get_publisher() -> String {
-        "sidex".to_string()
+        "sc-code".to_string()
     }
     fn get_activation_events() -> Vec<String> {
         vec![
@@ -347,7 +347,7 @@ fn is_css_lang(lang: &str) -> bool {
 }
 
 fn server_path() -> String {
-    if let Ok(p) = host::execute_command("__sidex.resolve_path", SERVER_SCRIPT) {
+    if let Ok(p) = host::execute_command("__sc_code.resolve_path", SERVER_SCRIPT) {
         if !p.is_empty() {
             return p;
         }
@@ -374,7 +374,7 @@ fn lsp_request(
     let payload = format!(
         r#"{{"server":"css-language-server","cmd":"node","args":["{sp}","--stdio"],"method":"{method}","params":{{"textDocument":{{"uri":"{uri}"}}{pos_json}{extra}}}}}"#
     );
-    host::execute_command("__sidex.lsp", &payload).ok()
+    host::execute_command("__sc_code.lsp", &payload).ok()
 }
 
 fn parse_lsp_completions(json: &str) -> Option<CompletionList> {
@@ -903,4 +903,4 @@ fn lsp_kind(kind: u32) -> u32 {
     }
 }
 
-sidex_extension_sdk::export_extension!(CssLanguageExtension);
+sc_code_extension_sdk::export_extension!(CssLanguageExtension);

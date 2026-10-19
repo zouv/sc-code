@@ -1,4 +1,4 @@
-//! High-performance process and terminal management module for `SideX`
+//! High-performance process and terminal management module for `ScCode`
 //!
 //! Features:
 //! - PTY (pseudo-terminal) support with full terminal emulation
@@ -338,7 +338,7 @@ impl ProcessStore {
     }
 
     /// Drain pending output and return the full buffer text for a terminal.
-    /// Used by `sidex_terminal` find-in-buffer integration.
+    /// Used by `sc_code_terminal` find-in-buffer integration.
     pub fn buffer_text(&self, handle: TermHandle) -> Result<String, String> {
         let mut terminals = self.terminals.lock().map_err(|e| e.to_string())?;
         let terminal = terminals

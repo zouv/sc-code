@@ -1,5 +1,5 @@
 /*---------------------------------------------------------------------------------------------
- *  SideX — ExtHost URL handler stub. URL handlers are accepted but never dispatched;
+ *  ScCode — ExtHost URL handler stub. URL handlers are accepted but never dispatched;
  *  external URLs are handled by the Tauri shell plugin directly.
  *--------------------------------------------------------------------------------------------*/
 

@@ -1,5 +1,5 @@
 /*---------------------------------------------------------------------------------------------
- *  SideX: Stub for removed comments tree viewer constants.
+ *  ScCode: Stub for removed comments tree viewer constants.
  *--------------------------------------------------------------------------------------------*/
 
 export const COMMENTS_VIEW_ID = 'workbench.panel.comments';

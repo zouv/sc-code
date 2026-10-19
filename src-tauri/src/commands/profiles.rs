@@ -1,18 +1,18 @@
 //! Profile registry Tauri commands.
 //!
-//! These commands are thin wrappers around `sidex-profiles` that persist
+//! These commands are thin wrappers around `sc-code-profiles` that persist
 //! the profile list and workspace/profile associations under
 //! `<app-data>/UserData`. The TypeScript side mirrors writes here and
 //! hydrates from here on boot.
 
 use std::sync::Arc;
 
+use sc_code_profiles::{ProfileStorage, StoredProfileAssociations, StoredUserDataProfile};
 use serde_json::Value;
-use sidex_profiles::{ProfileStorage, StoredProfileAssociations, StoredUserDataProfile};
 use tauri::{AppHandle, Emitter, Manager};
 use tokio::sync::Mutex;
 
-pub const PROFILES_CHANGED_EVENT: &str = "sidex://profiles/changed";
+pub const PROFILES_CHANGED_EVENT: &str = "sc-code://profiles/changed";
 
 pub struct ProfilesStore {
     storage: Mutex<ProfileStorage>,

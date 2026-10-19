@@ -1,5 +1,5 @@
 /*---------------------------------------------------------------------------------------------
- *  SideX: Stub for removed notebook execution service types.
+ *  ScCode: Stub for removed notebook execution service types.
  *--------------------------------------------------------------------------------------------*/
 
 export const enum CellExecutionUpdateType {

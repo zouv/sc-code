@@ -107,7 +107,7 @@ export interface IRemoteExplorerService {
 	readonly namedProcesses: Map<number, string>;
 }
 
-// Stub: RemoteExplorerService is now handled by sidex-remote Rust crate
+// Stub: RemoteExplorerService is now handled by sc-code-remote Rust crate
 class RemoteExplorerService implements IRemoteExplorerService {
 	_serviceBrand: undefined;
 

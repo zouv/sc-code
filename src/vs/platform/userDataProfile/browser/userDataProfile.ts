@@ -1,5 +1,5 @@
 /*---------------------------------------------------------------------------------------------
- *  SideX - Profile registry backed by the Rust `sidex-profiles` crate.
+ *  ScCode - Profile registry backed by the Rust `sc-code-profiles` crate.
  *--------------------------------------------------------------------------------------------*/
 
 import { BroadcastDataChannel } from '../../../base/browser/broadcast.js';
@@ -21,7 +21,7 @@ import {
 
 type BroadcastedProfileChanges = UriDto<Omit<DidChangeProfilesEvent, 'all'>>;
 
-const PROFILES_CHANGED_EVENT = 'sidex://profiles/changed';
+const PROFILES_CHANGED_EVENT = 'sc-code://profiles/changed';
 
 interface TauriBindings {
 	invoke<T = unknown>(cmd: string, args?: Record<string, unknown>): Promise<T>;
@@ -135,7 +135,7 @@ export class BrowserUserDataProfilesService extends UserDataProfilesService impl
 				localStorage.setItem(UserDataProfilesService.PROFILE_ASSOCIATIONS_KEY, encodedAssociations);
 			}
 		} catch (error) {
-			this.logService.warn('[sidex-profiles] hydrate failed', error);
+			this.logService.warn('[sc-code-profiles] hydrate failed', error);
 		} finally {
 			this._isHydrating = false;
 		}
@@ -152,7 +152,7 @@ export class BrowserUserDataProfilesService extends UserDataProfilesService impl
 			});
 			this._register({ dispose: () => unlisten() });
 		} catch (error) {
-			this.logService.warn('[sidex-profiles] listen failed', error);
+			this.logService.warn('[sc-code-profiles] listen failed', error);
 		}
 	}
 
@@ -164,7 +164,7 @@ export class BrowserUserDataProfilesService extends UserDataProfilesService impl
 		try {
 			await tauri.invoke(command, payload);
 		} catch (error) {
-			this.logService.warn(`[sidex-profiles] ${command} failed`, error);
+			this.logService.warn(`[sc-code-profiles] ${command} failed`, error);
 		}
 	}
 

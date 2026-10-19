@@ -1,6 +1,6 @@
-# SideX Marketplace Proxy
+# ScCode Marketplace Proxy
 
-A Cloudflare Worker that gives SideX a Cursor-style extension
+A Cloudflare Worker that gives ScCode a Cursor-style extension
 marketplace: one endpoint, two backends (Microsoft Marketplace + Open
 VSX), merged and cached at the edge.
 
@@ -45,7 +45,7 @@ returns a merged, deduped list.
 ```
 
 - Cached 5 min at the edge and in KV.
-- Response header `x-sidex-cache` is `edge | kv | miss`.
+- Response header `x-sc-code-cache` is `edge | kv | miss`.
 
 ### `GET /api/download/<source>/<base64url-url>`
 
@@ -71,12 +71,12 @@ npx wrangler deploy
 > Wrangler v4+ uses `kv namespace` (space), not `kv:namespace` (colon) —
 > the older colon form was removed.
 
-## Point SideX at the worker
+## Point ScCode at the worker
 
 After deploy, grab your worker URL (e.g.
-`https://sidex-marketplace-proxy.<account>.workers.dev`) and set:
+`https://sc-code-marketplace-proxy.<account>.workers.dev`) and set:
 
-- `crates/sidex-extensions/src/marketplace.rs` →
+- `crates/sc-code-extensions/src/marketplace.rs` →
   `DEFAULT_BASE_URL = "https://<worker>"`
 - `src/vs/platform/product/common/product.ts` →
   `extensionsGallery.serviceUrl = "https://<worker>/api/search"`

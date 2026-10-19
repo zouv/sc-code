@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 /* ============================================================
-   Sidex Command Palette — Premium Floating Design
+   ScCode Command Palette — Premium Floating Design
    ============================================================ */
 
 /* Backdrop overlay */
@@ -39,7 +39,7 @@
 	border: none !important;
 }
 
-.quick-input-widget.sidex-visible {
+.quick-input-widget.sc-code-visible {
 	opacity: 1;
 }
 

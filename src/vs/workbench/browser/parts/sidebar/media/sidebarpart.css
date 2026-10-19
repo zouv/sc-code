@@ -16,7 +16,7 @@
 	margin-right: 4px;
 }
 
-/* Sidex: muted action icons to match sidebar aesthetic */
+/* ScCode: muted action icons to match sidebar aesthetic */
 .monaco-workbench .part.sidebar .title-actions .action-label {
 	color: var(--vscode-sideBarTitle-foreground, var(--vscode-foreground));
 	opacity: 0.5;
@@ -26,7 +26,7 @@
 	opacity: 0.9;
 }
 
-/* Sidex: hide title actions until sidebar is hovered or focused */
+/* ScCode: hide title actions until sidebar is hovered or focused */
 .monaco-workbench .part.sidebar > .title > .title-actions {
 	display: none;
 }
@@ -36,7 +36,7 @@
 	display: block;
 }
 
-/* Sidex: hide "Views and More Actions" overflow menu in sidebar */
+/* ScCode: hide "Views and More Actions" overflow menu in sidebar */
 .monaco-workbench .part.sidebar > .title > .title-actions .monaco-dropdown {
 	display: none !important;
 }
@@ -45,7 +45,7 @@
 	background-color: var(--vscode-sideBarTitle-background);
 }
 
-/* Sidex: section headers — 10px uppercase, 600 weight, muted */
+/* ScCode: section headers — 10px uppercase, 600 weight, muted */
 .monaco-workbench .part.sidebar > .title > .title-label h2 {
 	text-transform: uppercase;
 	font-size: 10px;
@@ -117,7 +117,7 @@
 	position: static;
 }
 
-/* Sidex: active-item-indicator hidden (we use bg highlight instead) */
+/* ScCode: active-item-indicator hidden (we use bg highlight instead) */
 .monaco-workbench .part.sidebar > .header-or-footer.header > .composite-bar-container > .composite-bar > .monaco-action-bar .action-item.checked:not(:focus) .active-item-indicator:before,
 .monaco-workbench .part.sidebar > .header-or-footer.header > .composite-bar-container > .composite-bar > .monaco-action-bar .action-item.checked.clicked:focus .active-item-indicator:before,
 .monaco-workbench .part.sidebar > .title > .composite-bar-container > .composite-bar > .monaco-action-bar .action-item.checked:not(:focus) .active-item-indicator:before,
@@ -146,21 +146,21 @@
 	background-color: var(--vscode-activityBarTop-foreground) !important;
 }
 
-/* Sidex: hover bg on activity bar icon items */
+/* ScCode: hover bg on activity bar icon items */
 .monaco-workbench .part.sidebar > .header-or-footer > .composite-bar-container > .composite-bar > .monaco-action-bar .action-item.icon:hover,
 .monaco-workbench .part.sidebar > .title > .composite-bar-container > .composite-bar > .monaco-action-bar .action-item.icon:hover {
 	background-color: rgba(255, 255, 255, 0.07) !important;
 	border-radius: 4px;
 }
 
-/* Sidex: checked icon highlight — Cursor-style bg */
+/* ScCode: checked icon highlight — Cursor-style bg */
 .monaco-workbench .part.sidebar > .header-or-footer > .composite-bar-container > .composite-bar > .monaco-action-bar .action-item.icon.checked,
 .monaco-workbench .part.sidebar > .title > .composite-bar-container > .composite-bar > .monaco-action-bar .action-item.icon.checked {
 	background-color: rgba(255, 255, 255, 0.1) !important;
 	border-radius: 4px;
 }
 
-/* Sidex: square icon containers in sidebar header */
+/* ScCode: square icon containers in sidebar header */
 .monaco-workbench .part.sidebar > .header-or-footer > .composite-bar-container > .composite-bar > .monaco-action-bar .action-item.icon,
 .monaco-workbench .part.sidebar > .title > .composite-bar-container > .composite-bar > .monaco-action-bar .action-item.icon {
 	width: 24px;
@@ -183,12 +183,12 @@
 	max-width: 150px;
 }
 
-/* Sidex: subtle sidebar border */
+/* ScCode: subtle sidebar border */
 .monaco-workbench .part.sidebar {
 	border-right-color: var(--vscode-sideBar-border, transparent);
 }
 
-/* Sidex: remove focus highlight border from sidebar panels */
+/* ScCode: remove focus highlight border from sidebar panels */
 .monaco-workbench .part.sidebar:focus,
 .monaco-workbench .part.sidebar *:focus {
 	outline: none !important;

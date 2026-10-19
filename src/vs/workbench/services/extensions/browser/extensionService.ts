@@ -45,7 +45,7 @@ import { IUserDataProfileService } from '../../userDataProfile/common/userDataPr
 import { AsyncIterableEmitter, AsyncIterableProducer } from '../../../../base/common/async.js';
 import { toErrorMessage } from '../../../../base/common/errorMessage.js';
 import { URI } from '../../../../base/common/uri.js';
-import { logToHost } from '../../../../sidex-bridge.js';
+import { logToHost } from '../../../../scCodeBridge.js';
 
 export class ExtensionService extends AbstractExtensionService implements IExtensionService {
 
@@ -316,7 +316,7 @@ class BrowserExtensionHostFactory implements IExtensionHostFactory {
 				return null;
 			}
 			case ExtensionHostKind.LocalWebWorker: {
-				if ((globalThis as any).__SIDEX_TAURI__) {
+				if ((globalThis as any).__SC_CODE_TAURI__) {
 					return null;
 				}
 				const startup = ExtensionHostStartup.LazyAutoStart;

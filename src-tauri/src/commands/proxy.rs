@@ -9,7 +9,7 @@ const MAX_RESPONSE_BYTES: usize = 50 * 1024 * 1024; // 50 MB
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(30);
 
 const ALLOWED_HOSTS: &[&str] = &[
-    // SideX marketplace (Open VSX + Microsoft, via the siden.ai Worker)
+    // ScCode marketplace (Open VSX + Microsoft, via the siden.ai Worker)
     "marketplace.siden.ai",
     // Open VSX
     "open-vsx.org",

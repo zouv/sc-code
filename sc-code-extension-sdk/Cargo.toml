@@ -1,0 +1,13 @@
+[package]
+name = "sc-code-extension-sdk"
+version = "0.1.0"
+edition = "2021"
+description = "SDK for building native ScCode extensions in Rust (WASM Component Model)"
+license = "MIT"
+repository = "https://github.com/zouv/sc-code"
+
+[dependencies]
+wit-bindgen = "0.41"
+
+[lib]
+crate-type = ["cdylib", "rlib"]

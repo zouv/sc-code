@@ -1,5 +1,5 @@
 /*---------------------------------------------------------------------------------------------
- *  Sc-Code — Tauri-based VSCode port
+ *  ScCode — Tauri-based VSCode port
  *  Entry point. Globals set by inline script in index.html.
  *--------------------------------------------------------------------------------------------*/
 
@@ -7,7 +7,7 @@ import { loadNlsMessages } from './nls-loader.js';
 
 // [CUSTOM-BEGIN] CUSTOM-20261013-001 - 自定义模块挂载点（VSIX 安装等功能）
 // 必须在 workbench `create()` 之前完成导入：命令/菜单注册与 registerWorkbenchContribution2
-// 都依赖「创建前注册」。模块内部自带 __SIDEX_TAURI__ 守卫，非 Tauri 环境不会注册任何东西。
+// 都依赖「创建前注册」。模块内部自带 __SC_CODE_TAURI__ 守卫，非 Tauri 环境不会注册任何东西。
 import './sc-code/vsix-install/vsixInstall.contribution.js';
 // [CUSTOM-END] CUSTOM-20261013-001
 
@@ -21,7 +21,7 @@ import './sc-code/accessibility/accessibleViewInformationService.contribution.js
 import './sc-code/extension-sync/extensionSync.contribution.js';
 // [CUSTOM-END] CUSTOM-20261015-003
 
-async function sidexOpenFolder() {
+async function scCodeOpenFolder() {
 	try {
 		const { open } = await import('@tauri-apps/plugin-dialog');
 		const { URI } = await import('./vs/base/common/uri.js');
@@ -33,7 +33,7 @@ async function sidexOpenFolder() {
 		console.error('[ScCode] Failed to open folder picker:', e);
 	}
 }
-(window as any).__sidex_openFolder = sidexOpenFolder;
+(window as any).__sc_code_openFolder = scCodeOpenFolder;
 
 // [CUSTOM-BEGIN] CUSTOM-20261013-004 - 支持文件夹与 .code-workspace 的 URL 路由
 function navigateToWorkspace(uri: string, type: 'folder' | 'workspace') {
@@ -73,30 +73,30 @@ async function boot() {
 		})
 	]);
 
-	// Sc-Code Rust bridge initialization — make services available before workbench creation
-	if ((globalThis as any).__SIDEX_TAURI__) {
+	// ScCode Rust bridge initialization — make services available before workbench creation
+	if ((globalThis as any).__SC_CODE_TAURI__) {
 		const {
-			SideXEditorBridge,
-			SideXSyntaxService,
-			SideXGitService,
-			SideXSearchService,
-			SideXSettingsService,
-			SideXThemeService,
-			SideXExtensionService,
-			SideXKeymapService,
-			SideXFileSystemProvider
-		} = await import('./vs/platform/sidex/common/sidexServices.js');
+			ScCodeEditorBridge,
+			ScCodeSyntaxService,
+			ScCodeGitService,
+			ScCodeSearchService,
+			ScCodeSettingsService,
+			ScCodeThemeService,
+			ScCodeExtensionService,
+			ScCodeKeymapService,
+			ScCodeFileSystemProvider
+		} = await import('./vs/platform/scCode/common/scCodeServices.js');
 
-		(globalThis as any).__SIDEX_SERVICES__ = {
-			editor: SideXEditorBridge.getInstance(),
-			syntax: new SideXSyntaxService(),
-			git: new SideXGitService(),
-			search: new SideXSearchService(),
-			settings: new SideXSettingsService(),
-			theme: new SideXThemeService(),
-			extensions: new SideXExtensionService(),
-			keymap: new SideXKeymapService(),
-			fileSystem: new SideXFileSystemProvider()
+		(globalThis as any).__SC_CODE_SERVICES__ = {
+			editor: ScCodeEditorBridge.getInstance(),
+			syntax: new ScCodeSyntaxService(),
+			git: new ScCodeGitService(),
+			search: new ScCodeSearchService(),
+			settings: new ScCodeSettingsService(),
+			theme: new ScCodeThemeService(),
+			extensions: new ScCodeExtensionService(),
+			keymap: new ScCodeKeymapService(),
+			fileSystem: new ScCodeFileSystemProvider()
 		};
 
 		console.log('[ScCode] Rust bridge services initialized');
@@ -124,7 +124,7 @@ async function boot() {
 	}
 	// [CUSTOM-END] CUSTOM-20261013-004
 
-    if ((globalThis as any).__SIDEX_TAURI__ && workspace) {
+    if ((globalThis as any).__SC_CODE_TAURI__ && workspace) {
         const { invoke } = await import('@tauri-apps/api/core');
         const roots: string[] = [];
         if (workspace.folderUri?.scheme === 'file') { roots.push(workspace.folderUri.fsPath); }
@@ -148,21 +148,21 @@ async function boot() {
         }
     }
 
-	// [CUSTOM-BEGIN] CUSTOM-20261015-004 - About 对话框显示 Sc-Code 版本号（而非 VSCode 1.110.0）
+	// [CUSTOM-BEGIN] CUSTOM-20261015-004 - About 对话框显示 ScCode 版本号（而非 VSCode 1.110.0）
 	// ⚠️ productConfiguration.version 必须保持 '1.110.0'：它同时用于扩展 engines.vscode 兼容性校验
 	//（webExtensionsScannerService → validateExtensionManifest），改成 0.1.3-custom.4 会让
 	// VAC(^1.85.0)/Claude Code(^1.94.0) 被判 DisabledByInvalidExtension，扩展视图全部失效。
-	// 真正的 Sc-Code 版本号放到全局 __SIDEX_VERSION__，由 About 对话框读取。
-	let sidexVersion = '0.1.1';
-	if ((globalThis as any).__SIDEX_TAURI__) {
+	// 真正的 ScCode 版本号放到全局 __SC_CODE_VERSION__，由 About 对话框读取。
+	let scCodeVersion = '0.1.1';
+	if ((globalThis as any).__SC_CODE_TAURI__) {
 		try {
 			const { getVersion } = await import('@tauri-apps/api/app');
-			sidexVersion = await getVersion();
+			scCodeVersion = await getVersion();
 		} catch {
 			// 取不到版本时回退到 productConfiguration 值
 		}
 	}
-	(globalThis as any).__SIDEX_VERSION__ = sidexVersion;
+	(globalThis as any).__SC_CODE_VERSION__ = scCodeVersion;
 	// [CUSTOM-END] CUSTOM-20261015-004
 
 	const options: any = {
@@ -306,7 +306,7 @@ async function boot() {
 function setupTauriExternalOpener() {
 	import('@tauri-apps/plugin-shell')
 		.then(shell => {
-			(window as any).__sidex_shellOpen = (url: string) => {
+			(window as any).__sc_code_shellOpen = (url: string) => {
 				shell.open(url).catch(() => {});
 			};
 		})
@@ -380,8 +380,8 @@ function setupWindowsEditorNewlineKeybindings() {
 		}
 
 		const commandService = (
-			window as { __sidex_commandService?: { executeCommand(commandId: string): Promise<unknown> } }
-		).__sidex_commandService;
+			window as { __sc_code_commandService?: { executeCommand(commandId: string): Promise<unknown> } }
+		).__sc_code_commandService;
 		if (!commandService) {
 			return;
 		}
@@ -461,17 +461,17 @@ function setupMenuActions() {
 		keyboard_shortcuts: 'workbench.action.keybindingsEditor'
 	};
 
-	(window as any).__sidex_menu_action = async (menuId: string) => {
+	(window as any).__sc_code_menu_action = async (menuId: string) => {
 		if (menuId === 'open_folder') {
-			sidexOpenFolder();
+			scCodeOpenFolder();
 			return;
 		}
 
 		if (menuId === 'find') {
-			const editorService = (window as any).__sidex_editorService;
+			const editorService = (window as any).__sc_code_editorService;
 			if (editorService?.activeEditor?.typeId === 'workbench.editors.webviewInput') {
 				try {
-					await (window as any).__sidex_commandService?.executeCommand('editor.action.webvieweditor.showFind');
+					await (window as any).__sc_code_commandService?.executeCommand('editor.action.webvieweditor.showFind');
 				} catch {}
 				return;
 			}
@@ -483,7 +483,7 @@ function setupMenuActions() {
 			return;
 		}
 		try {
-			const event = new CustomEvent('sidex-command', { detail: { commandId } });
+			const event = new CustomEvent('sc-code-command', { detail: { commandId } });
 			window.dispatchEvent(event);
 		} catch (e) {
 			console.error(`[ScCode] Failed to execute menu command ${commandId}:`, e);
@@ -491,15 +491,15 @@ function setupMenuActions() {
 	};
 
 	// Native menu events arrive as CustomEvents from the Rust backend
-	window.addEventListener('sidex-native-menu', ((e: CustomEvent) => {
+	window.addEventListener('sc-code-native-menu', ((e: CustomEvent) => {
 		const menuId = e.detail;
-		if (typeof menuId === 'string' && (window as any).__sidex_menu_action) {
-			(window as any).__sidex_menu_action(menuId);
+		if (typeof menuId === 'string' && (window as any).__sc_code_menu_action) {
+			(window as any).__sc_code_menu_action(menuId);
 		}
 	}) as EventListener);
 
 	// Listen for command execution via keyboard shortcuts forwarded from native menu
-	window.addEventListener('sidex-command', async (e: any) => {
+	window.addEventListener('sc-code-command', async (e: any) => {
 		const commandId = e.detail?.commandId;
 		if (!commandId) {
 			return;
@@ -508,11 +508,11 @@ function setupMenuActions() {
 			commandId === 'workbench.action.files.openFolder' ||
 			commandId === 'workbench.action.files.openFolderViaWorkspace'
 		) {
-			sidexOpenFolder();
+			scCodeOpenFolder();
 			return;
 		}
 		try {
-			const commandService = (window as any).__sidex_commandService;
+			const commandService = (window as any).__sc_code_commandService;
 			if (commandService) {
 				await commandService.executeCommand(commandId);
 			} else {

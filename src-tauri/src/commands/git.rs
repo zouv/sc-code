@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 
-use sidex_git::{
+use sc_code_git::{
     BlameLine, BranchInfo, MergeResult, PullResult, PushResult, RebaseResult, RemoteInfo,
     StashEntry, SubmoduleInfo, TagInfo,
 };
@@ -55,20 +55,20 @@ pub struct GitRemote {
 }
 
 #[allow(clippy::needless_pass_by_value)]
-fn git_err(e: sidex_git::GitError) -> String {
+fn git_err(e: sc_code_git::GitError) -> String {
     format!("Git error: {e}")
 }
 
-fn file_status_str(s: sidex_git::status::FileStatus) -> &'static str {
+fn file_status_str(s: sc_code_git::status::FileStatus) -> &'static str {
     match s {
-        sidex_git::status::FileStatus::Modified => "modified",
-        sidex_git::status::FileStatus::Added => "added",
-        sidex_git::status::FileStatus::Deleted => "deleted",
-        sidex_git::status::FileStatus::Renamed => "renamed",
-        sidex_git::status::FileStatus::Copied => "copied",
-        sidex_git::status::FileStatus::Untracked => "untracked",
-        sidex_git::status::FileStatus::Ignored => "ignored",
-        sidex_git::status::FileStatus::Conflicted => "conflicted",
+        sc_code_git::status::FileStatus::Modified => "modified",
+        sc_code_git::status::FileStatus::Added => "added",
+        sc_code_git::status::FileStatus::Deleted => "deleted",
+        sc_code_git::status::FileStatus::Renamed => "renamed",
+        sc_code_git::status::FileStatus::Copied => "copied",
+        sc_code_git::status::FileStatus::Untracked => "untracked",
+        sc_code_git::status::FileStatus::Ignored => "ignored",
+        sc_code_git::status::FileStatus::Conflicted => "conflicted",
     }
 }
 
@@ -77,9 +77,9 @@ pub async fn git_status(path: String) -> Result<GitStatus, String> {
     validate_path(&path)?;
     let repo = Path::new(&path);
 
-    let branch = sidex_git::current_branch(repo).unwrap_or_else(|_| "HEAD".to_string());
+    let branch = sc_code_git::current_branch(repo).unwrap_or_else(|_| "HEAD".to_string());
 
-    let entries = sidex_git::status::get_status(repo).map_err(git_err)?;
+    let entries = sc_code_git::status::get_status(repo).map_err(git_err)?;
 
     let changes = entries
         .into_iter()
@@ -99,14 +99,14 @@ pub async fn git_diff(path: String, file: Option<String>, staged: bool) -> Resul
     let repo = Path::new(&path);
 
     match (file, staged) {
-        (Some(f), true) => sidex_git::diff::get_diff_staged(repo, Path::new(&f)).map_err(git_err),
-        (Some(f), false) => sidex_git::diff::get_diff(repo, Path::new(&f)).map_err(git_err),
+        (Some(f), true) => sc_code_git::diff::get_diff_staged(repo, Path::new(&f)).map_err(git_err),
+        (Some(f), false) => sc_code_git::diff::get_diff(repo, Path::new(&f)).map_err(git_err),
         (None, staged) => {
             let mut args = vec!["diff"];
             if staged {
                 args.push("--staged");
             }
-            sidex_git::run(repo, &args).map_err(git_err)
+            sc_code_git::run(repo, &args).map_err(git_err)
         }
     }
 }
@@ -117,7 +117,7 @@ pub async fn git_log(path: String, limit: Option<u32>) -> Result<Vec<GitLogEntry
     let repo = Path::new(&path);
     let count = limit.unwrap_or(50) as usize;
 
-    let commits = sidex_git::log::get_log(repo, count).map_err(git_err)?;
+    let commits = sc_code_git::log::get_log(repo, count).map_err(git_err)?;
 
     let entries = commits
         .into_iter()
@@ -142,21 +142,21 @@ pub async fn git_add(path: String, files: Vec<String>) -> Result<(), String> {
     validate_path(&path)?;
     let repo = Path::new(&path);
     let paths: Vec<&Path> = files.iter().map(|f| Path::new(f.as_str())).collect();
-    sidex_git::stage(repo, &paths).map_err(git_err)
+    sc_code_git::stage(repo, &paths).map_err(git_err)
 }
 
 #[tauri::command]
 pub async fn git_commit(path: String, message: String) -> Result<String, String> {
     validate_path(&path)?;
     let repo = Path::new(&path);
-    sidex_git::commit(repo, &message).map_err(git_err)
+    sc_code_git::commit(repo, &message).map_err(git_err)
 }
 
 #[tauri::command]
 pub async fn git_checkout(path: String, branch: String) -> Result<(), String> {
     validate_path(&path)?;
     let repo = Path::new(&path);
-    sidex_git::checkout(repo, &branch).map_err(git_err)
+    sc_code_git::checkout(repo, &branch).map_err(git_err)
 }
 
 #[tauri::command]
@@ -169,14 +169,14 @@ pub async fn git_restore(
 ) -> Result<(), String> {
     validate_path(&path)?;
     let repo = Path::new(&path);
-    sidex_git::restore(repo, &files, source.as_deref(), staged, worktree).map_err(git_err)
+    sc_code_git::restore(repo, &files, source.as_deref(), staged, worktree).map_err(git_err)
 }
 
 #[tauri::command]
 pub async fn git_clean(path: String, files: Vec<String>, dirs: bool) -> Result<(), String> {
     validate_path(&path)?;
     let repo = Path::new(&path);
-    sidex_git::clean(repo, &files, dirs).map_err(git_err)
+    sc_code_git::clean(repo, &files, dirs).map_err(git_err)
 }
 
 #[tauri::command]
@@ -187,7 +187,7 @@ pub async fn git_checkout_file(
 ) -> Result<(), String> {
     validate_path(&path)?;
     let repo = Path::new(&path);
-    sidex_git::checkout_files(repo, &treeish, &files).map_err(git_err)
+    sc_code_git::checkout_files(repo, &treeish, &files).map_err(git_err)
 }
 
 #[tauri::command]
@@ -195,7 +195,7 @@ pub async fn git_branches(path: String) -> Result<Vec<GitBranch>, String> {
     validate_path(&path)?;
     let repo = Path::new(&path);
 
-    let crate_branches = sidex_git::branches(repo).map_err(git_err)?;
+    let crate_branches = sc_code_git::branches(repo).map_err(git_err)?;
 
     let branches = crate_branches
         .into_iter()
@@ -213,13 +213,13 @@ pub async fn git_branches(path: String) -> Result<Vec<GitBranch>, String> {
 pub async fn git_init(path: String) -> Result<(), String> {
     validate_path(&path)?;
     let repo = Path::new(&path);
-    sidex_git::init(repo).map_err(git_err)
+    sc_code_git::init(repo).map_err(git_err)
 }
 
 #[tauri::command]
 pub async fn git_is_repo(path: String) -> Result<bool, String> {
     validate_path(&path)?;
-    Ok(sidex_git::is_git_repo(Path::new(&path)))
+    Ok(sc_code_git::is_git_repo(Path::new(&path)))
 }
 
 #[tauri::command]
@@ -230,7 +230,7 @@ pub async fn git_push(
 ) -> Result<String, String> {
     validate_path(&path)?;
     let repo = Path::new(&path);
-    sidex_git::push(repo, remote.as_deref(), branch.as_deref()).map_err(git_err)
+    sc_code_git::push(repo, remote.as_deref(), branch.as_deref()).map_err(git_err)
 }
 
 #[tauri::command]
@@ -241,14 +241,14 @@ pub async fn git_pull(
 ) -> Result<String, String> {
     validate_path(&path)?;
     let repo = Path::new(&path);
-    sidex_git::pull(repo, remote.as_deref(), branch.as_deref()).map_err(git_err)
+    sc_code_git::pull(repo, remote.as_deref(), branch.as_deref()).map_err(git_err)
 }
 
 #[tauri::command]
 pub async fn git_fetch(path: String, remote: Option<String>) -> Result<String, String> {
     validate_path(&path)?;
     let repo = Path::new(&path);
-    sidex_git::fetch(repo, remote.as_deref()).map_err(git_err)
+    sc_code_git::fetch(repo, remote.as_deref()).map_err(git_err)
 }
 
 #[tauri::command]
@@ -261,14 +261,14 @@ pub async fn git_stash(
     let repo = Path::new(&path);
 
     let stash_action = match action.as_str() {
-        "push" => sidex_git::StashAction::Push,
-        "pop" => sidex_git::StashAction::Pop,
-        "list" => sidex_git::StashAction::List,
-        "drop" => sidex_git::StashAction::Drop,
+        "push" => sc_code_git::StashAction::Push,
+        "pop" => sc_code_git::StashAction::Pop,
+        "list" => sc_code_git::StashAction::List,
+        "drop" => sc_code_git::StashAction::Drop,
         other => return Err(format!("Unknown stash action: {other}")),
     };
 
-    sidex_git::stash_action(repo, stash_action, message.as_deref()).map_err(git_err)
+    sc_code_git::stash_action(repo, stash_action, message.as_deref()).map_err(git_err)
 }
 
 #[tauri::command]
@@ -279,14 +279,14 @@ pub async fn git_create_branch(
 ) -> Result<(), String> {
     validate_path(&path)?;
     let repo = Path::new(&path);
-    sidex_git::create_branch(repo, &name, start_point.as_deref()).map_err(git_err)
+    sc_code_git::create_branch(repo, &name, start_point.as_deref()).map_err(git_err)
 }
 
 #[tauri::command]
 pub async fn git_delete_branch(path: String, name: String) -> Result<(), String> {
     validate_path(&path)?;
     let repo = Path::new(&path);
-    sidex_git::delete_branch(repo, &name).map_err(git_err)
+    sc_code_git::delete_branch(repo, &name).map_err(git_err)
 }
 
 #[tauri::command]
@@ -294,7 +294,7 @@ pub async fn git_remote_list(path: String) -> Result<Vec<GitRemote>, String> {
     validate_path(&path)?;
     let repo = Path::new(&path);
 
-    let crate_remotes = sidex_git::remote_list(repo).map_err(git_err)?;
+    let crate_remotes = sc_code_git::remote_list(repo).map_err(git_err)?;
 
     let remotes = crate_remotes
         .into_iter()
@@ -317,7 +317,7 @@ pub async fn git_clone(url: String, path: String) -> Result<(), String> {
         }
     }
 
-    sidex_git::clone(&url, Path::new(&path)).map_err(git_err)
+    sc_code_git::clone(&url, Path::new(&path)).map_err(git_err)
 }
 
 #[tauri::command]
@@ -325,14 +325,14 @@ pub async fn git_reset(path: String, files: Vec<String>) -> Result<(), String> {
     validate_path(&path)?;
     let repo = Path::new(&path);
     let paths: Vec<&Path> = files.iter().map(|f| Path::new(f.as_str())).collect();
-    sidex_git::unstage(repo, &paths).map_err(git_err)
+    sc_code_git::unstage(repo, &paths).map_err(git_err)
 }
 
 #[tauri::command]
 pub async fn git_show(path: String, file: String) -> Result<Vec<u8>, String> {
     validate_path(&path)?;
     let repo = Path::new(&path);
-    sidex_git::show_file(repo, &file).map_err(git_err)
+    sc_code_git::show_file(repo, &file).map_err(git_err)
 }
 
 #[tauri::command]
@@ -340,7 +340,7 @@ pub async fn git_run(path: String, args: Vec<String>) -> Result<String, String> 
     validate_path(&path)?;
     let repo = Path::new(&path);
     let arg_refs: Vec<&str> = args.iter().map(String::as_str).collect();
-    sidex_git::run(repo, &arg_refs).map_err(git_err)
+    sc_code_git::run(repo, &arg_refs).map_err(git_err)
 }
 
 #[tauri::command]
@@ -349,7 +349,7 @@ pub async fn git_log_graph(path: String, limit: Option<u32>) -> Result<Vec<GitLo
     let repo = Path::new(&path);
     let count = limit.unwrap_or(50) as usize;
 
-    let commits = sidex_git::log::get_log_graph(repo, count).map_err(git_err)?;
+    let commits = sc_code_git::log::get_log_graph(repo, count).map_err(git_err)?;
 
     let entries = commits
         .into_iter()
@@ -373,42 +373,42 @@ pub async fn git_log_graph(path: String, limit: Option<u32>) -> Result<Vec<GitLo
 pub async fn git_blame(path: String, file: String) -> Result<Vec<BlameLine>, String> {
     validate_path(&path)?;
     let repo = Path::new(&path);
-    sidex_git::blame::blame(repo, Path::new(&file)).map_err(git_err)
+    sc_code_git::blame::blame(repo, Path::new(&file)).map_err(git_err)
 }
 
 #[tauri::command]
 pub async fn git_tag(path: String, name: String, message: Option<String>) -> Result<(), String> {
     validate_path(&path)?;
     let repo = Path::new(&path);
-    sidex_git::tag(repo, &name, message.as_deref()).map_err(git_err)
+    sc_code_git::tag(repo, &name, message.as_deref()).map_err(git_err)
 }
 
 #[tauri::command]
 pub async fn git_list_tags(path: String) -> Result<Vec<TagInfo>, String> {
     validate_path(&path)?;
     let repo = Path::new(&path);
-    sidex_git::list_tags(repo).map_err(git_err)
+    sc_code_git::list_tags(repo).map_err(git_err)
 }
 
 #[tauri::command]
 pub async fn git_merge(path: String, branch: String) -> Result<MergeResult, String> {
     validate_path(&path)?;
     let repo = Path::new(&path);
-    sidex_git::merge(repo, &branch).map_err(git_err)
+    sc_code_git::merge(repo, &branch).map_err(git_err)
 }
 
 #[tauri::command]
 pub async fn git_rebase(path: String, branch: String) -> Result<RebaseResult, String> {
     validate_path(&path)?;
     let repo = Path::new(&path);
-    sidex_git::rebase(repo, &branch).map_err(git_err)
+    sc_code_git::rebase(repo, &branch).map_err(git_err)
 }
 
 #[tauri::command]
 pub async fn git_cherry_pick(path: String, commit: String) -> Result<(), String> {
     validate_path(&path)?;
     let repo = Path::new(&path);
-    sidex_git::cherry_pick(repo, &commit).map_err(git_err)
+    sc_code_git::cherry_pick(repo, &commit).map_err(git_err)
 }
 
 #[tauri::command]
@@ -419,21 +419,21 @@ pub async fn git_rename_branch(
 ) -> Result<(), String> {
     validate_path(&path)?;
     let repo = Path::new(&path);
-    sidex_git::rename_branch(repo, &old_name, &new_name).map_err(git_err)
+    sc_code_git::rename_branch(repo, &old_name, &new_name).map_err(git_err)
 }
 
 #[tauri::command]
 pub async fn git_delete_branch_force(path: String, name: String) -> Result<(), String> {
     validate_path(&path)?;
     let repo = Path::new(&path);
-    sidex_git::delete_branch_force(repo, &name, true).map_err(git_err)
+    sc_code_git::delete_branch_force(repo, &name, true).map_err(git_err)
 }
 
 #[tauri::command]
 pub async fn git_list_branches(path: String) -> Result<Vec<BranchInfo>, String> {
     validate_path(&path)?;
     let repo = Path::new(&path);
-    sidex_git::list_branches(repo, true).map_err(git_err)
+    sc_code_git::list_branches(repo, true).map_err(git_err)
 }
 
 #[tauri::command]
@@ -448,9 +448,9 @@ pub async fn git_push_detailed(
     let remote_str = remote.unwrap_or_else(|| "origin".to_string());
     let branch_str = match branch {
         Some(b) => b,
-        None => sidex_git::current_branch(repo).map_err(git_err)?,
+        None => sc_code_git::current_branch(repo).map_err(git_err)?,
     };
-    sidex_git::push_detailed(repo, &remote_str, &branch_str, force).map_err(git_err)
+    sc_code_git::push_detailed(repo, &remote_str, &branch_str, force).map_err(git_err)
 }
 
 #[tauri::command]
@@ -465,16 +465,16 @@ pub async fn git_pull_detailed(
     let remote_str = remote.unwrap_or_else(|| "origin".to_string());
     let branch_str = match branch {
         Some(b) => b,
-        None => sidex_git::current_branch(repo).map_err(git_err)?,
+        None => sc_code_git::current_branch(repo).map_err(git_err)?,
     };
-    sidex_git::pull_detailed(repo, &remote_str, &branch_str, rebase).map_err(git_err)
+    sc_code_git::pull_detailed(repo, &remote_str, &branch_str, rebase).map_err(git_err)
 }
 
 #[tauri::command]
 pub async fn git_fetch_all(path: String) -> Result<(), String> {
     validate_path(&path)?;
     let repo = Path::new(&path);
-    sidex_git::fetch_all(repo).map_err(git_err)
+    sc_code_git::fetch_all(repo).map_err(git_err)
 }
 
 #[tauri::command]
@@ -482,7 +482,7 @@ pub async fn git_stash_apply(path: String, index: Option<u32>) -> Result<(), Str
     validate_path(&path)?;
     let repo = Path::new(&path);
     let idx = index.unwrap_or(0) as usize;
-    sidex_git::stash_apply(repo, idx).map_err(git_err)?;
+    sc_code_git::stash_apply(repo, idx).map_err(git_err)?;
     Ok(())
 }
 
@@ -490,7 +490,7 @@ pub async fn git_stash_apply(path: String, index: Option<u32>) -> Result<(), Str
 pub async fn git_stash_drop_index(path: String, index: u32) -> Result<(), String> {
     validate_path(&path)?;
     let repo = Path::new(&path);
-    sidex_git::stash_drop_index(repo, index as usize).map_err(git_err)?;
+    sc_code_git::stash_drop_index(repo, index as usize).map_err(git_err)?;
     Ok(())
 }
 
@@ -498,47 +498,47 @@ pub async fn git_stash_drop_index(path: String, index: u32) -> Result<(), String
 pub async fn git_stash_list_parsed(path: String) -> Result<Vec<StashEntry>, String> {
     validate_path(&path)?;
     let repo = Path::new(&path);
-    sidex_git::stash_list_parsed(repo).map_err(git_err)
+    sc_code_git::stash_list_parsed(repo).map_err(git_err)
 }
 
 #[tauri::command]
 pub async fn git_get_config(path: String, key: String) -> Result<Option<String>, String> {
     validate_path(&path)?;
     let repo = Path::new(&path);
-    sidex_git::get_config(repo, &key).map_err(git_err)
+    sc_code_git::get_config(repo, &key).map_err(git_err)
 }
 
 #[tauri::command]
 pub async fn git_set_config(path: String, key: String, value: String) -> Result<(), String> {
     validate_path(&path)?;
     let repo = Path::new(&path);
-    sidex_git::set_config(repo, &key, &value).map_err(git_err)
+    sc_code_git::set_config(repo, &key, &value).map_err(git_err)
 }
 
 #[tauri::command]
 pub async fn git_submodule_init(path: String) -> Result<(), String> {
     validate_path(&path)?;
     let repo = Path::new(&path);
-    sidex_git::submodule_init(repo).map_err(git_err)
+    sc_code_git::submodule_init(repo).map_err(git_err)
 }
 
 #[tauri::command]
 pub async fn git_submodule_update(path: String) -> Result<(), String> {
     validate_path(&path)?;
     let repo = Path::new(&path);
-    sidex_git::submodule_update(repo).map_err(git_err)
+    sc_code_git::submodule_update(repo).map_err(git_err)
 }
 
 #[tauri::command]
 pub async fn git_list_submodules(path: String) -> Result<Vec<SubmoduleInfo>, String> {
     validate_path(&path)?;
     let repo = Path::new(&path);
-    sidex_git::list_submodules(repo).map_err(git_err)
+    sc_code_git::list_submodules(repo).map_err(git_err)
 }
 
 #[tauri::command]
 pub async fn git_get_remotes(path: String) -> Result<Vec<RemoteInfo>, String> {
     validate_path(&path)?;
     let repo = Path::new(&path);
-    sidex_git::get_remotes(repo).map_err(git_err)
+    sc_code_git::get_remotes(repo).map_err(git_err)
 }

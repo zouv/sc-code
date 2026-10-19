@@ -1,8 +1,8 @@
 use serde::Serialize;
-use tauri::Manager;
 use std::path::Path;
+use tauri::Manager;
 
-use sidex_workspace::file_ops as ws;
+use sc_code_workspace::file_ops as ws;
 
 use super::validation::validate_path;
 
@@ -29,7 +29,7 @@ pub struct FileStat {
     pub readonly: bool,
 }
 
-fn io_err(path: &str, e: &sidex_workspace::WorkspaceError) -> String {
+fn io_err(path: &str, e: &sc_code_workspace::WorkspaceError) -> String {
     format!("{path}: {e}")
 }
 
@@ -52,7 +52,9 @@ pub fn read_file(path: String) -> Result<String, String> {
 pub fn read_file_bytes(app: tauri::AppHandle, path: String) -> Result<Vec<u8>, String> {
     validate_path(&path)?;
     let bytes = ws::read_file_bytes(Path::new(&path)).map_err(|e| io_err(&path, &e))?;
-    app.asset_protocol_scope().allow_file(&path).map_err(|e| e.to_string())?;
+    app.asset_protocol_scope()
+        .allow_file(&path)
+        .map_err(|e| e.to_string())?;
     Ok(bytes)
 }
 
@@ -65,9 +67,20 @@ pub fn write_file(path: String, content: String) -> Result<(), String> {
 
 #[allow(clippy::needless_pass_by_value)]
 #[tauri::command]
-pub fn write_file_bytes(path: String, content: Vec<u8>, create: Option<bool>, overwrite: Option<bool>) -> Result<(), String> {
+pub fn write_file_bytes(
+    path: String,
+    content: Vec<u8>,
+    create: Option<bool>,
+    overwrite: Option<bool>,
+) -> Result<(), String> {
     validate_path(&path)?;
-    ws::write_file_bytes_with_options(Path::new(&path), &content, create.unwrap_or(true), overwrite.unwrap_or(true)).map_err(|e| io_err(&path, &e))
+    ws::write_file_bytes_with_options(
+        Path::new(&path),
+        &content,
+        create.unwrap_or(true),
+        overwrite.unwrap_or(true),
+    )
+    .map_err(|e| io_err(&path, &e))
 }
 
 #[allow(clippy::needless_pass_by_value)]
@@ -140,16 +153,22 @@ pub fn exists(path: String) -> Result<bool, String> {
 /// The trusted workbench supplies roots parsed from .code-workspace JSONC.
 #[tauri::command]
 pub fn authorize_workspace_assets(app: tauri::AppHandle, roots: Vec<String>) -> Result<(), String> {
-    if roots.len() > 64 { return Err("Too many workspace roots".into()); }
+    if roots.len() > 64 {
+        return Err("Too many workspace roots".into());
+    }
     let mut canonical = Vec::new();
     for root in roots {
         validate_path(&root)?;
         let path = Path::new(&root).canonicalize().map_err(|e| e.to_string())?;
-        if !path.is_dir() || path.parent().is_none() { return Err("Workspace root must be a directory, not filesystem root".into()); }
+        if !path.is_dir() || path.parent().is_none() {
+            return Err("Workspace root must be a directory, not filesystem root".into());
+        }
         canonical.push(path);
     }
     for root in canonical {
-        app.asset_protocol_scope().allow_directory(root, true).map_err(|e| e.to_string())?;
+        app.asset_protocol_scope()
+            .allow_directory(root, true)
+            .map_err(|e| e.to_string())?;
     }
     Ok(())
 }

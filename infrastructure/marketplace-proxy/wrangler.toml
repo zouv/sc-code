@@ -1,4 +1,4 @@
-name = "sidex-marketplace-proxy"
+name = "sc-code-marketplace-proxy"
 main = "src/worker.ts"
 compatibility_date = "2025-06-01"
 compatibility_flags = ["nodejs_compat"]

@@ -325,9 +325,9 @@ class FileAccessImpl {
 			return RemoteAuthorities.rewrite(uri);
 		}
 
-        // Sc-Code uses Tauri's official conversion (scheme varies by host platform).
+        // ScCode uses Tauri's official conversion (scheme varies by host platform).
         // Native scope includes extension resources and explicitly opened workspaces only.
-        if (uri.scheme === Schemas.file && (globalThis as any).__SIDEX_TAURI__) {
+        if (uri.scheme === Schemas.file && (globalThis as any).__SC_CODE_TAURI__) {
             const convert = (globalThis as any).__TAURI_INTERNALS__?.convertFileSrc;
             if (convert) { return URI.parse(convert(uri.fsPath, 'asset')); }
             const encoded = encodeURIComponent(uri.fsPath);

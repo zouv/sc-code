@@ -7,7 +7,7 @@
 	overflow: hidden;
 }
 
-/* Sidex: Exception widget — rounded, clean */
+/* ScCode: Exception widget — rounded, clean */
 .monaco-editor .zone-widget .zone-widget-container.exception-widget {
 	padding: 8px 12px;
 	white-space: pre-wrap;

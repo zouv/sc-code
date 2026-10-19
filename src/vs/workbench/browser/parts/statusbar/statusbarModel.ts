@@ -49,7 +49,7 @@ export class StatusbarViewModel extends Disposable {
 		this.registerListeners();
 	}
 
-	private static readonly SIDEX_DEFAULT_HIDDEN = new Set([
+	private static readonly SC_CODE_DEFAULT_HIDDEN = new Set([
 		'status.editor.eol',
 		'status.editor.columnSelectionMode',
 		'status.editor.tabFocusMode',
@@ -70,7 +70,7 @@ export class StatusbarViewModel extends Disposable {
 			}
 		}
 		if (!hiddenRaw) {
-			for (const id of StatusbarViewModel.SIDEX_DEFAULT_HIDDEN) {
+			for (const id of StatusbarViewModel.SC_CODE_DEFAULT_HIDDEN) {
 				this.hidden.add(id);
 			}
 		}

@@ -1,5 +1,5 @@
 /*---------------------------------------------------------------------------------------------
- *  SideX Extension Host Bridge
+ *  ScCode Extension Host Bridge
  *  Connects to the Node.js extension host via WebSocket and registers
  *  Monaco language feature providers that forward to loaded extensions.
  *--------------------------------------------------------------------------------------------*/

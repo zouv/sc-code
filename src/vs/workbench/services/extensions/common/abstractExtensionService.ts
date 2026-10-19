@@ -373,7 +373,7 @@ export abstract class AbstractExtensionService extends Disposable implements IEx
 			}
 		}
 
-		if ((globalThis as any).__SIDEX_TAURI__) {
+		if ((globalThis as any).__SC_CODE_TAURI__) {
 			return true;
 		}
 
@@ -1066,7 +1066,7 @@ export abstract class AbstractExtensionService extends Disposable implements IEx
 
 	public whenInstalledExtensionsRegistered(): Promise<boolean> {
 		// [CUSTOM-BEGIN] CUSTOM-20261016-001 - 打破启动死锁：调用方在等扩展注册时顺手触发初始化
-		// SideX(web) 下扩展初始化被排在 LifecyclePhase.Restored 之后（见 browser/extensionService.ts）。
+		// ScCode(web) 下扩展初始化被排在 LifecyclePhase.Restored 之后（见 browser/extensionService.ts）。
 		// 若上次会话的侧边栏停在扩展容器（如 VAC 的 workbench.view.extension.vac-client），
 		// layout restore 会 `await openPaneComposite(...)`；该容器此刻尚未注册 → 落到
 		// `await whenInstalledExtensionsRegistered()` → 而 barrier 只能由 `_initialize()` 打开，

@@ -421,17 +421,17 @@ export const AuxiliaryBarMaximizedContext = new RawContextKey<boolean>(
 
 //#endregion
 
-//#region < --- Sidex --- >
+//#region < --- ScCode --- >
 
-export const ActiveSidexContext = new RawContextKey<string>(
-	'activeSidex',
+export const ActiveScCodeContext = new RawContextKey<string>(
+	'activeScCode',
 	'',
-	localize('activeSidex', 'The identifier of the active ScCode view')
+	localize('activeScCode', 'The identifier of the active ScCode view')
 );
-export const SidexFocusContext = new RawContextKey<boolean>(
-	'sidexFocus',
+export const ScCodeFocusContext = new RawContextKey<boolean>(
+	'scCodeFocus',
 	false,
-	localize('sidexFocus', 'Whether the ScCode part has keyboard focus')
+	localize('scCodeFocus', 'Whether the ScCode part has keyboard focus')
 );
 
 //#endregion

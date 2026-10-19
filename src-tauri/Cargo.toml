@@ -101,30 +101,30 @@ wasmtime = { version = "43", default-features = false, features = [
 wasmtime-wasi = "43"
 toml = "0.8"
 anyhow = "1"
-sidex-db = { path = "../crates/sidex-db" }
-sidex-dap = { path = "../crates/sidex-dap" }
-sidex-remote = { path = "../crates/sidex-remote" }
-sidex-settings = { path = "../crates/sidex-settings" }
-sidex-theme = { path = "../crates/sidex-theme" }
+sc-code-db = { path = "../crates/sc-code-db" }
+sc-code-dap = { path = "../crates/sc-code-dap" }
+sc-code-remote = { path = "../crates/sc-code-remote" }
+sc-code-settings = { path = "../crates/sc-code-settings" }
+sc-code-theme = { path = "../crates/sc-code-theme" }
 
-# SideX crates
-sidex-git = { path = "../crates/sidex-git" }
-sidex-workspace = { path = "../crates/sidex-workspace" }
+# ScCode crates
+sc-code-git = { path = "../crates/sc-code-git" }
+sc-code-workspace = { path = "../crates/sc-code-workspace" }
 
 # Internal crates
-sidex-text = { path = "../crates/sidex-text" }
-sidex-syntax = { path = "../crates/sidex-syntax" }
-sidex-tasks = { path = "../crates/sidex-tasks" }
-sidex-extensions = { path = "../crates/sidex-extensions" }
-sidex-agent = { path = "../crates/sidex-agent" }
-sidex-lsp = { path = "../crates/sidex-lsp" }
-sidex-keymap = { path = "../crates/sidex-keymap" }
-sidex-extension-api = { path = "../crates/sidex-extension-api" }
-sidex-update = { path = "../crates/sidex-update" }
-sidex-profiles = { path = "../crates/sidex-profiles" }
-sidex-auth = { path = "../crates/sidex-auth" }
-sidex-textmate = { path = "../crates/sidex-textmate" }
-sidex-context = { path = "../crates/sidex-context" }
+sc-code-text = { path = "../crates/sc-code-text" }
+sc-code-syntax = { path = "../crates/sc-code-syntax" }
+sc-code-tasks = { path = "../crates/sc-code-tasks" }
+sc-code-extensions = { path = "../crates/sc-code-extensions" }
+sc-code-agent = { path = "../crates/sc-code-agent" }
+sc-code-lsp = { path = "../crates/sc-code-lsp" }
+sc-code-keymap = { path = "../crates/sc-code-keymap" }
+sc-code-extension-api = { path = "../crates/sc-code-extension-api" }
+sc-code-update = { path = "../crates/sc-code-update" }
+sc-code-profiles = { path = "../crates/sc-code-profiles" }
+sc-code-auth = { path = "../crates/sc-code-auth" }
+sc-code-textmate = { path = "../crates/sc-code-textmate" }
+sc-code-context = { path = "../crates/sc-code-context" }
 
 tree-sitter = "0.24"
 tree-sitter-rust = "0.23"

@@ -91,27 +91,44 @@ pub async fn agent_execute_tool(
     let result = tauri::async_runtime::spawn_blocking(move || {
         let scope = request.checkpoint_scope.as_deref().unwrap_or("legacy");
         let target = if is_write_tool(&request.name) {
-            Some(extract_target_path(&request.arguments, &request.cwd).ok_or("Write tool target path is required")?)
-        } else { None };
+            Some(
+                extract_target_path(&request.arguments, &request.cwd)
+                    .ok_or("Write tool target path is required")?,
+            )
+        } else {
+            None
+        };
         // One lock orders snapshots, file tools, post-images and rollback/create.
         // Read-only/opaque tools do not hold the global checkpoint mutex.
         // Shell/Git/worktree mutations are NOT part of this file journal.
-        let mut guard = if target.is_some() { Some(journal.lock().map_err(|e| e.to_string())?) } else { None };
+        let mut guard = if target.is_some() {
+            Some(journal.lock().map_err(|e| e.to_string())?)
+        } else {
+            None
+        };
         if let Some(path) = &target {
-            guard.as_mut().expect("mutation guard").track_before(scope, std::path::Path::new(path)).map_err(|e| e.to_string())?;
+            guard
+                .as_mut()
+                .expect("mutation guard")
+                .track_before(scope, std::path::Path::new(path))
+                .map_err(|e| e.to_string())?;
         }
-        let ctx = sidex_agent::ToolContext {
+        let ctx = sc_code_agent::ToolContext {
             cwd: request.cwd.clone(),
             token: request.token.clone(),
         };
-        let req = sidex_agent::ToolRequest {
+        let req = sc_code_agent::ToolRequest {
             tool_call_id: request.tool_call_id.clone(),
             name: request.name,
             arguments: request.arguments,
         };
-        let resp = sidex_agent::execute(&req, &ctx);
+        let resp = sc_code_agent::execute(&req, &ctx);
         if let Some(path) = &target {
-            guard.as_mut().expect("mutation guard").record_after(scope, std::path::Path::new(path)).map_err(|e| e.to_string())?;
+            guard
+                .as_mut()
+                .expect("mutation guard")
+                .record_after(scope, std::path::Path::new(path))
+                .map_err(|e| e.to_string())?;
         }
         Ok::<_, String>(AgentToolResponse {
             tool_call_id: resp.tool_call_id,
@@ -121,9 +138,12 @@ pub async fn agent_execute_tool(
     })
     .await;
 
-    Ok(result.map_err(|e| format!("internal error: {e}")).and_then(|response| response).unwrap_or_else(|e| AgentToolResponse {
-        tool_call_id: fallback_id,
-        output: String::new(),
-        error: format!("internal error: {e}"),
-    }))
+    Ok(result
+        .map_err(|e| format!("internal error: {e}"))
+        .and_then(|response| response)
+        .unwrap_or_else(|e| AgentToolResponse {
+            tool_call_id: fallback_id,
+            output: String::new(),
+            error: format!("internal error: {e}"),
+        }))
 }

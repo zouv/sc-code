@@ -5976,30 +5976,30 @@ dependencies = [
  "reqwest 0.12.28",
  "rfd",
  "rusqlite",
+ "sc-code-agent",
+ "sc-code-auth",
+ "sc-code-context",
+ "sc-code-dap",
+ "sc-code-db",
+ "sc-code-extension-api",
+ "sc-code-extensions",
+ "sc-code-git",
+ "sc-code-keymap",
+ "sc-code-lsp",
+ "sc-code-profiles",
+ "sc-code-remote",
  "sc-code-runtime",
+ "sc-code-settings",
+ "sc-code-syntax",
+ "sc-code-tasks",
+ "sc-code-text",
+ "sc-code-textmate",
+ "sc-code-theme",
+ "sc-code-update",
+ "sc-code-workspace",
  "serde",
  "serde_json",
  "sha2",
- "sidex-agent",
- "sidex-auth",
- "sidex-context",
- "sidex-dap",
- "sidex-db",
- "sidex-extension-api",
- "sidex-extensions",
- "sidex-git",
- "sidex-keymap",
- "sidex-lsp",
- "sidex-profiles",
- "sidex-remote",
- "sidex-settings",
- "sidex-syntax",
- "sidex-tasks",
- "sidex-text",
- "sidex-textmate",
- "sidex-theme",
- "sidex-update",
- "sidex-workspace",
  "tauri",
  "tauri-build",
  "tauri-plugin-dialog",
@@ -6022,14 +6022,351 @@ dependencies = [
 ]
 
 [[package]]
-name = "sc-code-runtime"
-version = "0.1.0"
+name = "sc-code-agent"
+version = "0.2.0"
 dependencies = [
+ "anyhow",
+ "globset",
+ "ignore",
+ "libc",
+ "memchr",
+ "regex",
+ "reqwest 0.12.28",
+ "sc-code-context",
+ "sc-code-runtime",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.18",
+ "tokio",
+ "urlencoding",
+ "walkdir",
+]
+
+[[package]]
+name = "sc-code-auth"
+version = "0.2.0"
+dependencies = [
+ "anyhow",
+ "keyring",
+ "log",
+ "parking_lot",
  "rusqlite",
  "serde",
  "serde_json",
  "tempfile",
  "thiserror 2.0.18",
+]
+
+[[package]]
+name = "sc-code-context"
+version = "0.2.0"
+dependencies = [
+ "anyhow",
+ "ignore",
+ "notify 6.1.1",
+ "regex",
+ "reqwest 0.12.28",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "sha2",
+ "tempfile",
+ "tokio",
+ "tree-sitter",
+ "tree-sitter-bash",
+ "tree-sitter-c",
+ "tree-sitter-cpp",
+ "tree-sitter-css",
+ "tree-sitter-go",
+ "tree-sitter-html",
+ "tree-sitter-java",
+ "tree-sitter-javascript",
+ "tree-sitter-json",
+ "tree-sitter-python",
+ "tree-sitter-ruby",
+ "tree-sitter-rust",
+ "tree-sitter-toml-ng",
+ "tree-sitter-typescript",
+]
+
+[[package]]
+name = "sc-code-dap"
+version = "0.2.0"
+dependencies = [
+ "anyhow",
+ "log",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.18",
+ "tokio",
+]
+
+[[package]]
+name = "sc-code-db"
+version = "0.2.0"
+dependencies = [
+ "anyhow",
+ "dirs 5.0.1",
+ "log",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.18",
+]
+
+[[package]]
+name = "sc-code-extension-api"
+version = "0.2.0"
+dependencies = [
+ "anyhow",
+ "log",
+ "sc-code-extensions",
+ "serde",
+ "serde_json",
+ "tokio",
+ "uuid",
+]
+
+[[package]]
+name = "sc-code-extension-sdk"
+version = "0.1.0"
+dependencies = [
+ "wit-bindgen 0.41.0",
+]
+
+[[package]]
+name = "sc-code-extensions"
+version = "0.2.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "dirs 6.0.0",
+ "log",
+ "reqwest 0.12.28",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.18",
+ "tokio",
+ "toml 0.8.2",
+ "uuid",
+ "walkdir",
+ "which 7.0.3",
+ "zip",
+]
+
+[[package]]
+name = "sc-code-git"
+version = "0.2.0"
+dependencies = [
+ "anyhow",
+ "log",
+ "serde",
+ "tempfile",
+ "thiserror 2.0.18",
+ "tokio",
+]
+
+[[package]]
+name = "sc-code-keymap"
+version = "0.2.0"
+dependencies = [
+ "anyhow",
+ "log",
+ "regex",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.18",
+]
+
+[[package]]
+name = "sc-code-lsp"
+version = "0.2.0"
+dependencies = [
+ "anyhow",
+ "log",
+ "lsp-types",
+ "sc-code-text",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.18",
+ "tokio",
+]
+
+[[package]]
+name = "sc-code-profiles"
+version = "0.2.0"
+dependencies = [
+ "anyhow",
+ "serde",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
+name = "sc-code-remote"
+version = "0.2.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "bollard",
+ "dirs 5.0.1",
+ "futures-util",
+ "log",
+ "reqwest 0.12.28",
+ "russh",
+ "russh-keys",
+ "serde",
+ "serde_json",
+ "tar",
+ "tempfile",
+ "thiserror 2.0.18",
+ "tokio",
+ "tokio-tungstenite 0.26.2",
+ "winapi",
+]
+
+[[package]]
+name = "sc-code-runtime"
+version = "0.1.0"
+dependencies = [
+ "tempfile",
+ "thiserror 2.0.18",
+]
+
+[[package]]
+name = "sc-code-settings"
+version = "0.2.0"
+dependencies = [
+ "anyhow",
+ "log",
+ "notify 7.0.0",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.18",
+]
+
+[[package]]
+name = "sc-code-syntax"
+version = "0.2.0"
+dependencies = [
+ "bitflags 2.11.1",
+ "fancy-regex",
+ "log",
+ "once_cell",
+ "plist",
+ "regex",
+ "sc-code-text",
+ "serde",
+ "serde_json",
+ "streaming-iterator",
+ "thiserror 2.0.18",
+ "tree-sitter",
+ "tree-sitter-rust",
+]
+
+[[package]]
+name = "sc-code-tasks"
+version = "0.2.0"
+dependencies = [
+ "anyhow",
+ "log",
+ "regex",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.18",
+ "tokio",
+]
+
+[[package]]
+name = "sc-code-text"
+version = "0.2.0"
+dependencies = [
+ "memchr",
+ "regex",
+ "ropey",
+ "serde",
+ "serde_json",
+ "unicode-segmentation",
+ "unicode-width",
+]
+
+[[package]]
+name = "sc-code-textmate"
+version = "0.2.0"
+dependencies = [
+ "anyhow",
+ "log",
+ "once_cell",
+ "onig",
+ "parking_lot",
+ "plist",
+ "pretty_assertions",
+ "regex",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.18",
+]
+
+[[package]]
+name = "sc-code-theme"
+version = "0.2.0"
+dependencies = [
+ "anyhow",
+ "log",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.18",
+]
+
+[[package]]
+name = "sc-code-update"
+version = "0.2.0"
+dependencies = [
+ "anyhow",
+ "base64 0.22.1",
+ "ed25519-dalek",
+ "futures-util",
+ "hex",
+ "log",
+ "parking_lot",
+ "reqwest 0.12.28",
+ "semver",
+ "serde",
+ "serde_json",
+ "sha2",
+ "tempfile",
+ "thiserror 2.0.18",
+ "tokio",
+ "windows-sys 0.59.0",
+]
+
+[[package]]
+name = "sc-code-workspace"
+version = "0.2.0"
+dependencies = [
+ "anyhow",
+ "dashmap",
+ "glob",
+ "globset",
+ "hex",
+ "ignore",
+ "log",
+ "memchr",
+ "notify 7.0.0",
+ "pathdiff",
+ "rayon",
+ "regex",
+ "sc-code-theme",
+ "serde",
+ "serde_json",
+ "sha2",
+ "tempfile",
+ "thiserror 2.0.18",
+ "tokio",
+ "walkdir",
 ]
 
 [[package]]
@@ -6500,346 +6837,6 @@ name = "shlex"
 version = "1.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0fda2ff0d084019ba4d7c6f371c95d8fd75ce3524c3cb8fb653a3023f6323e64"
-
-[[package]]
-name = "sidex-agent"
-version = "0.2.0"
-dependencies = [
- "anyhow",
- "globset",
- "ignore",
- "libc",
- "memchr",
- "regex",
- "reqwest 0.12.28",
- "sc-code-runtime",
- "serde",
- "serde_json",
- "sidex-context",
- "tempfile",
- "thiserror 2.0.18",
- "tokio",
- "urlencoding",
- "walkdir",
-]
-
-[[package]]
-name = "sidex-auth"
-version = "0.2.0"
-dependencies = [
- "anyhow",
- "keyring",
- "log",
- "parking_lot",
- "rusqlite",
- "serde",
- "serde_json",
- "tempfile",
- "thiserror 2.0.18",
-]
-
-[[package]]
-name = "sidex-context"
-version = "0.2.0"
-dependencies = [
- "anyhow",
- "ignore",
- "notify 6.1.1",
- "regex",
- "reqwest 0.12.28",
- "rusqlite",
- "serde",
- "serde_json",
- "sha2",
- "tempfile",
- "tokio",
- "tree-sitter",
- "tree-sitter-bash",
- "tree-sitter-c",
- "tree-sitter-cpp",
- "tree-sitter-css",
- "tree-sitter-go",
- "tree-sitter-html",
- "tree-sitter-java",
- "tree-sitter-javascript",
- "tree-sitter-json",
- "tree-sitter-python",
- "tree-sitter-ruby",
- "tree-sitter-rust",
- "tree-sitter-toml-ng",
- "tree-sitter-typescript",
-]
-
-[[package]]
-name = "sidex-dap"
-version = "0.2.0"
-dependencies = [
- "anyhow",
- "log",
- "serde",
- "serde_json",
- "thiserror 2.0.18",
- "tokio",
-]
-
-[[package]]
-name = "sidex-db"
-version = "0.2.0"
-dependencies = [
- "anyhow",
- "dirs 5.0.1",
- "log",
- "rusqlite",
- "serde",
- "serde_json",
- "tempfile",
- "thiserror 2.0.18",
-]
-
-[[package]]
-name = "sidex-extension-api"
-version = "0.2.0"
-dependencies = [
- "anyhow",
- "log",
- "serde",
- "serde_json",
- "sidex-extensions",
- "tokio",
- "uuid",
-]
-
-[[package]]
-name = "sidex-extension-sdk"
-version = "0.1.0"
-dependencies = [
- "wit-bindgen 0.41.0",
-]
-
-[[package]]
-name = "sidex-extensions"
-version = "0.2.0"
-dependencies = [
- "anyhow",
- "chrono",
- "dirs 6.0.0",
- "log",
- "reqwest 0.12.28",
- "serde",
- "serde_json",
- "tempfile",
- "thiserror 2.0.18",
- "tokio",
- "toml 0.8.2",
- "uuid",
- "walkdir",
- "which 7.0.3",
- "zip",
-]
-
-[[package]]
-name = "sidex-git"
-version = "0.2.0"
-dependencies = [
- "anyhow",
- "log",
- "serde",
- "tempfile",
- "thiserror 2.0.18",
- "tokio",
-]
-
-[[package]]
-name = "sidex-keymap"
-version = "0.2.0"
-dependencies = [
- "anyhow",
- "log",
- "regex",
- "serde",
- "serde_json",
- "thiserror 2.0.18",
-]
-
-[[package]]
-name = "sidex-lsp"
-version = "0.2.0"
-dependencies = [
- "anyhow",
- "log",
- "lsp-types",
- "serde",
- "serde_json",
- "sidex-text",
- "thiserror 2.0.18",
- "tokio",
-]
-
-[[package]]
-name = "sidex-profiles"
-version = "0.2.0"
-dependencies = [
- "anyhow",
- "serde",
- "serde_json",
- "tokio",
-]
-
-[[package]]
-name = "sidex-remote"
-version = "0.2.0"
-dependencies = [
- "anyhow",
- "async-trait",
- "bollard",
- "dirs 5.0.1",
- "futures-util",
- "log",
- "reqwest 0.12.28",
- "russh",
- "russh-keys",
- "serde",
- "serde_json",
- "tar",
- "tempfile",
- "thiserror 2.0.18",
- "tokio",
- "tokio-tungstenite 0.26.2",
- "winapi",
-]
-
-[[package]]
-name = "sidex-settings"
-version = "0.2.0"
-dependencies = [
- "anyhow",
- "log",
- "notify 7.0.0",
- "serde",
- "serde_json",
- "thiserror 2.0.18",
-]
-
-[[package]]
-name = "sidex-syntax"
-version = "0.2.0"
-dependencies = [
- "bitflags 2.11.1",
- "fancy-regex",
- "log",
- "once_cell",
- "plist",
- "regex",
- "serde",
- "serde_json",
- "sidex-text",
- "streaming-iterator",
- "thiserror 2.0.18",
- "tree-sitter",
- "tree-sitter-rust",
-]
-
-[[package]]
-name = "sidex-tasks"
-version = "0.2.0"
-dependencies = [
- "anyhow",
- "log",
- "regex",
- "serde",
- "serde_json",
- "thiserror 2.0.18",
- "tokio",
-]
-
-[[package]]
-name = "sidex-text"
-version = "0.2.0"
-dependencies = [
- "memchr",
- "regex",
- "ropey",
- "serde",
- "serde_json",
- "unicode-segmentation",
- "unicode-width",
-]
-
-[[package]]
-name = "sidex-textmate"
-version = "0.2.0"
-dependencies = [
- "anyhow",
- "log",
- "once_cell",
- "onig",
- "parking_lot",
- "plist",
- "pretty_assertions",
- "regex",
- "serde",
- "serde_json",
- "thiserror 2.0.18",
-]
-
-[[package]]
-name = "sidex-theme"
-version = "0.2.0"
-dependencies = [
- "anyhow",
- "log",
- "serde",
- "serde_json",
- "thiserror 2.0.18",
-]
-
-[[package]]
-name = "sidex-update"
-version = "0.2.0"
-dependencies = [
- "anyhow",
- "base64 0.22.1",
- "ed25519-dalek",
- "futures-util",
- "hex",
- "log",
- "parking_lot",
- "reqwest 0.12.28",
- "semver",
- "serde",
- "serde_json",
- "sha2",
- "tempfile",
- "thiserror 2.0.18",
- "tokio",
- "windows-sys 0.59.0",
-]
-
-[[package]]
-name = "sidex-workspace"
-version = "0.2.0"
-dependencies = [
- "anyhow",
- "dashmap",
- "glob",
- "globset",
- "hex",
- "ignore",
- "log",
- "memchr",
- "notify 7.0.0",
- "pathdiff",
- "rayon",
- "regex",
- "serde",
- "serde_json",
- "sha2",
- "sidex-theme",
- "tempfile",
- "thiserror 2.0.18",
- "tokio",
- "walkdir",
-]
 
 [[package]]
 name = "sigchld"

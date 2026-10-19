@@ -98,7 +98,7 @@
 	overflow: hidden;
 }
 
-.monaco-workbench .part.titlebar .sidex-center-bar {
+.monaco-workbench .part.titlebar .sc-code-center-bar {
 	pointer-events: auto;
 }
 
@@ -135,7 +135,7 @@
 }
 
 /* ==============================
-   Sidex Titlebar Elements
+   ScCode Titlebar Elements
    Unified design system:
    - All interactive items: 24px height, border-radius 5px
    - Hover: rgba(255,255,255,0.07)
@@ -146,9 +146,9 @@
    ============================== */
 
 /* --- Shared interactive base --- */
-.monaco-workbench .part.titlebar .sidex-project-name,
-.monaco-workbench .part.titlebar .sidex-branch-container,
-.monaco-workbench .part.titlebar .sidex-search-trigger {
+.monaco-workbench .part.titlebar .sc-code-project-name,
+.monaco-workbench .part.titlebar .sc-code-branch-container,
+.monaco-workbench .part.titlebar .sc-code-search-trigger {
 	display: flex;
 	align-items: center;
 	height: 24px;
@@ -160,20 +160,20 @@
 	flex-shrink: 0;
 }
 
-.monaco-workbench .part.titlebar .sidex-project-name:hover,
-.monaco-workbench .part.titlebar .sidex-branch-container:hover,
-.monaco-workbench .part.titlebar .sidex-search-trigger:hover {
+.monaco-workbench .part.titlebar .sc-code-project-name:hover,
+.monaco-workbench .part.titlebar .sc-code-branch-container:hover,
+.monaco-workbench .part.titlebar .sc-code-search-trigger:hover {
 	background: rgba(255, 255, 255, 0.07);
 }
 
-.monaco-workbench .part.titlebar.inactive .sidex-project-name,
-.monaco-workbench .part.titlebar.inactive .sidex-branch-container,
-.monaco-workbench .part.titlebar.inactive .sidex-search-trigger {
+.monaco-workbench .part.titlebar.inactive .sc-code-project-name,
+.monaco-workbench .part.titlebar.inactive .sc-code-branch-container,
+.monaco-workbench .part.titlebar.inactive .sc-code-search-trigger {
 	opacity: 1;
 }
 
 /* --- Project Name --- */
-.monaco-workbench .part.titlebar .sidex-project-name {
+.monaco-workbench .part.titlebar .sc-code-project-name {
 	font-size: 11.5px;
 	font-weight: 600;
 	color: var(--vscode-titleBar-activeForeground);
@@ -185,23 +185,23 @@
 }
 
 /* --- Git Branch --- */
-.monaco-workbench .part.titlebar .sidex-branch-container {
+.monaco-workbench .part.titlebar .sc-code-branch-container {
 	gap: 4px;
 	padding: 0 6px;
 	margin-left: 0;
 }
 
-.monaco-workbench .part.titlebar .sidex-branch-separator {
+.monaco-workbench .part.titlebar .sc-code-branch-separator {
 	display: none;
 }
 
-.monaco-workbench .part.titlebar .sidex-branch-icon {
+.monaco-workbench .part.titlebar .sc-code-branch-icon {
 	font-size: 13px;
 	opacity: 0.45;
 	color: var(--vscode-titleBar-activeForeground);
 }
 
-.monaco-workbench .part.titlebar .sidex-branch-name {
+.monaco-workbench .part.titlebar .sc-code-branch-name {
 	font-size: 11.5px;
 	font-weight: 500;
 	color: var(--vscode-titleBar-activeForeground);
@@ -212,22 +212,22 @@
 	max-width: 120px;
 }
 
-.monaco-workbench .part.titlebar .sidex-branch-chevron {
+.monaco-workbench .part.titlebar .sc-code-branch-chevron {
 	font-size: 10px;
 	opacity: 0.3;
 	color: var(--vscode-titleBar-activeForeground);
 }
 
-.monaco-workbench .part.titlebar .sidex-branch-container:hover .sidex-branch-icon {
+.monaco-workbench .part.titlebar .sc-code-branch-container:hover .sc-code-branch-icon {
 	opacity: 0.7;
 }
 
-.monaco-workbench .part.titlebar .sidex-branch-container:hover .sidex-branch-name {
+.monaco-workbench .part.titlebar .sc-code-branch-container:hover .sc-code-branch-name {
 	opacity: 0.9;
 }
 
 /* --- Center Bar (combined breadcrumbs + search trigger) --- */
-.monaco-workbench .part.titlebar .sidex-center-bar {
+.monaco-workbench .part.titlebar .sc-code-center-bar {
 	display: flex;
 	align-items: center;
 	height: 22px;
@@ -242,40 +242,40 @@
 	transition: background 100ms ease;
 }
 
-.monaco-workbench .part.titlebar .sidex-center-bar:hover {
+.monaco-workbench .part.titlebar .sc-code-center-bar:hover {
 	background: var(--vscode-toolbar-hoverBackground, rgba(128, 128, 128, 0.12));
 }
 
-.monaco-workbench .part.titlebar .sidex-center-bar:hover .sidex-center-icon,
-.monaco-workbench .part.titlebar .sidex-center-bar:hover .sidex-breadcrumbs,
-.monaco-workbench .part.titlebar .sidex-center-bar:hover .sidex-center-placeholder {
+.monaco-workbench .part.titlebar .sc-code-center-bar:hover .sc-code-center-icon,
+.monaco-workbench .part.titlebar .sc-code-center-bar:hover .sc-code-breadcrumbs,
+.monaco-workbench .part.titlebar .sc-code-center-bar:hover .sc-code-center-placeholder {
 	opacity: 0.7;
 }
 
-.monaco-workbench .part.titlebar.inactive .sidex-center-bar {
+.monaco-workbench .part.titlebar.inactive .sc-code-center-bar {
 	opacity: 1;
 }
 
-.monaco-workbench .part.titlebar .sidex-center-icon {
+.monaco-workbench .part.titlebar .sc-code-center-icon {
 	font-size: 12px;
 	color: var(--vscode-titleBar-activeForeground);
 	opacity: 0.25;
 	flex-shrink: 0;
 }
 
-.monaco-workbench .part.titlebar .sidex-center-placeholder {
+.monaco-workbench .part.titlebar .sc-code-center-placeholder {
 	font-size: 11.5px;
 	color: var(--vscode-titleBar-activeForeground);
 	opacity: 0.25;
 	white-space: nowrap;
 }
 
-.monaco-workbench .part.titlebar .sidex-center-bar:hover .sidex-center-placeholder {
+.monaco-workbench .part.titlebar .sc-code-center-bar:hover .sc-code-center-placeholder {
 	opacity: 0.45;
 }
 
 /* --- Breadcrumbs inside center bar --- */
-.monaco-workbench .part.titlebar .sidex-breadcrumbs {
+.monaco-workbench .part.titlebar .sc-code-breadcrumbs {
 	display: flex;
 	align-items: center;
 	gap: 0;
@@ -288,34 +288,34 @@
 	min-width: 0;
 }
 
-.monaco-workbench .part.titlebar .sidex-breadcrumb-segment {
+.monaco-workbench .part.titlebar .sc-code-breadcrumb-segment {
 	white-space: nowrap;
 	opacity: 0.7;
 }
 
-.monaco-workbench .part.titlebar .sidex-breadcrumb-file {
+.monaco-workbench .part.titlebar .sc-code-breadcrumb-file {
 	opacity: 1;
 	font-weight: 500;
 }
 
-.monaco-workbench .part.titlebar .sidex-breadcrumb-sep {
+.monaco-workbench .part.titlebar .sc-code-breadcrumb-sep {
 	margin: 0 4px;
 	opacity: 0.3;
 	font-size: 9px;
 }
 
 /* --- Search Trigger (old, replaced by center bar) --- */
-.monaco-workbench .part.titlebar .sidex-search-trigger {
+.monaco-workbench .part.titlebar .sc-code-search-trigger {
 	display: none;
 }
 
-.monaco-workbench .part.titlebar .sidex-search-icon,
-.monaco-workbench .part.titlebar .sidex-search-label,
-.monaco-workbench .part.titlebar .sidex-search-shortcut {
+.monaco-workbench .part.titlebar .sc-code-search-icon,
+.monaco-workbench .part.titlebar .sc-code-search-label,
+.monaco-workbench .part.titlebar .sc-code-search-shortcut {
 	display: none;
 }
 /* --- Profile/Settings unified pill button (Windsurf style, rounded 6px) --- */
-.monaco-workbench .part.titlebar .sidex-profile-button {
+.monaco-workbench .part.titlebar .sc-code-profile-button {
 	display: flex;
 	align-items: center;
 	height: 24px;
@@ -330,11 +330,11 @@
 	box-sizing: border-box;
 }
 
-.monaco-workbench .part.titlebar .sidex-profile-button:hover {
+.monaco-workbench .part.titlebar .sc-code-profile-button:hover {
 	background-color: color-mix(in srgb, var(--vscode-titleBar-activeForeground, #cccccc) 16%, transparent);
 }
 
-.monaco-workbench .part.titlebar .sidex-profile-initials {
+.monaco-workbench .part.titlebar .sc-code-profile-initials {
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -349,20 +349,20 @@
 	margin-right: 4px;
 }
 
-.monaco-workbench .part.titlebar .sidex-profile-chevron {
+.monaco-workbench .part.titlebar .sc-code-profile-chevron {
 	font-size: 10px;
 	color: var(--vscode-titleBar-activeForeground);
 	opacity: 0.6;
 }
 
-.monaco-workbench .part.titlebar .sidex-profile-button:hover .sidex-profile-chevron {
+.monaco-workbench .part.titlebar .sc-code-profile-button:hover .sc-code-profile-chevron {
 	opacity: 0.9;
 }
 
 /* Breadcrumbs are styled inside the center bar section above */
 
 /* ==============================
-   Window title (hidden in Sidex layout, kept for compat)
+   Window title (hidden in ScCode layout, kept for compat)
    ============================== */
 .monaco-workbench .part.titlebar > .titlebar-container > .titlebar-center > .window-title {
 	flex: 0 1 auto;
@@ -389,7 +389,7 @@
 	gap: 4px;
 }
 
-/* Command Center (hidden by default in Sidex) */
+/* Command Center (hidden by default in ScCode) */
 .monaco-workbench .part.titlebar > .titlebar-container > .titlebar-center > .window-title > .command-center {
 	z-index: 2500;
 	-webkit-app-region: no-drag;
@@ -664,12 +664,12 @@
 	color: white;
 }
 
-/* Center-Adjacent Toolbar — hidden in Sidex */
+/* Center-Adjacent Toolbar — hidden in ScCode */
 .monaco-workbench .part.titlebar > .titlebar-container > .titlebar-right > .center-adjacent-toolbar-container {
 	display: none !important;
 }
 
-/* Action Tool Bar Controls — hidden in Sidex (we use custom titlebar buttons) */
+/* Action Tool Bar Controls — hidden in ScCode (we use custom titlebar buttons) */
 .monaco-workbench .part.titlebar > .titlebar-container > .titlebar-right > .action-toolbar-container {
 	display: none !important;
 }
@@ -738,38 +738,38 @@
 	text-align: center;
 }
 
-/* Sidex titlebar action elements are styled in the unified section above */
+/* ScCode titlebar action elements are styled in the unified section above */
 
 /* ==============================
-   Sidex Rich Popup (Project/Branch picker)
+   ScCode Rich Popup (Project/Branch picker)
    ============================== */
-.sidex-rich-popup {
+.sc-code-rich-popup {
 	background: var(--popup-bg, var(--vscode-menu-background, #202122));
 	border: 1px solid var(--popup-border, var(--vscode-menu-border, #2a2b2c));
 	border-radius: 8px;
 	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
 	padding: 6px;
 	overflow: hidden;
-	animation: sidex-popup-in 100ms ease;
+	animation: sc-code-popup-in 100ms ease;
 	color: var(--popup-fg, var(--vscode-menu-foreground, #bfbfbf));
 }
 
-.sidex-git-popup {
+.sc-code-git-popup {
 	display: flex;
 	flex-direction: column;
 	max-height: 520px;
 }
 
-@keyframes sidex-popup-in {
+@keyframes sc-code-popup-in {
 	from { transform: translateY(-4px); opacity: 0.8; }
 	to { transform: translateY(0); opacity: 1; }
 }
 
-.sidex-popup-search-row {
+.sc-code-popup-search-row {
 	padding: 4px 6px 6px;
 }
 
-.sidex-popup-search {
+.sc-code-popup-search {
 	width: 100%;
 	background: var(--popup-input-bg, var(--vscode-input-background, #191a1b));
 	border: 1px solid var(--popup-input-border, var(--vscode-input-border, #333536));
@@ -782,11 +782,11 @@
 	box-sizing: border-box;
 }
 
-.sidex-popup-search:focus {
+.sc-code-popup-search:focus {
 	border-color: var(--popup-focus-border, var(--vscode-focusBorder, #007acc));
 }
 
-.sidex-popup-content {
+.sc-code-popup-content {
 	flex: 1;
 	overflow-y: auto;
 	overflow-x: hidden;
@@ -794,35 +794,35 @@
 	max-height: 320px;
 }
 
-.sidex-popup-content::-webkit-scrollbar {
+.sc-code-popup-content::-webkit-scrollbar {
 	width: 6px;
 }
 
-.sidex-popup-content::-webkit-scrollbar-track {
+.sc-code-popup-content::-webkit-scrollbar-track {
 	background: transparent;
 }
 
-.sidex-popup-content::-webkit-scrollbar-thumb {
+.sc-code-popup-content::-webkit-scrollbar-thumb {
 	background: rgba(255, 255, 255, 0.1);
 	border-radius: 3px;
 }
 
-.sidex-popup-content::-webkit-scrollbar-thumb:hover {
+.sc-code-popup-content::-webkit-scrollbar-thumb:hover {
 	background: rgba(255, 255, 255, 0.2);
 }
 
-.sidex-popup-actions {
+.sc-code-popup-actions {
 	flex-shrink: 0;
 	max-height: 200px;
 	overflow-y: auto;
 }
 
-.sidex-popup-actions .sidex-popup-separator {
+.sc-code-popup-actions .sc-code-popup-separator {
 	margin: 2px 8px;
 }
 
-.sidex-popup-loading,
-.sidex-popup-empty {
+.sc-code-popup-loading,
+.sc-code-popup-empty {
 	padding: 12px 10px;
 	font-size: 12px;
 	color: var(--popup-desc-fg, #8b8b8b);
@@ -830,7 +830,7 @@
 	opacity: 0.7;
 }
 
-.sidex-popup-item {
+.sc-code-popup-item {
 	display: flex;
 	align-items: center;
 	gap: 8px;
@@ -842,21 +842,21 @@
 	transition: background 80ms ease;
 }
 
-.sidex-popup-item:hover,
-.sidex-popup-item.focused {
+.sc-code-popup-item:hover,
+.sc-code-popup-item.focused {
 	background: var(--popup-sel-bg, rgba(255, 255, 255, 0.07));
 }
 
-.sidex-popup-item-active {
+.sc-code-popup-item-active {
 	opacity: 1;
 }
 
-.sidex-popup-item-active .sidex-popup-icon {
+.sc-code-popup-item-active .sc-code-popup-icon {
 	color: var(--vscode-gitDecoration-addedResourceForeground, #73c991);
 	opacity: 1;
 }
 
-.sidex-popup-selected-tag {
+.sc-code-popup-selected-tag {
 	font-size: 10px;
 	font-weight: 500;
 	padding: 1px 6px;
@@ -868,7 +868,7 @@
 	letter-spacing: 0.3px;
 }
 
-.sidex-popup-badge {
+.sc-code-popup-badge {
 	font-size: 10px;
 	padding: 1px 5px;
 	border-radius: 3px;
@@ -878,15 +878,15 @@
 	flex-shrink: 0;
 }
 
-.sidex-popup-action-item {
+.sc-code-popup-action-item {
 	opacity: 0.8;
 }
 
-.sidex-popup-action-item:hover {
+.sc-code-popup-action-item:hover {
 	opacity: 1;
 }
 
-.sidex-popup-icon {
+.sc-code-popup-icon {
 	font-size: 14px;
 	opacity: 0.6;
 	width: 18px;
@@ -894,20 +894,20 @@
 	flex-shrink: 0;
 }
 
-.sidex-popup-label {
+.sc-code-popup-label {
 	flex: 1;
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
 }
 
-.sidex-popup-separator {
+.sc-code-popup-separator {
 	height: 1px;
 	background: var(--popup-border, rgba(255, 255, 255, 0.08));
 	margin: 4px 8px;
 }
 
-.sidex-popup-header {
+.sc-code-popup-header {
 	font-size: 11px;
 	font-weight: 600;
 	color: var(--popup-desc-fg, #8b8b8b);
@@ -916,7 +916,7 @@
 	letter-spacing: 0.04em;
 }
 
-.sidex-popup-desc {
+.sc-code-popup-desc {
 	font-size: 11px;
 	opacity: 0.4;
 	margin-left: auto;
@@ -928,9 +928,9 @@
 	max-width: 180px;
 }
 
-/* Unify context view / monaco-menu-container and sidex-rich-popup borders */
+/* Unify context view / monaco-menu-container and sc-code-rich-popup borders */
 .context-view .monaco-menu-container,
 .menubar .menubar-menu-items-holder.monaco-menu-container,
-.sidex-rich-popup {
+.sc-code-rich-popup {
 	border: 1px solid var(--vscode-widget-border, rgba(255, 255, 255, 0.09)) !important;
 }

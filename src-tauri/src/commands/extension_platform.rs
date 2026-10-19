@@ -45,7 +45,7 @@ impl ResolvedNode {
 }
 
 /// Extension manifest record produced entirely by Rust.
-/// Works for both Node (package.json) and WASM (sidex.toml) extensions.
+/// Works for both Node (package.json) and WASM (sc-code.toml, legacy sc-code.toml) extensions.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ExtensionManifest {
@@ -105,15 +105,15 @@ pub fn path_to_uri_path(path: &str) -> String {
 }
 
 #[derive(Debug, Deserialize)]
-struct SidexTomlManifest {
-    extension: SidexTomlExtension,
-    activation: Option<SidexTomlActivation>,
-    contributes: Option<SidexTomlContributes>,
+struct ScCodeTomlManifest {
+    extension: ScCodeTomlExtension,
+    activation: Option<ScCodeTomlActivation>,
+    contributes: Option<ScCodeTomlContributes>,
 }
 
 #[allow(dead_code)]
 #[derive(Debug, Deserialize)]
-struct SidexTomlExtension {
+struct ScCodeTomlExtension {
     id: String,
     name: String,
     version: String,
@@ -123,36 +123,45 @@ struct SidexTomlExtension {
 }
 
 #[derive(Debug, Deserialize)]
-struct SidexTomlActivation {
+struct ScCodeTomlActivation {
     #[serde(default)]
     events: Vec<String>,
 }
 
 #[derive(Debug, Deserialize)]
-struct SidexTomlContributes {
+struct ScCodeTomlContributes {
     #[serde(default)]
     languages: Vec<String>,
     #[serde(default)]
-    commands: Vec<SidexTomlCommand>,
+    commands: Vec<ScCodeTomlCommand>,
 }
 
 #[allow(dead_code)]
 #[derive(Debug, Deserialize)]
-struct SidexTomlCommand {
+struct ScCodeTomlCommand {
     id: String,
     title: String,
+}
+
+const WASM_MANIFEST_FILE: &str = "sc-code.toml";
+
+/// Returns the WASM manifest path.
+fn wasm_manifest_path(ext_dir: &Path) -> Option<PathBuf> {
+    let preferred = ext_dir.join(WASM_MANIFEST_FILE);
+    preferred.is_file().then_some(preferred)
 }
 
 pub fn read_wasm_extension_manifest(
     app: &AppHandle,
     ext_dir: &Path,
 ) -> Result<ExtensionManifest, String> {
-    let toml_path = ext_dir.join("sidex.toml");
+    let toml_path = wasm_manifest_path(ext_dir)
+        .ok_or_else(|| format!("no {WASM_MANIFEST_FILE} in {}", ext_dir.display()))?;
     let raw_bytes =
         fs::read(&toml_path).map_err(|e| format!("read {}: {e}", toml_path.display()))?;
     let raw = crate::commands::encoding::decode_utf8_strict(&raw_bytes)
         .map_err(|e| format!("decode {}: {e}", toml_path.display()))?;
-    let manifest: SidexTomlManifest =
+    let manifest: ScCodeTomlManifest =
         toml::from_str(raw).map_err(|e| format!("parse {}: {e}", toml_path.display()))?;
 
     let wasm_path = ext_dir.join(&manifest.extension.wasm);
@@ -259,15 +268,15 @@ pub struct InitDataRemote {
 }
 
 pub fn user_extensions_dir() -> PathBuf {
-    sidex_extensions::paths::user_extensions_dir()
+    sc_code_extensions::paths::user_extensions_dir()
 }
 
 pub fn global_storage_dir() -> PathBuf {
-    sidex_extensions::paths::global_storage_dir()
+    sc_code_extensions::paths::global_storage_dir()
 }
 
 fn user_data_dir() -> PathBuf {
-    sidex_extensions::paths::user_data_dir()
+    sc_code_extensions::paths::user_data_dir()
 }
 
 pub fn resolve_server_script(app: &AppHandle) -> PathBuf {
@@ -329,7 +338,6 @@ fn is_usable_node(binary: &str) -> bool {
 pub fn bundled_node_candidates(app: &AppHandle) -> Vec<PathBuf> {
     let mut candidates = Vec::new();
 
-
     let resource_candidates = if cfg!(target_os = "windows") {
         vec!["node/node.exe", "bin/node.exe", "node.exe"]
     } else {
@@ -357,9 +365,19 @@ pub fn bundled_node_candidates(app: &AppHandle) -> Vec<PathBuf> {
 }
 
 pub fn resolve_node_runtime(app: &AppHandle) -> Result<ResolvedNode, String> {
-    if let Some(path) = std::env::var("SC_CODE_NODE_BINARY").ok().or_else(|| std::env::var("SIDEX_NODE_BINARY").ok()) {
-        if !is_usable_node(&path) { return Err("Configured Node runtime cannot execute".into()); }
-        return Ok(ResolvedNode { version: read_node_version(&path), path, source: "env", bundled: false });
+    if let Some(path) = std::env::var("SC_CODE_NODE_BINARY")
+        .ok()
+        .or_else(|| std::env::var("SC_CODE_NODE_BINARY").ok())
+    {
+        if !is_usable_node(&path) {
+            return Err("Configured Node runtime cannot execute".into());
+        }
+        return Ok(ResolvedNode {
+            version: read_node_version(&path),
+            path,
+            source: "env",
+            bundled: false,
+        });
     }
     for candidate in bundled_node_candidates(app) {
         if let Some(path) = candidate.to_str() {
@@ -412,7 +430,7 @@ fn extension_source(app: &AppHandle, path: &Path) -> (String, bool) {
 }
 
 fn is_version_greater(a: &str, b: &str) -> bool {
-    sidex_extensions::manifest::is_version_greater(a, b)
+    sc_code_extensions::manifest::is_version_greater(a, b)
 }
 
 fn manifest_entry_exists(ext_dir: &Path, entry: &str) -> bool {
@@ -551,10 +569,12 @@ pub fn scan_extensions(app: &AppHandle, paths: &[PathBuf]) -> Vec<ExtensionManif
     // Restrictions are user policy, not silent product blacklists. API/identity/license
     // compatibility must still be verified per extension; discovery is not compatibility.
     let disable_ids: HashSet<String> = std::env::var("SC_CODE_DISABLE_EXTENSION_IDS")
-        .or_else(|_| std::env::var("SIDEX_DISABLE_EXTENSION_IDS"))
         .unwrap_or_default()
-        .split(',').map(str::trim).filter(|s| !s.is_empty())
-        .map(str::to_ascii_lowercase).collect();
+        .split(',')
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .map(str::to_ascii_lowercase)
+        .collect();
 
     let mut by_id: HashMap<String, ExtensionManifest> = HashMap::new();
     for search_path in paths {
@@ -571,7 +591,7 @@ pub fn scan_extensions(app: &AppHandle, paths: &[PathBuf]) -> Vec<ExtensionManif
             }
 
             let ext_dir = entry.path();
-            let manifest = if ext_dir.join("sidex.toml").exists() {
+            let manifest = if wasm_manifest_path(&ext_dir).is_some() {
                 read_wasm_extension_manifest(app, &ext_dir)
             } else {
                 read_extension_manifest(app, &ext_dir)
@@ -655,7 +675,7 @@ pub fn build_init_data(
                 .to_string(),
             app_name: "ScCode".to_string(),
             app_host: "desktop".to_string(),
-            app_uri_scheme: "sidex".to_string(),
+            app_uri_scheme: "sc-code".to_string(),
             app_language: "en".to_string(),
             extension_telemetry_log_resource: UriComponents {
                 scheme: "file".to_string(),
@@ -760,7 +780,7 @@ pub async fn extension_platform_bootstrap(
                 }
             }
             log::info!("[platform] {count} WASM extensions loaded, emitting ready event");
-            let _ = app_handle.emit("sidex-wasm-extensions-ready", count);
+            let _ = app_handle.emit("sc-code-wasm-extensions-ready", count);
         });
     }
 

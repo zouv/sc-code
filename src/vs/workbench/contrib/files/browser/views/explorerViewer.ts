@@ -2088,7 +2088,7 @@ export class FileDragAndDrop implements ITreeDragAndDrop<ExplorerItem> {
 		try {
 			// External file DND (Import/Upload file)
 			if (data instanceof NativeDragAndDropData) {
-				// SideX: always use local file import since our Tauri backend handles file I/O.
+				// ScCode: always use local file import since our Tauri backend handles file I/O.
 				const fileImport = this.instantiationService.createInstance(ExternalFileImport);
 				await fileImport.import(resolvedTarget, originalEvent, mainWindow);
 			}

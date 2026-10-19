@@ -260,7 +260,7 @@ function createRequire(extensionPath) {
   require.extensions = {
     '.js': loadModule,
     '.json': loadModule,
-    '.node': () => { throw new Error('.node addons not supported in SideX polyfill'); },
+    '.node': () => { throw new Error('.node addons not supported in ScCode polyfill'); },
   };
 
   return require;

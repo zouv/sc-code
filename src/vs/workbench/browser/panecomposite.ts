@@ -209,7 +209,7 @@ export const Extensions = {
 	Panels: 'workbench.contributions.panels',
 	Auxiliary: 'workbench.contributions.auxiliary',
 	ChatBar: 'workbench.contributions.chatbar',
-	Sidex: 'workbench.contributions.sidex'
+	ScCode: 'workbench.contributions.sc-code'
 };
 
 export class PaneCompositeRegistry extends CompositeRegistry<PaneComposite> {
@@ -246,4 +246,4 @@ Registry.add(Extensions.Viewlets, new PaneCompositeRegistry());
 Registry.add(Extensions.Panels, new PaneCompositeRegistry());
 Registry.add(Extensions.Auxiliary, new PaneCompositeRegistry());
 Registry.add(Extensions.ChatBar, new PaneCompositeRegistry());
-Registry.add(Extensions.Sidex, new PaneCompositeRegistry());
+Registry.add(Extensions.ScCode, new PaneCompositeRegistry());

@@ -1,5 +1,5 @@
 /*---------------------------------------------------------------------------------------------
- *  SideX - A fast, native code editor
+ *  ScCode - A fast, native code editor
  *  Copyright (c) Siden Technologies, Inc. MIT Licensed.
  *--------------------------------------------------------------------------------------------*/
 

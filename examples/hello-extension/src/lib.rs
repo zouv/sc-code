@@ -1,8 +1,8 @@
-use sidex_extension_sdk::prelude::*;
+use sc_code_extension_sdk::prelude::*;
 
 struct HelloExtension;
 
-impl SidexExtension for HelloExtension {
+impl ScCodeExtension for HelloExtension {
     fn activate() -> Result<(), String> {
         host::log_info("Hello extension activated!");
         host::show_info_message("Hello from a native Rust extension!");
@@ -187,4 +187,4 @@ impl SidexExtension for HelloExtension {
     }
 }
 
-sidex_extension_sdk::export_extension!(HelloExtension);
+sc_code_extension_sdk::export_extension!(HelloExtension);

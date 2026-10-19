@@ -275,7 +275,7 @@ export class BrowserWorkbenchEnvironmentService implements IBrowserWorkbenchEnvi
 
 	@memoize
 	get webviewExternalEndpoint(): string {
-		if ((globalThis as any).__SIDEX_TAURI__) {
+		if ((globalThis as any).__SC_CODE_TAURI__) {
 			return `${window.location.origin}/webview-pre/`;
 		}
 

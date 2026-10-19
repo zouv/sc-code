@@ -1,5 +1,5 @@
 /*---------------------------------------------------------------------------------------------
- *  SideX: Stub for removed notebook range types.
+ *  ScCode: Stub for removed notebook range types.
  *--------------------------------------------------------------------------------------------*/
 
 export interface ICellRange {

@@ -85,10 +85,10 @@ function encodeFrame(opcode, data) {
 
 // ── Constants (from Rust via env vars) ──────────────────────────────────
 
-const SIDEX_DATA_DIR = profileHome();
-const EXTENSIONS_DIR = process.env.SIDEX_EXTENSIONS_DIR || path.join(SIDEX_DATA_DIR, 'extensions');
-const USER_DATA_DIR = path.join(SIDEX_DATA_DIR, 'data');
-const GLOBAL_STORAGE_DIR = process.env.SIDEX_GLOBAL_STORAGE_DIR || path.join(USER_DATA_DIR, 'User', 'globalStorage');
+const SC_CODE_DATA_DIR = profileHome();
+const EXTENSIONS_DIR = process.env.SC_CODE_EXTENSIONS_DIR || path.join(SC_CODE_DATA_DIR, 'extensions');
+const USER_DATA_DIR = path.join(SC_CODE_DATA_DIR, 'data');
+const GLOBAL_STORAGE_DIR = process.env.SC_CODE_GLOBAL_STORAGE_DIR || path.join(USER_DATA_DIR, 'User', 'globalStorage');
 
 [EXTENSIONS_DIR, USER_DATA_DIR, GLOBAL_STORAGE_DIR].forEach((d) => {
   try {
@@ -104,13 +104,13 @@ const GLOBAL_STORAGE_DIR = process.env.SIDEX_GLOBAL_STORAGE_DIR || path.join(USE
 
 let rustInitData = null;
 try {
-  if (process.env.SIDEX_INIT_DATA_FILE) {
-    const raw = fs.readFileSync(process.env.SIDEX_INIT_DATA_FILE, 'utf8');
+  if (process.env.SC_CODE_INIT_DATA_FILE) {
+    const raw = fs.readFileSync(process.env.SC_CODE_INIT_DATA_FILE, 'utf8');
     rustInitData = JSON.parse(raw);
     log(`received Rust-generated init data with ${(rustInitData.extensions || []).length} extensions`);
-    try { fs.unlinkSync(process.env.SIDEX_INIT_DATA_FILE); } catch {}
-  } else if (process.env.SIDEX_INIT_DATA) {
-    rustInitData = JSON.parse(process.env.SIDEX_INIT_DATA);
+    try { fs.unlinkSync(process.env.SC_CODE_INIT_DATA_FILE); } catch {}
+  } else if (process.env.SC_CODE_INIT_DATA) {
+    rustInitData = JSON.parse(process.env.SC_CODE_INIT_DATA);
     log(`received Rust-generated init data with ${(rustInitData.extensions || []).length} extensions`);
   }
 } catch (e) {
@@ -120,22 +120,22 @@ try {
 // ── Extension search paths (from Rust) ──────────────────────────────────
 
 function getExtensionSearchPaths() {
-  if (process.env.SIDEX_EXTENSION_SEARCH_PATHS) {
+  if (process.env.SC_CODE_EXTENSION_SEARCH_PATHS) {
     try {
-      const parsed = JSON.parse(process.env.SIDEX_EXTENSION_SEARCH_PATHS);
+      const parsed = JSON.parse(process.env.SC_CODE_EXTENSION_SEARCH_PATHS);
       if (Array.isArray(parsed) && parsed.length > 0) {
         return parsed.filter((p) => typeof p === 'string' && p.length > 0);
       }
     } catch (e) {
-      log(`bad SIDEX_EXTENSION_SEARCH_PATHS: ${e.message}`);
+      log(`bad SC_CODE_EXTENSION_SEARCH_PATHS: ${e.message}`);
     }
   }
 
-  const builtinExt = process.env.SIDEX_BUILTIN_EXTENSIONS_DIR;
+  const builtinExt = process.env.SC_CODE_BUILTIN_EXTENSIONS_DIR;
   // NOTE: do NOT scan ~/.vscode or ~/.cursor extension dirs — loading foreign
   // user extensions pulls in incompatible/platform-specific extensions and
   // can mutate the user's other-editor runtimes (e.g. redhat.java touching a
-  // VS Code-managed JDK). SideX only loads its own extension dirs.
+  // VS Code-managed JDK). ScCode only loads its own extension dirs.
   const candidates = [
     EXTENSIONS_DIR,
     builtinExt,
@@ -181,7 +181,7 @@ class ExtensionHostManager {
     }
 
     const reconnectionToken = crypto.randomUUID();
-    const initDataFile = path.join(os.tmpdir(), `sidex-host-${reconnectionToken}.json`);
+    const initDataFile = path.join(os.tmpdir(), `sc-code-host-${reconnectionToken}.json`);
     try {
       fs.writeFileSync(initDataFile, JSON.stringify(initData));
     } catch (e) {
@@ -194,8 +194,8 @@ class ExtensionHostManager {
       env: {
         ...process.env,
         VSCODE_HANDLES_UNCAUGHT_ERRORS: 'true',
-        SIDEX_EXTENSION_HOST: 'true',
-        SIDEX_INIT_DATA_FILE: initDataFile,
+        SC_CODE_EXTENSION_HOST: 'true',
+        SC_CODE_INIT_DATA_FILE: initDataFile,
       },
     });
 
@@ -335,7 +335,7 @@ class ClientConnection {
     // [CUSTOM-END] CUSTOM-20261013-013
 
     this._sendJson({
-      type: 'sidex:handshake',
+      type: 'sc-code:handshake',
       connectionToken,
       reconnectionToken,
       extensionCount: extensions.length,
@@ -364,7 +364,7 @@ class ClientConnection {
         appRoot: process.cwd(),
         appName: 'ScCode',
         appHost: 'desktop',
-        appUriScheme: 'sidex',
+        appUriScheme: 'sc-code',
         appLanguage: 'en',
         extensionTelemetryLogResource: { scheme: 'file', path: '' },
         isExtensionTelemetryLoggingOnly: false,
@@ -398,7 +398,7 @@ class ClientConnection {
         return;
       }
 
-      if (msg && msg.type === 'sidex:host-event') {
+      if (msg && msg.type === 'sc-code:host-event') {
         const event = msg.event;
         if (event && event.id !== undefined && this._pendingClientIds.has(event.id)) {
           this._pendingClientIds.delete(event.id);
@@ -411,7 +411,7 @@ class ClientConnection {
         return;
       }
 
-      if (msg && msg.type === 'sidex:host-reply') {
+      if (msg && msg.type === 'sc-code:host-reply') {
         const reply = msg.reply;
         if (reply && reply.id !== undefined && this._pendingClientIds.has(reply.id)) {
           this._pendingClientIds.delete(reply.id);
@@ -669,7 +669,7 @@ async function main() {
       JSON.stringify({
         status: 'ok',
         pid: process.pid,
-        sessionId: process.env.SIDEX_SESSION_ID || null,
+        sessionId: process.env.SC_CODE_SESSION_ID || null,
         extensionCount: rustInitData ? (rustInitData.extensions || []).length : null,
       }),
     );
@@ -681,7 +681,7 @@ async function main() {
 
   server.listen(port, '127.0.0.1', () => {
     process.stdout.write(JSON.stringify({ port }) + '\n');
-    log(`listening on 127.0.0.1:${port} (session=${process.env.SIDEX_SESSION_ID || 'unknown'})`);
+    log(`listening on 127.0.0.1:${port} (session=${process.env.SC_CODE_SESSION_ID || 'unknown'})`);
   });
 
   const shutdown = () => {

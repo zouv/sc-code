@@ -3,7 +3,7 @@ use std::sync::Arc;
 use serde::{Deserialize, Serialize};
 use tauri::State;
 
-use super::db_state::SidexDbState;
+use super::db_state::ScCodeDbState;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChatSessionInfo {
@@ -30,8 +30,8 @@ pub struct ChatMessageInfo {
     pub created_at: i64,
 }
 
-impl From<sidex_db::ChatSession> for ChatSessionInfo {
-    fn from(s: sidex_db::ChatSession) -> Self {
+impl From<sc_code_db::ChatSession> for ChatSessionInfo {
+    fn from(s: sc_code_db::ChatSession) -> Self {
         Self {
             id: s.id,
             title: s.title,
@@ -47,8 +47,8 @@ impl From<sidex_db::ChatSession> for ChatSessionInfo {
     }
 }
 
-impl From<sidex_db::ChatMessage> for ChatMessageInfo {
-    fn from(m: sidex_db::ChatMessage) -> Self {
+impl From<sc_code_db::ChatMessage> for ChatMessageInfo {
+    fn from(m: sc_code_db::ChatMessage) -> Self {
         Self {
             id: m.id,
             session_id: m.session_id,
@@ -64,7 +64,7 @@ impl From<sidex_db::ChatMessage> for ChatMessageInfo {
 #[allow(clippy::needless_pass_by_value)]
 #[tauri::command]
 pub fn session_create(
-    state: State<'_, Arc<SidexDbState>>,
+    state: State<'_, Arc<ScCodeDbState>>,
     id: String,
     title: String,
     model: String,
@@ -77,9 +77,9 @@ pub fn session_create(
         .map_err(|e| e.to_string())?
         .as_secs() as i64;
 
-    sidex_db::create_session(
+    sc_code_db::create_session(
         &db,
-        &sidex_db::ChatSession {
+        &sc_code_db::ChatSession {
             id,
             title,
             created_at: now,
@@ -98,12 +98,12 @@ pub fn session_create(
 #[allow(clippy::needless_pass_by_value)]
 #[tauri::command]
 pub fn session_list(
-    state: State<'_, Arc<SidexDbState>>,
+    state: State<'_, Arc<ScCodeDbState>>,
     workspace: String,
     limit: Option<u32>,
 ) -> Result<Vec<ChatSessionInfo>, String> {
     let db = state.lock_db().map_err(|e| e.to_string())?;
-    sidex_db::list_sessions(&db, &workspace, limit.unwrap_or(50) as usize)
+    sc_code_db::list_sessions(&db, &workspace, limit.unwrap_or(50) as usize)
         .map(|v| v.into_iter().map(ChatSessionInfo::from).collect())
         .map_err(|e| e.to_string())
 }
@@ -111,11 +111,11 @@ pub fn session_list(
 #[allow(clippy::needless_pass_by_value)]
 #[tauri::command]
 pub fn session_load(
-    state: State<'_, Arc<SidexDbState>>,
+    state: State<'_, Arc<ScCodeDbState>>,
     session_id: String,
 ) -> Result<Vec<ChatMessageInfo>, String> {
     let db = state.lock_db().map_err(|e| e.to_string())?;
-    sidex_db::load_messages(&db, &session_id)
+    sc_code_db::load_messages(&db, &session_id)
         .map(|v| v.into_iter().map(ChatMessageInfo::from).collect())
         .map_err(|e| e.to_string())
 }
@@ -123,7 +123,7 @@ pub fn session_load(
 #[allow(clippy::needless_pass_by_value)]
 #[tauri::command]
 pub fn session_save_message(
-    state: State<'_, Arc<SidexDbState>>,
+    state: State<'_, Arc<ScCodeDbState>>,
     id: String,
     session_id: String,
     role: String,
@@ -140,9 +140,9 @@ pub fn session_save_message(
             .as_secs() as i64
     });
 
-    sidex_db::save_message(
+    sc_code_db::save_message(
         &db,
-        &sidex_db::ChatMessage {
+        &sc_code_db::ChatMessage {
             id,
             session_id,
             role,
@@ -158,22 +158,22 @@ pub fn session_save_message(
 #[allow(clippy::needless_pass_by_value)]
 #[tauri::command]
 pub fn session_delete(
-    state: State<'_, Arc<SidexDbState>>,
+    state: State<'_, Arc<ScCodeDbState>>,
     session_id: String,
 ) -> Result<(), String> {
     let db = state.lock_db().map_err(|e| e.to_string())?;
-    sidex_db::delete_session(&db, &session_id).map_err(|e| e.to_string())
+    sc_code_db::delete_session(&db, &session_id).map_err(|e| e.to_string())
 }
 
 #[allow(clippy::needless_pass_by_value)]
 #[tauri::command]
 pub fn session_search(
-    state: State<'_, Arc<SidexDbState>>,
+    state: State<'_, Arc<ScCodeDbState>>,
     query: String,
     workspace: String,
 ) -> Result<Vec<ChatSessionInfo>, String> {
     let db = state.lock_db().map_err(|e| e.to_string())?;
-    sidex_db::search_sessions(&db, &query, &workspace)
+    sc_code_db::search_sessions(&db, &query, &workspace)
         .map(|v| v.into_iter().map(ChatSessionInfo::from).collect())
         .map_err(|e| e.to_string())
 }
@@ -181,32 +181,32 @@ pub fn session_search(
 #[allow(clippy::needless_pass_by_value)]
 #[tauri::command]
 pub fn session_update_title(
-    state: State<'_, Arc<SidexDbState>>,
+    state: State<'_, Arc<ScCodeDbState>>,
     session_id: String,
     title: String,
 ) -> Result<(), String> {
     let db = state.lock_db().map_err(|e| e.to_string())?;
-    sidex_db::update_session_title(&db, &session_id, &title).map_err(|e| e.to_string())
+    sc_code_db::update_session_title(&db, &session_id, &title).map_err(|e| e.to_string())
 }
 
 #[allow(clippy::needless_pass_by_value)]
 #[tauri::command]
 pub fn session_pin(
-    state: State<'_, Arc<SidexDbState>>,
+    state: State<'_, Arc<ScCodeDbState>>,
     session_id: String,
     pinned: bool,
 ) -> Result<(), String> {
     let db = state.lock_db().map_err(|e| e.to_string())?;
-    sidex_db::update_session_pin(&db, &session_id, pinned).map_err(|e| e.to_string())
+    sc_code_db::update_session_pin(&db, &session_id, pinned).map_err(|e| e.to_string())
 }
 
 #[allow(clippy::needless_pass_by_value)]
 #[tauri::command]
 pub fn session_archive(
-    state: State<'_, Arc<SidexDbState>>,
+    state: State<'_, Arc<ScCodeDbState>>,
     session_id: String,
     archived: bool,
 ) -> Result<(), String> {
     let db = state.lock_db().map_err(|e| e.to_string())?;
-    sidex_db::update_session_archive(&db, &session_id, archived).map_err(|e| e.to_string())
+    sc_code_db::update_session_archive(&db, &session_id, archived).map_err(|e| e.to_string())
 }

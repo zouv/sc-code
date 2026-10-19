@@ -1,5 +1,5 @@
 /*---------------------------------------------------------------------------------------------
- *  SideX: Stub for removed notebook execution state service types.
+ *  ScCode: Stub for removed notebook execution state service types.
  *--------------------------------------------------------------------------------------------*/
 
 export interface ICellExecutionStateUpdate {

@@ -1,5 +1,5 @@
 /*---------------------------------------------------------------------------------------------
- *  SideX: Stub for removed interactive editor input.
+ *  ScCode: Stub for removed interactive editor input.
  *--------------------------------------------------------------------------------------------*/
 
 export class InteractiveEditorInput {

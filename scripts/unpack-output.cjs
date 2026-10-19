@@ -1,13 +1,14 @@
 'use strict';
 // Windows unpacked distribution: archive the built profile, never mix a stale EXE with source runtime.
-// Published layout: packages/dev only has the Debug unpack zip; packages/release has the setup exe and Release unpack zip.
+// Published layout: packages/<dev|release>/unpack is the uncompressed runtime; the sibling zip
+// packages that exact folder with entries rooted at the zip root (no version subdirectory).
 const fs = require('node:fs');
 const path = require('node:path');
 const { assertLocalPath } = require('./package-output.cjs');
 const { sha256, treeHash, validateExtensions } = require('./desktop-runtime.cjs');
 const { writeZip, readZipEntries } = require('./zip-writer.cjs');
 const resourceDirs = ['bin', 'extension-host', 'extensions', 'licenses', 'shell-integration'];
-const requiredFiles = ['ScCode.exe', 'bin/node.exe', 'sidex-server.exe', 'runtime-manifest.json', 'extension-host/extensionHost.cjs',
+const requiredFiles = ['ScCode.exe', 'bin/node.exe', 'sc-code-agent.exe', 'runtime-manifest.json', 'extension-host/extensionHost.cjs',
   ...['server', 'host', 'configuration', 'transport-auth', 'storage'].map(name => 'extension-host/' + name + '.cjs'),
   'shell-integration/shellIntegration.ps1'];
 function relativeFile(value) {
@@ -69,7 +70,7 @@ function prepareUnpack(base, paths) {
   const targetRoot = path.join(fs.realpathSync(base), '.runtime/target');
   if (![path.join(targetRoot, paths.mode.toLowerCase()), path.join(targetRoot, 'x86_64-pc-windows-msvc', paths.mode.toLowerCase())].includes(paths.build)) throw new Error('Unpack currently supports native Windows x64 builds only');
   const runtime = validateUnpack(base, paths.build);
-  const selected = ['ScCode.exe', 'sidex-server.exe', 'runtime-manifest.json',
+  const selected = ['ScCode.exe', 'sc-code-agent.exe', 'runtime-manifest.json',
     ...resourceDirs.flatMap(name => inventory(base, path.join(paths.build, name)).map(file => path.relative(paths.build, file))),
     ...fs.readdirSync(paths.build).filter(name => name.toLowerCase().endsWith('.dll'))];
   // Debug packages keep PDB symbols for local diagnostics; Release packages never ship Cargo caches or symbols.
@@ -105,9 +106,78 @@ function prepareUnpack(base, paths) {
     return { base, stage };
   } catch (error) { removeStage(base, stage); throw error; }
 }
-function archiveUnpack(base, paths, stage) {
+function replaceBlockedError(destination, error) {
+  return new Error(`Cannot replace ${destination}: close any running ScCode instance that uses this unpack folder, then retry. (${error?.code || error?.message || 'in use'})`);
+}
+function assertUnpackTargetReady(base, paths) {
+  const destination = assertLocalPath(base, path.join(paths.packages, 'unpack'));
+  if (!fs.existsSync(destination)) return;
+  const probe = assertLocalPath(base, destination + '.probe-' + process.pid);
+  try {
+    if (fs.existsSync(probe)) fs.rmSync(probe, { recursive: true, force: true });
+    fs.renameSync(destination, probe);
+    fs.renameSync(probe, destination);
+  } catch (error) {
+    if (fs.existsSync(probe)) {
+      try { fs.renameSync(probe, destination); } catch {}
+    }
+    throw replaceBlockedError(destination, error);
+  }
+}
+function cleanupStaleUnpackDirs(base, paths) {
+  const destination = assertLocalPath(base, path.join(paths.packages, 'unpack'));
+  const parent = path.dirname(destination);
+  if (!fs.existsSync(parent)) return;
+  for (const name of fs.readdirSync(parent)) {
+    if (!name.startsWith('unpack.old-') && !name.startsWith('unpack.partial-')) continue;
+    try { fs.rmSync(path.join(parent, name), { recursive: true, force: true }); } catch {}
+  }
+}
+function exportUnpacked(base, paths, stage) {
   const source = assertLocalPath(base, stage);
   if (!fs.existsSync(source) || !fs.statSync(source).isDirectory()) throw new Error('Unpack staging directory is missing: ' + source);
+  const destination = assertLocalPath(base, path.join(paths.packages, 'unpack'));
+  const partial = assertLocalPath(base, destination + '.partial-' + process.pid);
+  const previous = assertLocalPath(base, destination + '.old-' + process.pid);
+  fs.mkdirSync(path.dirname(destination), { recursive: true });
+  cleanupStaleUnpackDirs(base, paths);
+  if (fs.existsSync(partial)) fs.rmSync(partial, { recursive: true, force: true });
+  let movedPrevious = false;
+  try {
+    // Copy the validated staging tree into a sibling first; only replace the
+    // published folder after the copy validates.
+    fs.cpSync(source, partial, { recursive: true, dereference: false });
+    validateUnpack(base, partial);
+    if (fs.existsSync(previous)) fs.rmSync(previous, { recursive: true, force: true });
+    if (fs.existsSync(destination)) {
+      inventory(base, destination); // Reject links before moving anything.
+      try {
+        fs.renameSync(destination, previous);
+        movedPrevious = true;
+      } catch (error) {
+        throw replaceBlockedError(destination, error);
+      }
+    }
+    fs.renameSync(partial, destination);
+    if (movedPrevious) {
+      // A running ScCode instance can hold node.exe open inside the old
+      // folder; leaving it aside must not fail a successfully published build.
+      try { fs.rmSync(previous, { recursive: true, force: true }); }
+      catch { console.warn('[WARN] Previous unpack folder is still in use and was left at ' + previous); }
+    }
+    console.log('[UNPACK] ' + destination);
+    return destination;
+  } catch (error) {
+    if (movedPrevious && !fs.existsSync(destination) && fs.existsSync(previous)) {
+      try { fs.renameSync(previous, destination); } catch {}
+    }
+    if (fs.existsSync(partial)) fs.rmSync(partial, { recursive: true, force: true });
+    throw error;
+  }
+}
+function archiveUnpack(base, paths, sourceDir) {
+  const source = assertLocalPath(base, sourceDir);
+  if (!fs.existsSync(source) || !fs.statSync(source).isDirectory()) throw new Error('Unpack directory is missing: ' + source);
   const version = JSON.parse(fs.readFileSync(path.join(fs.realpathSync(base), 'package.json'), 'utf8')).version;
   if (typeof version !== 'string' || !/^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/.test(version)) throw new Error('Invalid product version for unpack archive: ' + version);
   const folder = 'ScCode_' + version + '_x64-unpack' + (paths.mode === 'Debug' ? '-debug' : '');
@@ -118,7 +188,8 @@ function archiveUnpack(base, paths, stage) {
   const entries = files.map(file => {
     const stat = fs.statSync(file);
     if (stat.size > 0xffffffff) throw new Error('Unpack file too large for ZIP: ' + file);
-    return { name: folder + '/' + path.relative(source, file).replaceAll('\\', '/'), file, mtime: stat.mtime };
+    // The zip root is the unpack folder itself: no extra version directory.
+    return { name: path.relative(source, file).replaceAll('\\', '/'), file, mtime: stat.mtime };
   });
   fs.mkdirSync(destination, { recursive: true });
   const result = writeZip(output, entries);
@@ -130,7 +201,9 @@ function archiveUnpack(base, paths, stage) {
 }
 function exportUnpack(base, paths) {
   const prepared = prepareUnpack(base, paths);
-  try { return archiveUnpack(base, paths, prepared.stage); }
-  finally { removeStage(base, prepared.stage); }
+  try {
+    const unpack = exportUnpacked(base, paths, prepared.stage);
+    return archiveUnpack(base, paths, unpack);
+  } finally { removeStage(base, prepared.stage); }
 }
-module.exports = { resourceDirs, requiredFiles, validateUnpack, prepareUnpack, archiveUnpack, exportUnpack, removeStage };
+module.exports = { resourceDirs, requiredFiles, validateUnpack, prepareUnpack, assertUnpackTargetReady, exportUnpacked, archiveUnpack, exportUnpack, removeStage };

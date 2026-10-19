@@ -60,7 +60,7 @@ export namespace ThemeSettingDefaults {
  */
 export function migrateThemeSettingsId(settingsId: string): string {
 	switch (settingsId) {
-		case 'SideX Monochrome Dark':
+		case 'ScCode Monochrome Dark':
 			return 'Dark Modern';
 		case 'Light 2026':
 			return 'Light Modern';
@@ -82,7 +82,7 @@ export function migrateThemeSettingsId(settingsId: string): string {
 	return settingsId;
 }
 
-export const COLOR_THEME_SIDEX_MONO_INITIAL_COLORS: Record<string, string> = {
+export const COLOR_THEME_SC_CODE_MONO_INITIAL_COLORS: Record<string, string> = {
 	'actionBar.toggledBackground': '#252525',
 	'activityBar.activeBorder': '#d0d0d0',
 	'activityBar.background': '#0a0a0a',

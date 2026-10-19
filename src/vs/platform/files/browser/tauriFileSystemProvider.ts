@@ -1,5 +1,5 @@
 /*---------------------------------------------------------------------------------------------
- *  SideX — Tauri-backed file system provider.
+ *  ScCode — Tauri-backed file system provider.
  *  Handles `file` and `vscode-file` schemes by delegating all I/O to the
  *  Rust backend via `invoke()` from @tauri-apps/api/core.
  *--------------------------------------------------------------------------------------------*/

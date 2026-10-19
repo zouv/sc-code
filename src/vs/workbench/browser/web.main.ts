@@ -173,13 +173,13 @@ export class BrowserMain extends Disposable {
 			const commandService = accessor.get(ICommandService);
 
 			// Expose command service for native menu integration
-			(globalThis as any).__sidex_commandService = commandService;
+			(globalThis as any).__sc_code_commandService = commandService;
 
 			const editorService = accessor.get(IEditorService);
-			(globalThis as any).__sidex_editorService = editorService;
+			(globalThis as any).__sc_code_editorService = editorService;
 
 			const editorGroupsService = accessor.get(IEditorGroupsService);
-			(globalThis as any).__sidex_editorGroupsService = editorGroupsService;
+			(globalThis as any).__sc_code_editorGroupsService = editorGroupsService;
 
 			const lifecycleService = accessor.get(ILifecycleService);
 			const timerService = accessor.get(ITimerService);
@@ -194,11 +194,11 @@ export class BrowserMain extends Disposable {
 			const remoteAuthorityResolverService = accessor.get(IRemoteAuthorityResolverService);
 			const notificationService = accessor.get(INotificationService);
 
-			// SideX: open OS-dropped paths forwarded from main.ts (Tauri drag-drop).
+			// ScCode: open OS-dropped paths forwarded from main.ts (Tauri drag-drop).
 			// Files open as editors; a dropped directory opens as the workspace folder.
 			const fileService = accessor.get(IFileService);
 			const hostService = accessor.get(IHostService);
-			mainWindow.addEventListener('sidex-open-paths', ((e: CustomEvent) => {
+			mainWindow.addEventListener('sc-code-open-paths', ((e: CustomEvent) => {
 				const paths = e.detail?.paths;
 				if (!Array.isArray(paths) || paths.length === 0) {
 					return;
@@ -637,15 +637,15 @@ export class BrowserMain extends Disposable {
 		loggerService: ILoggerService,
 		logsPath: URI
 	): Promise<void> {
-		// SideX: All persistent file I/O is routed through the Tauri backend
-		// (Rust `sidex-workspace` + `sidex-text`). The `vscode-userdata:`
+		// ScCode: All persistent file I/O is routed through the Tauri backend
+		// (Rust `sc-code-workspace` + `sc-code-text`). The `vscode-userdata:`
 		// scheme is persisted to the OS app-data directory so settings,
 		// extensions, themes, and keybindings survive refreshes.
 
 		const isTauri =
 			typeof (globalThis as any).__TAURI_INTERNALS__ !== 'undefined' ||
 			typeof (globalThis as any).__TAURI__ !== 'undefined' ||
-			(globalThis as any).__SIDEX_TAURI__ === true;
+			(globalThis as any).__SC_CODE_TAURI__ === true;
 
 		fileService.registerProvider(logsPath.scheme, new InMemoryFileSystemProvider());
 

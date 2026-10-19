@@ -1,8 +1,8 @@
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex, RwLock};
 
+use sc_code_settings::{modify_jsonc, parse_jsonc, Settings};
 use serde_json::Value;
-use sidex_settings::{modify_jsonc, parse_jsonc, Settings};
 use tauri::State;
 
 pub struct SettingsStore {
@@ -25,8 +25,11 @@ impl SettingsStore {
 
     pub fn load_user(&self, path: &std::path::Path) -> Result<(), String> {
         let _mutation = self.mutation.lock().map_err(|e| e.to_string())?;
-        self.inner.write().map_err(|e| e.to_string())?
-            .load_user(path).map_err(|e| e.to_string())?;
+        self.inner
+            .write()
+            .map_err(|e| e.to_string())?
+            .load_user(path)
+            .map_err(|e| e.to_string())?;
         self.set_user_path(path);
         Ok(())
     }
@@ -47,8 +50,11 @@ impl SettingsStore {
                 Err(e) => return Err(e.to_string()),
             };
             let layer = parse_jsonc(&contents).map_err(|e| e.to_string())?;
-            self.inner.write().map_err(|e| e.to_string())?
-                .replace_user_layer(layer).map_err(|e| e.to_string())?;
+            self.inner
+                .write()
+                .map_err(|e| e.to_string())?
+                .replace_user_layer(layer)
+                .map_err(|e| e.to_string())?;
         }
         Ok(())
     }
@@ -66,20 +72,31 @@ impl SettingsStore {
                         Err(e) if e.kind() == std::io::ErrorKind::NotFound => "{}".to_owned(),
                         Err(e) => return Err(e.to_string()),
                     };
-                    if !parse_jsonc(&contents).map_err(|e| e.to_string())?.is_object() {
+                    if !parse_jsonc(&contents)
+                        .map_err(|e| e.to_string())?
+                        .is_object()
+                    {
                         return Err("user settings must be a JSON object".into());
                     }
-                    let updated = modify_jsonc(&contents, &[key], &value).map_err(|e| e.to_string())?;
+                    let updated =
+                        modify_jsonc(&contents, &[key], &value).map_err(|e| e.to_string())?;
                     let layer = parse_jsonc(&updated).map_err(|e| e.to_string())?;
-                    sidex_workspace::file_ops::write_file(&path, &updated).map_err(|e| e.to_string())?;
-                    settings.replace_user_layer(layer).map_err(|e| e.to_string())?;
+                    sc_code_workspace::file_ops::write_file(&path, &updated)
+                        .map_err(|e| e.to_string())?;
+                    settings
+                        .replace_user_layer(layer)
+                        .map_err(|e| e.to_string())?;
                 } else {
                     // Explicit headless/in-memory store: desktop startup always sets user_path.
                     settings.set(key, value);
                 }
             }
             "workspace" => settings.set_workspace(key, value),
-            _ => return Err(format!("invalid scope '{scope}': expected user or workspace")),
+            _ => {
+                return Err(format!(
+                    "invalid scope '{scope}': expected user or workspace"
+                ))
+            }
         }
         Ok(())
     }
@@ -185,7 +202,7 @@ mod tests {
     #[test]
     fn user_update_preserves_unrelated_file_keys_and_jsonc_comments() {
         let root = std::env::temp_dir().join(format!(
-            "sidex-settings-store-test-{}-{}",
+            "sc-code-settings-store-test-{}-{}",
             std::process::id(),
             std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
@@ -218,7 +235,7 @@ mod tests {
     #[test]
     fn user_update_creates_settings_file_when_missing() {
         let root = std::env::temp_dir().join(format!(
-            "sidex-settings-empty-test-{}-{}",
+            "sc-code-settings-empty-test-{}-{}",
             std::process::id(),
             std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
@@ -249,14 +266,24 @@ mod tests {
         let store = SettingsStore::new();
         store.load_user(&path).unwrap();
         std::fs::write(&path, "{ invalid").unwrap();
-        assert!(store.update("editor.fontSize", serde_json::json!(99), "user").is_err());
-        assert_eq!(store.inner.read().unwrap().get_raw("editor.fontSize"), Some(&serde_json::json!(12)));
+        assert!(store
+            .update("editor.fontSize", serde_json::json!(99), "user")
+            .is_err());
+        assert_eq!(
+            store.inner.read().unwrap().get_raw("editor.fontSize"),
+            Some(&serde_json::json!(12))
+        );
         assert_eq!(std::fs::read_to_string(&path).unwrap(), "{ invalid");
         let blocker = dir.path().join("not-a-directory");
         std::fs::write(&blocker, "keep").unwrap();
         store.set_user_path(&blocker.join("settings.json"));
-        assert!(store.update("editor.fontSize", serde_json::json!(99), "user").is_err());
-        assert_eq!(store.inner.read().unwrap().get_raw("editor.fontSize"), Some(&serde_json::json!(12)));
+        assert!(store
+            .update("editor.fontSize", serde_json::json!(99), "user")
+            .is_err());
+        assert_eq!(
+            store.inner.read().unwrap().get_raw("editor.fontSize"),
+            Some(&serde_json::json!(12))
+        );
         assert_eq!(std::fs::read_to_string(blocker).unwrap(), "keep");
     }
 
@@ -269,7 +296,14 @@ mod tests {
         store.load_user(&path).unwrap();
         std::fs::remove_file(path).unwrap();
         store.refresh_user_from_disk().unwrap();
-        assert!(store.inner.read().unwrap().user_layer().as_object().unwrap().is_empty());
+        assert!(store
+            .inner
+            .read()
+            .unwrap()
+            .user_layer()
+            .as_object()
+            .unwrap()
+            .is_empty());
     }
 
     #[test]
@@ -277,14 +311,23 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let store = std::sync::Arc::new(SettingsStore::new());
         store.set_user_path(&dir.path().join("settings.json"));
-        let threads: Vec<_> = (0..12).map(|i| {
-            let store = store.clone();
-            std::thread::spawn(move || store.update(&format!("extension.key{i}"), serde_json::json!(i), "user").unwrap())
-        }).collect();
-        for thread in threads { thread.join().unwrap(); }
+        let threads: Vec<_> = (0..12)
+            .map(|i| {
+                let store = store.clone();
+                std::thread::spawn(move || {
+                    store
+                        .update(&format!("extension.key{i}"), serde_json::json!(i), "user")
+                        .unwrap()
+                })
+            })
+            .collect();
+        for thread in threads {
+            thread.join().unwrap();
+        }
         store.refresh_user_from_disk().unwrap();
         let merged = store.inner.read().unwrap().merged();
-        for i in 0..12 { assert_eq!(merged[format!("extension.key{i}")], serde_json::json!(i)); }
+        for i in 0..12 {
+            assert_eq!(merged[format!("extension.key{i}")], serde_json::json!(i));
+        }
     }
-
 }

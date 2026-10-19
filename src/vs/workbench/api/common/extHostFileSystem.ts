@@ -1,5 +1,5 @@
 /*---------------------------------------------------------------------------------------------
- *  SideX — ExtHost filesystem stub. Filesystem operations are routed through the Tauri
+ *  ScCode — ExtHost filesystem stub. Filesystem operations are routed through the Tauri
  *  backend; extension-registered filesystem providers are accepted but not wired.
  *--------------------------------------------------------------------------------------------*/
 

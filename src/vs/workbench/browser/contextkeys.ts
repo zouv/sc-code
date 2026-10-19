@@ -153,7 +153,7 @@ export class WorkbenchContextKeysHandler extends Disposable {
 		this.updateWorkspaceContextKeys();
 
 		// Capabilities
-		// SideX: running in Tauri — there is no browser File System Access API.
+		// ScCode: running in Tauri — there is no browser File System Access API.
 		HasWebFileSystemAccess.bindTo(this.contextKeyService).set(false);
 
 		// Development
@@ -196,7 +196,7 @@ export class WorkbenchContextKeysHandler extends Disposable {
 		// to a remote.
 		this.openFolderWorkspaceSupportContext = OpenFolderWorkspaceSupportContext.bindTo(this.contextKeyService);
 		this.openFolderWorkspaceSupportContext.set(
-			isNative || !!(globalThis as any).__SIDEX_TAURI__ || typeof this.environmentService.remoteAuthority === 'string'
+			isNative || !!(globalThis as any).__SC_CODE_TAURI__ || typeof this.environmentService.remoteAuthority === 'string'
 		);
 
 		// Empty workspace support: empty workspaces require built-in file system
@@ -206,7 +206,7 @@ export class WorkbenchContextKeysHandler extends Disposable {
 		// -     web: only when connected to a remote
 		this.emptyWorkspaceSupportContext = EmptyWorkspaceSupportContext.bindTo(this.contextKeyService);
 		this.emptyWorkspaceSupportContext.set(
-			isNative || !!(globalThis as any).__SIDEX_TAURI__ || typeof this.environmentService.remoteAuthority === 'string'
+			isNative || !!(globalThis as any).__SC_CODE_TAURI__ || typeof this.environmentService.remoteAuthority === 'string'
 		);
 
 		// Entering a multi root workspace support: support for entering a multi-root

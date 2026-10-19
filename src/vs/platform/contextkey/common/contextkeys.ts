@@ -7,7 +7,7 @@ import { isIOS, isLinux, isMacintosh, isMobile, isWeb, isWindows } from '../../.
 import { localize } from '../../../nls.js';
 import { RawContextKey } from './contextkey.js';
 
-const _isSideX = !!(globalThis as any).__SIDEX_TAURI__;
+const _isScCode = !!(globalThis as any).__SC_CODE_TAURI__;
 
 export const IsMacContext = new RawContextKey<boolean>(
 	'isMac',
@@ -27,12 +27,12 @@ export const IsWindowsContext = new RawContextKey<boolean>(
 
 export const IsWebContext = new RawContextKey<boolean>(
 	'isWeb',
-	isWeb && !_isSideX,
+	isWeb && !_isScCode,
 	localize('isWeb', 'Whether the platform is a web browser')
 );
 export const IsMacNativeContext = new RawContextKey<boolean>(
 	'isMacNative',
-	isMacintosh && (!isWeb || _isSideX),
+	isMacintosh && (!isWeb || _isScCode),
 	localize('isMacNative', 'Whether the operating system is macOS on a non-browser platform')
 );
 export const IsIOSContext = new RawContextKey<boolean>(

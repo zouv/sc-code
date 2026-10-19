@@ -2,28 +2,28 @@
 resolver = "2"
 members = [
   "crates/sc-code-runtime",
-  "crates/sidex-text",
-  "crates/sidex-syntax",
-  "crates/sidex-lsp",
-  "crates/sidex-workspace",
-  "crates/sidex-git",
-  "crates/sidex-extensions",
-  "crates/sidex-extension-api",
-  "crates/sidex-theme",
-  "crates/sidex-keymap",
-  "crates/sidex-settings",
-  "crates/sidex-db",
-  "crates/sidex-remote",
-  "crates/sidex-dap",
-  "crates/sidex-tasks",
-  "crates/sidex-update",
-  "crates/sidex-profiles",
-  "crates/sidex-auth",
-  "crates/sidex-textmate",
-  "crates/sidex-agent",
-  "crates/sidex-context",
+  "crates/sc-code-text",
+  "crates/sc-code-syntax",
+  "crates/sc-code-lsp",
+  "crates/sc-code-workspace",
+  "crates/sc-code-git",
+  "crates/sc-code-extensions",
+  "crates/sc-code-extension-api",
+  "crates/sc-code-theme",
+  "crates/sc-code-keymap",
+  "crates/sc-code-settings",
+  "crates/sc-code-db",
+  "crates/sc-code-remote",
+  "crates/sc-code-dap",
+  "crates/sc-code-tasks",
+  "crates/sc-code-update",
+  "crates/sc-code-profiles",
+  "crates/sc-code-auth",
+  "crates/sc-code-textmate",
+  "crates/sc-code-agent",
+  "crates/sc-code-context",
   "src-tauri",
-  "sidex-extension-sdk",
+  "sc-code-extension-sdk",
 ]
 exclude = ["extensions-rust"]
 
@@ -36,9 +36,9 @@ repository = "https://github.com/zouv/sc-code"
 
 [workspace.dependencies]
 # Internal crates
-sidex-text = { path = "crates/sidex-text" }
-sidex-theme = { path = "crates/sidex-theme" }
-sidex-context = { path = "crates/sidex-context" }
+sc-code-text = { path = "crates/sc-code-text" }
+sc-code-theme = { path = "crates/sc-code-theme" }
+sc-code-context = { path = "crates/sc-code-context" }
 
 # Core
 tokio = { version = "1", features = ["full"] }

@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-/* ── Sidex Terminal Panel ─────────────────────────────────────────────── */
+/* ── ScCode Terminal Panel ─────────────────────────────────────────────── */
 
 .monaco-workbench .pane-body.integrated-terminal {
 	align-content: flex-start;
@@ -159,7 +159,7 @@
 
 .monaco-workbench .terminal-editor .terminal-wrapper:not(.fixed-dims) .xterm-viewport,
 .monaco-workbench .pane-body.integrated-terminal .terminal-wrapper:not(.fixed-dims) .xterm-viewport {
-	/* SideX uses xterm's native viewport scrollbar (no DomScrollableElement
+	/* ScCode uses xterm's native viewport scrollbar (no DomScrollableElement
 	   overlay), so the viewport must span the full width — the upstream
 	   14px reservation left a dead gutter and no visible scrollbar. */
 	right: 0;

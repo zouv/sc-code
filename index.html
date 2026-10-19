@@ -11,33 +11,33 @@
 			globalThis._VSCODE_NLS_LANGUAGE = localStorage.getItem('vscode.nls.locale') || 'en';
 			globalThis._VSCODE_NLS_MESSAGES = [];
 
-			globalThis.__SIDEX_TAURI__ = true;
+			globalThis.__SC_CODE_TAURI__ = true;
 			try {
 				const ua = navigator.userAgent || '';
 				const plat = navigator.platform || '';
 				if (ua.includes('Mac') || plat.includes('Mac')) {
-					globalThis.__SIDEX_ARCH__ = 'arm64';
+					globalThis.__SC_CODE_ARCH__ = 'arm64';
 					try {
 						const gl = document.createElement('canvas').getContext('webgl');
 						const ext = gl && gl.getExtension('WEBGL_debug_renderer_info');
 						const renderer = ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : '';
 						if (renderer && /Intel/i.test(renderer) && !/Apple/i.test(renderer)) {
-							globalThis.__SIDEX_ARCH__ = 'x64';
+							globalThis.__SC_CODE_ARCH__ = 'x64';
 						}
 					} catch (_) {}
 				} else {
-					globalThis.__SIDEX_ARCH__ = 'x64';
+					globalThis.__SC_CODE_ARCH__ = 'x64';
 				}
 			} catch (_) {
-				globalThis.__SIDEX_ARCH__ = 'x64';
+				globalThis.__SC_CODE_ARCH__ = 'x64';
 			}
-			globalThis._VSCODE_PACKAGE_JSON = { version: '1.110.0', name: 'sidex' };
+			globalThis._VSCODE_PACKAGE_JSON = { version: '1.110.0', name: 'sc-code' };
 			globalThis._VSCODE_PRODUCT_JSON = {
 				nameShort: 'ScCode',
 				nameLong: 'ScCode',
 				applicationName: 'sc-code',
 				dataFolderName: '.sc-code',
-				urlProtocol: 'sidex',
+				urlProtocol: 'sc-code',
 				version: '1.110.0',
 				commit: '',
 				date: new Date().toISOString(),

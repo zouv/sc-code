@@ -1,5 +1,5 @@
 /*---------------------------------------------------------------------------------------------
- *  SideX: Stub for removed custom editor input factory.
+ *  ScCode: Stub for removed custom editor input factory.
  *--------------------------------------------------------------------------------------------*/
 
 export interface CustomDocumentBackupData {

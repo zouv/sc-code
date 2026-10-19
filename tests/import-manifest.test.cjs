@@ -3,9 +3,9 @@ const test = require('node:test'), assert = require('node:assert/strict');
 const fs = require('node:fs'), path = require('node:path');
 const { verifyImport } = require('../scripts/verify-import.cjs');
 const root = path.resolve(__dirname, '..');
-test('all 3704 original tracked files remain represented after independent development', () => {
+test('all 3664 retained original files remain represented after independent development', () => {
   const result = verifyImport(root);
-  assert.equal(result.imported, 3704); assert.deepEqual(result.errors, []);
+  assert.equal(result.imported, 3664); assert.deepEqual(result.errors, []);
 });
 test('independent product identity and updates do not reference old release channel', () => {
   const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json')));
@@ -15,7 +15,7 @@ test('independent product identity and updates do not reference old release chan
   assert.equal(conf.plugins.updater, undefined);
   for (const file of fs.readdirSync(path.join(root, '.github/workflows'))) {
     const text = fs.readFileSync(path.join(root, '.github/workflows', file), 'utf8');
-    assert.doesNotMatch(text, /siden\.dev|siden\.ai|s3:\/\/|SIDEX_SIGNING|tauri-action|contents:\s*write/);
+    assert.doesNotMatch(text, /siden\.dev|siden\.ai|s3:\/\/|SC_CODE_SIGNING|tauri-action|contents:\s*write/);
   }
 });
 test('custom mechanisms have become ordinary feature modules', () => {

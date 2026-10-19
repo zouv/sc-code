@@ -6,10 +6,10 @@
 //      the Go server's /v1/models (OpenRouter IDs), and the enabled list is
 //      read/written through the generic settings_get/settings_update
 //      commands. A second, divergent catalog here only reintroduced stale
-//      Bedrock IDs into sidex.models.enabled.
+//      Bedrock IDs into sc-code.models.enabled.
 //   2. api_keys_list / api_keys_save / api_keys_delete — a second API-key
 //      store that duplicated `commands::providers`, writing to the same
-//      `sidex.apikey.<provider>` secret slots but gated on a hardcoded
+//      `sc-code.apikey.<provider>` secret slots but gated on a hardcoded
 //      four-provider allowlist (openai/google/moonshot/zhipu). providers.rs
 //      is the canonical implementation: it covers the full provider list,
 //      base URLs, the enable/disable switch, and CLI-login opt-ins. Nothing

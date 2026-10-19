@@ -567,7 +567,7 @@ export class ExtensionManagementService
 	}
 
 	private async canInstallGalleryExtension(gallery: IGalleryExtension): Promise<true | IMarkdownString> {
-		if ((globalThis as any).__SIDEX_TAURI__ === true) {
+		if ((globalThis as any).__SC_CODE_TAURI__ === true) {
 			return true;
 		}
 		if (
@@ -610,7 +610,7 @@ export class ExtensionManagementService
 	}
 
 	private async canInstallResourceExtension(extension: IResourceExtension): Promise<true | IMarkdownString> {
-		if ((globalThis as any).__SIDEX_TAURI__ === true) {
+		if ((globalThis as any).__SC_CODE_TAURI__ === true) {
 			return true;
 		}
 		if (this.extensionManagementServerService.localExtensionManagementServer) {
@@ -852,7 +852,7 @@ export class ExtensionManagementService
 		extension: IResourceExtension,
 		installOptions: InstallOptions
 	): Promise<ILocalExtension> {
-		if (!((globalThis as any).__SIDEX_TAURI__ === true) && !this.canInstallResourceExtension(extension)) {
+		if (!((globalThis as any).__SC_CODE_TAURI__ === true) && !this.canInstallResourceExtension(extension)) {
 			throw new Error('This extension cannot be installed in the current workspace.');
 		}
 		if (!installOptions.isWorkspaceScoped) {
@@ -984,7 +984,7 @@ export class ExtensionManagementService
 		manifest: IExtensionManifest,
 		servers: IExtensionManagementServer[]
 	): IExtensionManagementServer[] {
-		if ((globalThis as any).__SIDEX_TAURI__ === true) {
+		if ((globalThis as any).__SC_CODE_TAURI__ === true) {
 			return servers;
 		}
 		const installableServers = this.getInstallableExtensionManagementServers(manifest);
@@ -1024,7 +1024,7 @@ export class ExtensionManagementService
 		}
 
 		if (!servers.length) {
-			if ((globalThis as any).__SIDEX_TAURI__ === true) {
+			if ((globalThis as any).__SC_CODE_TAURI__ === true) {
 				if (this.extensionManagementServerService.localExtensionManagementServer) {
 					servers.push(this.extensionManagementServerService.localExtensionManagementServer);
 				} else if (this.extensionManagementServerService.remoteExtensionManagementServer) {
@@ -1568,9 +1568,9 @@ export class ExtensionManagementService
 			return;
 		}
 
-		// SideX: when running inside Tauri with a Node.js extension host available,
+		// ScCode: when running inside Tauri with a Node.js extension host available,
 		// allow installing non-web extensions — they'll run in the local host.
-		if ((globalThis as any).__SIDEX_TAURI__ === true) {
+		if ((globalThis as any).__SC_CODE_TAURI__ === true) {
 			return;
 		}
 
@@ -1591,7 +1591,7 @@ export class ExtensionManagementService
 		}
 
 		const productName =
-			(globalThis as any).__SIDEX_TAURI__ === true
+			(globalThis as any).__SC_CODE_TAURI__ === true
 				? this.productService.nameLong
 				: localize('VS Code for Web', '{0} for the Web', this.productService.nameLong);
 		const virtualWorkspaceSupport =

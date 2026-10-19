@@ -56,7 +56,7 @@ import { CustomMenubarControl } from './menubarControl.js';
 import { IInstantiationService, ServicesAccessor } from '../../../../platform/instantiation/common/instantiation.js';
 import { Emitter, Event } from '../../../../base/common/event.js';
 import { IStorageService, StorageScope } from '../../../../platform/storage/common/storage.js';
-import { IAccountService } from '../../../contrib/sidexChat/browser/account/accountService.js';
+import { IAccountService } from '../../../contrib/scCodeChat/browser/account/accountService.js';
 import { IUpdateService } from '../../../../platform/update/common/update.js';
 import { URI } from '../../../../base/common/uri.js';
 import {
@@ -317,7 +317,7 @@ export class BrowserTitlebarPart extends Part implements ITitlebarPart {
 	get minimumHeight(): number {
 		const wcoEnabled = isWeb && isWCOEnabled();
 		let value: number;
-		if ((globalThis as any).__SIDEX_TAURI__) {
+		if ((globalThis as any).__SC_CODE_TAURI__) {
 			value = 32;
 		} else {
 			value = this.isCommandCenterVisible || wcoEnabled ? DEFAULT_CUSTOM_TITLEBAR_HEIGHT : 28;
@@ -581,7 +581,7 @@ export class BrowserTitlebarPart extends Part implements ITitlebarPart {
 
 		// Draggable region that we can manipulate for #52522
 		this.dragRegion = prepend(this.rootContainer, $('div.titlebar-drag-region'));
-		if ((globalThis as any).__SIDEX_TAURI__) {
+		if ((globalThis as any).__SC_CODE_TAURI__) {
 			this.dragRegion.style.setProperty('-webkit-app-region', 'no-drag');
 			// this.dragRegion.style.pointerEvents = 'none';
 
@@ -621,14 +621,14 @@ export class BrowserTitlebarPart extends Part implements ITitlebarPart {
 			this.installMenubar();
 		}
 
-		// --- Sidex Titlebar Customizations ---
+		// --- ScCode Titlebar Customizations ---
 		try {
-			this.projectNameElement = append(this.leftContent, $('div.sidex-project-name'));
-			const branchContainer = append(this.leftContent, $('div.sidex-branch-container'));
-			const branchIcon = append(branchContainer, $('span.sidex-branch-icon.codicon.codicon-source-control'));
+			this.projectNameElement = append(this.leftContent, $('div.sc-code-project-name'));
+			const branchContainer = append(this.leftContent, $('div.sc-code-branch-container'));
+			const branchIcon = append(branchContainer, $('span.sc-code-branch-icon.codicon.codicon-source-control'));
 			branchIcon.setAttribute('aria-hidden', 'true');
-			this.branchElement = append(branchContainer, $('span.sidex-branch-name'));
-			const branchChevron = append(branchContainer, $('span.sidex-branch-chevron.codicon.codicon-chevron-down'));
+			this.branchElement = append(branchContainer, $('span.sc-code-branch-name'));
+			const branchChevron = append(branchContainer, $('span.sc-code-branch-chevron.codicon.codicon-chevron-down'));
 			branchChevron.setAttribute('aria-hidden', 'true');
 
 			this._register(addDisposableListener(branchContainer, EventType.CLICK, () => {
@@ -644,7 +644,7 @@ export class BrowserTitlebarPart extends Part implements ITitlebarPart {
 				document.body.appendChild(backdrop);
 
 				const popup = document.createElement('div');
-				popup.className = 'sidex-rich-popup';
+				popup.className = 'sc-code-rich-popup';
 				const rect = this.projectNameElement!.getBoundingClientRect();
 				const pcs = getComputedStyle(this.element!);
 				const pBg = pcs.getPropertyValue('--vscode-menu-background').trim() || pcs.getPropertyValue('--vscode-quickInput-background').trim() || '#202122';
@@ -668,21 +668,21 @@ export class BrowserTitlebarPart extends Part implements ITitlebarPart {
 				for (const item of items) {
 					if ((item as any).separator) {
 						const sep = document.createElement('div');
-						sep.className = 'sidex-popup-separator';
+						sep.className = 'sc-code-popup-separator';
 						popup.appendChild(sep);
 					} else if ((item as any).header) {
 						const hdr = document.createElement('div');
-						hdr.className = 'sidex-popup-header';
+						hdr.className = 'sc-code-popup-header';
 						hdr.textContent = (item as any).header;
 						popup.appendChild(hdr);
 					} else {
 						const row = document.createElement('div');
-						row.className = 'sidex-popup-item';
-						row.innerHTML = `<span class="codicon ${(item as any).icon} sidex-popup-icon"></span><span class="sidex-popup-label">${(item as any).label}</span>`;
+						row.className = 'sc-code-popup-item';
+						row.innerHTML = `<span class="codicon ${(item as any).icon} sc-code-popup-icon"></span><span class="sc-code-popup-label">${(item as any).label}</span>`;
 						row.addEventListener('click', () => {
 							cleanup();
 							this.commandService.executeCommand((item as any).cmd).catch((err: any) => {
-								console.error('[sidex] Command failed:', (item as any).cmd, err?.message || err);
+								console.error('[sc-code] Command failed:', (item as any).cmd, err?.message || err);
 							});
 						});
 						popup.appendChild(row);
@@ -697,11 +697,11 @@ export class BrowserTitlebarPart extends Part implements ITitlebarPart {
 			this._register(this.workspaceContextService.onDidChangeWorkspaceFolders(() => this.updateProjectName()));
 			this._register(this.editorService.onDidActiveEditorChange(() => this.updateBreadcrumbs()));
 
-			const centerBar = append(this.centerContent, $('div.sidex-center-bar'));
-			const centerSearchIcon = append(centerBar, $('span.codicon.codicon-search.sidex-center-icon'));
+			const centerBar = append(this.centerContent, $('div.sc-code-center-bar'));
+			const centerSearchIcon = append(centerBar, $('span.codicon.codicon-search.sc-code-center-icon'));
 			centerSearchIcon.setAttribute('aria-hidden', 'true');
-			this.breadcrumbsElement = append(centerBar, $('div.sidex-breadcrumbs'));
-			const centerPlaceholder = append(centerBar, $('span.sidex-center-placeholder'));
+			this.breadcrumbsElement = append(centerBar, $('div.sc-code-breadcrumbs'));
+			const centerPlaceholder = append(centerBar, $('span.sc-code-center-placeholder'));
 			centerPlaceholder.textContent = 'Search...';
 			this.updateBreadcrumbs();
 
@@ -710,14 +710,14 @@ export class BrowserTitlebarPart extends Part implements ITitlebarPart {
 			}));
 
 			// Unified settings and account drop-down pill button (Cursor/Windsurf style, rounded 6px)
-			const profileButton = append(this.rightContent, $('div.sidex-profile-button'));
+			const profileButton = append(this.rightContent, $('div.sc-code-profile-button'));
 			
 			// Initials container
-			const initialsDiv = append(profileButton, $('div.sidex-profile-initials'));
+			const initialsDiv = append(profileButton, $('div.sc-code-profile-initials'));
 			initialsDiv.textContent = 'U'; // generic fallback initials until the local session resolves
 			
 			// Chevron down indicator
-			const chevronSpan = append(profileButton, $('span.codicon.codicon-chevron-down.sidex-profile-chevron'));
+			const chevronSpan = append(profileButton, $('span.codicon.codicon-chevron-down.sc-code-profile-chevron'));
 			chevronSpan.setAttribute('aria-hidden', 'true');
 
 			// Retrieve live initials from AccountService session
@@ -794,32 +794,32 @@ export class BrowserTitlebarPart extends Part implements ITitlebarPart {
 				const actions: IAction[] = [];
 				// There is no account to sign in or out of. These open the local
 				// settings panel, where AI providers are configured.
-				const openSidexSettings = () => {
-					import('../../../contrib/sidexChat/browser/settings/sidexSettingsPanel.js').then(({ SidexSettingsPanel }) => {
-						SidexSettingsPanel.getInstance().toggle();
+				const openScCodeSettings = () => {
+					import('../../../contrib/scCodeChat/browser/settings/scCodeSettingsPanel.js').then(({ ScCodeSettingsPanel }) => {
+						ScCodeSettingsPanel.getInstance().toggle();
 					}).catch(() => { /* panel is optional */ });
 				};
-				actions.push(toAction({ id: 'sidex.profile.settings', label: 'ScCode Settings', run: openSidexSettings }));
-				actions.push(toAction({ id: 'sidex.profile.usage', label: 'ScCode Usage', run: openSidexSettings }));
+				actions.push(toAction({ id: 'sc-code.profile.settings', label: 'ScCode Settings', run: openScCodeSettings }));
+				actions.push(toAction({ id: 'sc-code.profile.usage', label: 'ScCode Usage', run: openScCodeSettings }));
 
 				actions.push(new Separator());
 
 				// Group 2: Editor Settings
-				actions.push(toAction({ id: 'sidex.manage.settings', label: 'Editor Settings', run: () => this.commandService.executeCommand('workbench.action.openSettings') }));
-				actions.push(toAction({ id: 'sidex.manage.commandPalette', label: 'Command Palette...', run: () => this.commandService.executeCommand('workbench.action.showCommands') }));
-				actions.push(toAction({ id: 'sidex.manage.keybindings', label: 'Open Keyboard Shortcuts [⌘K ⌘S]', run: () => this.commandService.executeCommand('workbench.action.openGlobalKeybindings') }));
-				actions.push(toAction({ id: 'sidex.manage.extensions', label: 'Extensions', run: () => this.commandService.executeCommand('workbench.view.extensions') }));
-				actions.push(toAction({ id: 'sidex.manage.snippets', label: 'Configure Snippets', run: () => this.commandService.executeCommand('workbench.action.openSnippets') }));
-				actions.push(toAction({ id: 'sidex.manage.tasks', label: 'Tasks', run: () => this.commandService.executeCommand('workbench.action.tasks.runTask') }));
-				actions.push(toAction({ id: 'sidex.manage.themes', label: 'Themes', run: () => this.commandService.executeCommand('workbench.action.selectTheme') }));
+				actions.push(toAction({ id: 'sc-code.manage.settings', label: 'Editor Settings', run: () => this.commandService.executeCommand('workbench.action.openSettings') }));
+				actions.push(toAction({ id: 'sc-code.manage.commandPalette', label: 'Command Palette...', run: () => this.commandService.executeCommand('workbench.action.showCommands') }));
+				actions.push(toAction({ id: 'sc-code.manage.keybindings', label: 'Open Keyboard Shortcuts [⌘K ⌘S]', run: () => this.commandService.executeCommand('workbench.action.openGlobalKeybindings') }));
+				actions.push(toAction({ id: 'sc-code.manage.extensions', label: 'Extensions', run: () => this.commandService.executeCommand('workbench.view.extensions') }));
+				actions.push(toAction({ id: 'sc-code.manage.snippets', label: 'Configure Snippets', run: () => this.commandService.executeCommand('workbench.action.openSnippets') }));
+				actions.push(toAction({ id: 'sc-code.manage.tasks', label: 'Tasks', run: () => this.commandService.executeCommand('workbench.action.tasks.runTask') }));
+				actions.push(toAction({ id: 'sc-code.manage.themes', label: 'Themes', run: () => this.commandService.executeCommand('workbench.action.selectTheme') }));
 
 				actions.push(new Separator());
 
 				// Group 3: Help / Info
-				actions.push(toAction({ id: 'sidex.manage.updates', label: 'Check for Updates...', run: () => this.updateService.checkForUpdates(true) }));
-				// docs.sidex.dev does not resolve; the README is the actual docs entry point until a docs site exists.
-				actions.push(toAction({ id: 'sidex.manage.docs', label: 'Docs', run: () => this.commandService.executeCommand('vscode.open', URI.parse('https://github.com/Sidenai/sidex#readme')) }));
-				actions.push(toAction({ id: 'sidex.manage.community', label: 'Join the Community', run: () => this.commandService.executeCommand('vscode.open', URI.parse('https://discord.gg/8CUCnEAC4J')) }));
+				actions.push(toAction({ id: 'sc-code.manage.updates', label: 'Check for Updates...', run: () => this.updateService.checkForUpdates(true) }));
+				// docs.sc-code.dev does not resolve; the README is the actual docs entry point until a docs site exists.
+				actions.push(toAction({ id: 'sc-code.manage.docs', label: 'Docs', run: () => this.commandService.executeCommand('vscode.open', URI.parse('https://github.com/Sidenai/sc-code#readme')) }));
+				actions.push(toAction({ id: 'sc-code.manage.community', label: 'Join the Community', run: () => this.commandService.executeCommand('vscode.open', URI.parse('https://discord.gg/8CUCnEAC4J')) }));
 
 				this.contextMenuService.showContextMenu({
 					getAnchor: () => profileButton,
@@ -827,7 +827,7 @@ export class BrowserTitlebarPart extends Part implements ITitlebarPart {
 				});
 			}));
 		} catch {
-			// Sidex customizations failed — titlebar still works with default VSCode behavior
+			// ScCode customizations failed — titlebar still works with default VSCode behavior
 		}
 
 		// Title (hidden, kept for compatibility with window title updates)
@@ -857,7 +857,7 @@ export class BrowserTitlebarPart extends Part implements ITitlebarPart {
 			);
 		}
 
-		// Create Toolbar Actions — hidden in Sidex (we use our own minimal buttons)
+		// Create Toolbar Actions — hidden in ScCode (we use our own minimal buttons)
 		if (hasCustomTitlebar(this.configurationService, this.titleBarStyle)) {
 			this.actionToolBarElement = append(this.rightContent, $('div.action-toolbar-container'));
 			this.actionToolBarElement.style.display = 'none';
@@ -896,7 +896,7 @@ export class BrowserTitlebarPart extends Part implements ITitlebarPart {
 					this.windowControlsContainer.classList.add('wco-enabled');
 				}
 
-				if (!isMacintosh && (globalThis as any).__SIDEX_TAURI__) {
+				if (!isMacintosh && (globalThis as any).__SC_CODE_TAURI__) {
 					const minBtn = append(this.windowControlsContainer, $('div.window-icon.window-min'));
 					const minIcon = append(minBtn, $('span.codicon.codicon-chrome-minimize'));
 					minIcon.setAttribute('aria-hidden', 'true');
@@ -1039,7 +1039,7 @@ export class BrowserTitlebarPart extends Part implements ITitlebarPart {
 		}
 
 		const centerBar = this.breadcrumbsElement.parentElement;
-		const placeholder = centerBar?.querySelector('.sidex-center-placeholder') as HTMLElement | null;
+		const placeholder = centerBar?.querySelector('.sc-code-center-placeholder') as HTMLElement | null;
 
 		const editor = this.editorService.activeEditor;
 		const resource = editor ? EditorResourceAccessor.getOriginalUri(editor, { supportSideBySide: SideBySideEditor.PRIMARY }) : undefined;
@@ -1064,17 +1064,17 @@ export class BrowserTitlebarPart extends Part implements ITitlebarPart {
 
 		for (let i = 0; i < segments.length; i++) {
 			const span = document.createElement('span');
-			span.classList.add('sidex-breadcrumb-segment');
+			span.classList.add('sc-code-breadcrumb-segment');
 			const isLast = i === segments.length - 1;
 			if (isLast) {
-				span.classList.add('sidex-breadcrumb-file');
+				span.classList.add('sc-code-breadcrumb-file');
 			}
 			span.textContent = segments[i];
 			fragment.appendChild(span);
 
 			if (!isLast) {
 				const sep = document.createElement('span');
-				sep.classList.add('sidex-breadcrumb-sep');
+				sep.classList.add('sc-code-breadcrumb-sep');
 				sep.textContent = '›';
 				fragment.appendChild(sep);
 			}
@@ -1090,7 +1090,7 @@ export class BrowserTitlebarPart extends Part implements ITitlebarPart {
 		document.body.appendChild(backdrop);
 
 		const popup = document.createElement('div');
-		popup.className = 'sidex-rich-popup sidex-git-popup';
+		popup.className = 'sc-code-rich-popup sc-code-git-popup';
 		const rect = anchor.getBoundingClientRect();
 		const cs = getComputedStyle(this.element!);
 		const bgColor = cs.getPropertyValue('--vscode-menu-background').trim() || cs.getPropertyValue('--vscode-quickInput-background').trim() || '#202122';
@@ -1110,33 +1110,33 @@ export class BrowserTitlebarPart extends Part implements ITitlebarPart {
 		backdrop.addEventListener('contextmenu', (e) => { e.preventDefault(); cleanup(); });
 
 		const searchRow = document.createElement('div');
-		searchRow.className = 'sidex-popup-search-row';
+		searchRow.className = 'sc-code-popup-search-row';
 		const searchInput = document.createElement('input');
 		searchInput.type = 'text';
-		searchInput.className = 'sidex-popup-search';
+		searchInput.className = 'sc-code-popup-search';
 		searchInput.placeholder = 'Filter branches, stashes, tags...';
 		searchRow.appendChild(searchInput);
 		popup.appendChild(searchRow);
 
 		const contentArea = document.createElement('div');
-		contentArea.className = 'sidex-popup-content';
+		contentArea.className = 'sc-code-popup-content';
 		popup.appendChild(contentArea);
 
 		const actionsArea = document.createElement('div');
-		actionsArea.className = 'sidex-popup-actions';
+		actionsArea.className = 'sc-code-popup-actions';
 		popup.appendChild(actionsArea);
 
 		searchInput.addEventListener('keydown', (e) => {
 			if (e.key === 'Escape') { cleanup(); }
 			if (e.key === 'Enter') {
-				const focused = contentArea.querySelector('.sidex-popup-item.focused') as HTMLElement;
-				const target = focused || contentArea.querySelector('.sidex-popup-item:not([style*="display: none"])') as HTMLElement;
+				const focused = contentArea.querySelector('.sc-code-popup-item.focused') as HTMLElement;
+				const target = focused || contentArea.querySelector('.sc-code-popup-item:not([style*="display: none"])') as HTMLElement;
 				if (target) { target.click(); }
 			}
 			if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
 				e.preventDefault();
-				const visible = Array.from(contentArea.querySelectorAll('.sidex-popup-item:not([style*="display: none"])')) as HTMLElement[];
-				const current = contentArea.querySelector('.sidex-popup-item.focused') as HTMLElement;
+				const visible = Array.from(contentArea.querySelectorAll('.sc-code-popup-item:not([style*="display: none"])')) as HTMLElement[];
+				const current = contentArea.querySelector('.sc-code-popup-item.focused') as HTMLElement;
 				let idx = current ? visible.indexOf(current) : -1;
 				if (current) { current.classList.remove('focused'); }
 				if (e.key === 'ArrowDown') { idx = Math.min(idx + 1, visible.length - 1); }
@@ -1156,7 +1156,7 @@ export class BrowserTitlebarPart extends Part implements ITitlebarPart {
 		};
 
 		const renderContent = async () => {
-			contentArea.innerHTML = '<div class="sidex-popup-loading">Loading...</div>';
+			contentArea.innerHTML = '<div class="sc-code-popup-loading">Loading...</div>';
 
 			try {
 				const repo = getRepo();
@@ -1208,7 +1208,7 @@ export class BrowserTitlebarPart extends Part implements ITitlebarPart {
 				}
 
 				// Fallback: run git directly via Tauri invoke if branches not found
-				if (localBranches.length <= 1 && (globalThis as any).__SIDEX_TAURI__ && rootPath) {
+				if (localBranches.length <= 1 && (globalThis as any).__SC_CODE_TAURI__ && rootPath) {
 					try {
 						const { invoke } = await import('@tauri-apps/api/core');
 						const output: string = await invoke('git_run', {
@@ -1251,7 +1251,7 @@ export class BrowserTitlebarPart extends Part implements ITitlebarPart {
 							}
 						}
 					} catch (e) {
-						console.warn('[sidex] git_run invoke failed:', e);
+						console.warn('[sc-code] git_run invoke failed:', e);
 					}
 
 					// Also try to get stashes via git if we don't have them
@@ -1282,10 +1282,10 @@ export class BrowserTitlebarPart extends Part implements ITitlebarPart {
 
 				const createBranchRow = (branch: { name: string; id: string; description?: string; current?: boolean }, icon: string, clickAction: () => void) => {
 					const row = document.createElement('div');
-					row.className = 'sidex-popup-item' + (branch.current ? ' sidex-popup-item-active' : '');
-					const selectedTag = branch.current ? '<span class="sidex-popup-selected-tag">selected</span>' : '';
-					const desc = branch.description ? `<span class="sidex-popup-desc">${branch.description}</span>` : '';
-					row.innerHTML = `${selectedTag}<span class="codicon codicon-git-branch sidex-popup-icon"></span><span class="sidex-popup-label">${branch.name}</span>${desc}`;
+					row.className = 'sc-code-popup-item' + (branch.current ? ' sc-code-popup-item-active' : '');
+					const selectedTag = branch.current ? '<span class="sc-code-popup-selected-tag">selected</span>' : '';
+					const desc = branch.description ? `<span class="sc-code-popup-desc">${branch.description}</span>` : '';
+					row.innerHTML = `${selectedTag}<span class="codicon codicon-git-branch sc-code-popup-icon"></span><span class="sc-code-popup-label">${branch.name}</span>${desc}`;
 					(row as any)._searchText = (branch.name + ' ' + (branch.description || '')).toLowerCase();
 					row.addEventListener('click', clickAction);
 					return row;
@@ -1307,7 +1307,7 @@ export class BrowserTitlebarPart extends Part implements ITitlebarPart {
 				// Local branches
 				if (localBranches.length > 0) {
 					const header = document.createElement('div');
-					header.className = 'sidex-popup-header';
+					header.className = 'sc-code-popup-header';
 					header.textContent = `Local Branches`;
 					contentArea.appendChild(header);
 
@@ -1322,7 +1322,7 @@ export class BrowserTitlebarPart extends Part implements ITitlebarPart {
 				// Remote branches
 				if (remoteBranches.length > 0) {
 					const header = document.createElement('div');
-					header.className = 'sidex-popup-header';
+					header.className = 'sc-code-popup-header';
 					header.textContent = `Remote Branches`;
 					contentArea.appendChild(header);
 
@@ -1337,14 +1337,14 @@ export class BrowserTitlebarPart extends Part implements ITitlebarPart {
 				// Tags
 				if (tags.length > 0) {
 					const header = document.createElement('div');
-					header.className = 'sidex-popup-header';
+					header.className = 'sc-code-popup-header';
 					header.textContent = 'Tags';
 					contentArea.appendChild(header);
 
 					for (const tag of tags) {
 						const row = document.createElement('div');
-						row.className = 'sidex-popup-item';
-						row.innerHTML = `<span class="codicon codicon-tag sidex-popup-icon"></span><span class="sidex-popup-label">${tag.name}</span>`;
+						row.className = 'sc-code-popup-item';
+						row.innerHTML = `<span class="codicon codicon-tag sc-code-popup-icon"></span><span class="sc-code-popup-label">${tag.name}</span>`;
 						(row as any)._searchText = tag.name.toLowerCase();
 						row.addEventListener('click', () => {
 							cleanup();
@@ -1363,15 +1363,15 @@ export class BrowserTitlebarPart extends Part implements ITitlebarPart {
 				// Stashes
 				if (stashes.length > 0) {
 					const header = document.createElement('div');
-					header.className = 'sidex-popup-header';
+					header.className = 'sc-code-popup-header';
 					header.textContent = 'Stashes';
 					contentArea.appendChild(header);
 
 					for (const stash of stashes) {
 						const row = document.createElement('div');
-						row.className = 'sidex-popup-item';
-						const desc = stash.description ? `<span class="sidex-popup-desc">${stash.description}</span>` : '';
-						row.innerHTML = `<span class="codicon codicon-archive sidex-popup-icon"></span><span class="sidex-popup-label">${stash.name}</span>${desc}`;
+						row.className = 'sc-code-popup-item';
+						const desc = stash.description ? `<span class="sc-code-popup-desc">${stash.description}</span>` : '';
+						row.innerHTML = `<span class="codicon codicon-archive sc-code-popup-icon"></span><span class="sc-code-popup-label">${stash.name}</span>${desc}`;
 						(row as any)._searchText = (stash.name + ' ' + (stash.description || '')).toLowerCase();
 						row.addEventListener('click', () => {
 							cleanup();
@@ -1384,8 +1384,8 @@ export class BrowserTitlebarPart extends Part implements ITitlebarPart {
 				// Search filtering
 				searchInput.addEventListener('input', () => {
 					const q = searchInput.value.toLowerCase().trim();
-					const allItems = contentArea.querySelectorAll('.sidex-popup-item');
-					const headers = contentArea.querySelectorAll('.sidex-popup-header');
+					const allItems = contentArea.querySelectorAll('.sc-code-popup-item');
+					const headers = contentArea.querySelectorAll('.sc-code-popup-header');
 
 					allItems.forEach((el: any) => {
 						const match = !q || (el._searchText && el._searchText.includes(q));
@@ -1395,8 +1395,8 @@ export class BrowserTitlebarPart extends Part implements ITitlebarPart {
 					headers.forEach((h: Element) => {
 						let sibling = h.nextElementSibling;
 						let hasVisible = false;
-						while (sibling && !sibling.classList.contains('sidex-popup-header')) {
-							if (sibling.classList.contains('sidex-popup-item') && (sibling as HTMLElement).style.display !== 'none') {
+						while (sibling && !sibling.classList.contains('sc-code-popup-header')) {
+							if (sibling.classList.contains('sc-code-popup-item') && (sibling as HTMLElement).style.display !== 'none') {
 								hasVisible = true;
 								break;
 							}
@@ -1407,8 +1407,8 @@ export class BrowserTitlebarPart extends Part implements ITitlebarPart {
 				});
 
 			} catch (err) {
-				contentArea.innerHTML = `<div class="sidex-popup-empty">Error loading data</div>`;
-				console.error('[sidex] git popup error:', err);
+				contentArea.innerHTML = `<div class="sc-code-popup-empty">Error loading data</div>`;
+				console.error('[sc-code] git popup error:', err);
 			}
 		};
 
@@ -1417,7 +1417,7 @@ export class BrowserTitlebarPart extends Part implements ITitlebarPart {
 			cleanup();
 			setTimeout(() => {
 				this.commandService.executeCommand(cmd, ...args).catch((err: any) => {
-					console.error(`[sidex] Command "${cmd}" failed:`, err?.message || err);
+					console.error(`[sc-code] Command "${cmd}" failed:`, err?.message || err);
 				});
 			}, 50);
 		};
@@ -1441,18 +1441,18 @@ export class BrowserTitlebarPart extends Part implements ITitlebarPart {
 		];
 
 		const sep = document.createElement('div');
-		sep.className = 'sidex-popup-separator';
+		sep.className = 'sc-code-popup-separator';
 		actionsArea.appendChild(sep);
 
 		for (const item of actions) {
 			if ((item as any).separator) {
 				const divider = document.createElement('div');
-				divider.className = 'sidex-popup-separator';
+				divider.className = 'sc-code-popup-separator';
 				actionsArea.appendChild(divider);
 			} else {
 				const row = document.createElement('div');
-				row.className = 'sidex-popup-item sidex-popup-action-item';
-				row.innerHTML = `<span class="codicon ${(item as any).icon} sidex-popup-icon"></span><span class="sidex-popup-label">${(item as any).label}</span>`;
+				row.className = 'sc-code-popup-item sc-code-popup-action-item';
+				row.innerHTML = `<span class="codicon ${(item as any).icon} sc-code-popup-icon"></span><span class="sc-code-popup-label">${(item as any).label}</span>`;
 				row.addEventListener('click', (item as any).action);
 				actionsArea.appendChild(row);
 			}
@@ -1731,8 +1731,8 @@ export class BrowserTitlebarPart extends Part implements ITitlebarPart {
 	}
 
 	protected get isCommandCenterVisible() {
-		// Sidex: command center is hidden by default (the search bar is removed from the titlebar)
-		if ((globalThis as any).__SIDEX_TAURI__) {
+		// ScCode: command center is hidden by default (the search bar is removed from the titlebar)
+		if ((globalThis as any).__SC_CODE_TAURI__) {
 			return false;
 		}
 		return !this.isCompact && this.configurationService.getValue<boolean>(LayoutSettings.COMMAND_CENTER) !== false;
@@ -1807,7 +1807,7 @@ export class BrowserTitlebarPart extends Part implements ITitlebarPart {
 			this.customMenubar.value.layout(menubarDimension);
 		}
 
-		// Sidex always has center content (breadcrumbs)
+		// ScCode always has center content (breadcrumbs)
 		this.rootContainer.classList.add('has-center');
 	}
 

@@ -66,7 +66,7 @@ export async function searchOpenVsx(
 	const res = await fetch(url.toString(), {
 		headers: {
 			accept: 'application/json',
-			'user-agent': 'sidex-marketplace-proxy/1.0'
+			'user-agent': 'sc-code-marketplace-proxy/1.0'
 		},
 		signal
 	});

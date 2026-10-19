@@ -1,5 +1,5 @@
 /*---------------------------------------------------------------------------------------------
- *  SideX: Stub for removed notebook contribution.
+ *  ScCode: Stub for removed notebook contribution.
  *  Provides type-only exports consumed by the extension host API layer.
  *--------------------------------------------------------------------------------------------*/
 

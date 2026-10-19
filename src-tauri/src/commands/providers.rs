@@ -1,6 +1,6 @@
 //! Provider credentials and local model discovery.
 //!
-//! SideX runs without an account. Every model request is made with credentials
+//! ScCode runs without an account. Every model request is made with credentials
 //! the user already has, resolved from four sources in this precedence order:
 //!
 //!   1. `settings`     — a key the user typed into Settings → Models
@@ -8,7 +8,7 @@
 //!   3. `cli`          — an existing Claude Code / Codex login (opt-in)
 //!   4. `local`        — an OpenAI-compatible server on loopback (no key needed)
 //!
-//! Nothing here talks to sidex.dev, and nothing is read from another tool's
+//! Nothing here talks to any vendor account service, and nothing is read from another tool's
 //! credential store unless the user has explicitly enabled that provider's
 //! `cli` source.
 //!
@@ -52,8 +52,9 @@ const ANTHROPIC_VERSION: &str = "2023-06-01";
 /// ChatGPT-subscription logins from `codex login` are not valid on
 /// `api.openai.com`. They are used against the Codex Responses host the
 /// official CLI talks to. That host only accepts first-party Codex
-/// originators (`codex_cli_rs`, `codex_vscode`, …); `sidex` is rejected
-/// with 403 the same way a non-Claude-Code User-Agent is on Anthropic.
+/// originators (`codex_cli_rs`, `codex_vscode`, …); other client identities
+/// are rejected with 403 the same way a non-Claude-Code User-Agent is on
+/// Anthropic.
 const OPENAI_CODEX_BASE_URL: &str = "https://chatgpt.com/backend-api/codex";
 const CODEX_ORIGINATOR: &str = "codex_cli_rs";
 /// Floor used when `~/.codex/models_cache.json` is missing. GPT-5.6 models
@@ -71,18 +72,21 @@ const ANTHROPIC_OAUTH_BETA: &str = "oauth-2025-04-20";
 /// prompt every time the app is rebuilt and re-signed.
 ///
 /// Secret-store key for a provider's user-entered API key.
+///
+/// The `sc-code.*` prefixes are the stable keyring/settings identifiers for
+/// stored credentials.
 fn api_key_slot(provider: &str) -> String {
-    format!("sidex.apikey.{provider}")
+    format!("sc-code.apikey.{provider}")
 }
 
 /// Secret-store key for a provider's base-URL override.
 fn base_url_slot(provider: &str) -> String {
-    format!("sidex.baseurl.{provider}")
+    format!("sc-code.baseurl.{provider}")
 }
 
 /// Secret-store key for the per-provider "reuse my CLI login" opt-in.
 fn cli_opt_in_slot(provider: &str) -> String {
-    format!("sidex.cli-auth.{provider}")
+    format!("sc-code.cli-auth.{provider}")
 }
 
 /// Secret-store key for the explicit per-provider off switch. Distinct from
@@ -90,7 +94,7 @@ fn cli_opt_in_slot(provider: &str) -> String {
 /// otherwise always "configured", so without this the user has no way to
 /// turn one off — see `providers_set_enabled`.
 fn provider_off_slot(provider: &str) -> String {
-    format!("sidex.provider-off.{provider}")
+    format!("sc-code.provider-off.{provider}")
 }
 
 // ---------------------------------------------------------------------------
@@ -113,7 +117,7 @@ pub struct ProviderInfo {
     pub keyless: bool,
 }
 
-/// Every provider SideX knows how to talk to out of the box.
+/// Every provider ScCode knows how to talk to out of the box.
 ///
 /// This is not a closed set — `providers_save` accepts any id with a custom
 /// base URL, which is how "some OpenAI-compatible thing I self-host" works.
@@ -434,7 +438,7 @@ fn provider_base_url(store: &SecretsStore, id: &str) -> Option<String> {
         .flatten()
         .filter(|s| !s.trim().is_empty())
         .or_else(|| {
-            std::env::var(format!("SIDEX_PROVIDER_{}_BASE_URL", id.to_uppercase()))
+            std::env::var(format!("SC_CODE_PROVIDER_{}_BASE_URL", id.to_uppercase()))
                 .ok()
                 .filter(|s| !s.trim().is_empty())
         })
@@ -457,7 +461,12 @@ fn resolve_direct_credential(store: &SecretsStore, id: &str) -> Option<ResolvedP
 }
 
 // Separated acquisition keeps headless tests independent of real OS credentials.
-fn resolve_direct_with_key(store: &SecretsStore, id: &str, base_url: String, key: Option<String>) -> Option<ResolvedProvider> {
+fn resolve_direct_with_key(
+    store: &SecretsStore,
+    id: &str,
+    base_url: String,
+    key: Option<String>,
+) -> Option<ResolvedProvider> {
     let info = provider_info(id);
 
     // 1. Explicit key from Settings.
@@ -646,7 +655,7 @@ pub fn providers_delete(
 // Reusing an existing CLI login / "Connect account"
 // ---------------------------------------------------------------------------
 
-/// The two CLI logins `SideX` can connect as accounts, paired with the name
+/// The two CLI logins `ScCode` can connect as accounts, paired with the name
 /// their own CLI uses. `providers_detect_cli` (legacy shape) and
 /// `accounts_list` (the Connect account flow) both iterate this list so the
 /// two surfaces can never disagree about which providers exist.
@@ -697,7 +706,7 @@ pub fn providers_set_cli_auth(
 /// True when the user has explicitly switched a provider off. Distinct from
 /// `configured`: a keyless provider is always "configured" (it needs no
 /// credential), so without this separate flag there would be no way to stop
-/// `SideX` from treating it as available.
+/// `ScCode` from treating it as available.
 fn provider_disabled(store: &SecretsStore, provider: &str) -> bool {
     matches!(
         store
@@ -951,7 +960,7 @@ fn detect_codex_login() -> DetectedLogin {
     if non_empty(auth.openai_api_key).is_some() {
         return DetectedLogin {
             found: true,
-            // A bare API key has no expiry SideX can observe locally.
+            // A bare API key has no expiry ScCode can observe locally.
             expired: false,
             location,
             credential_kind: AUTH_API_KEY,
@@ -1463,7 +1472,7 @@ fn read_codex_models_cache_version() -> Option<String> {
 
 /// Version header ChatGPT uses to gate models such as gpt-5.6-terra.
 fn codex_client_version() -> String {
-    if let Ok(v) = std::env::var("SIDEX_CODEX_CLIENT_VERSION") {
+    if let Ok(v) = std::env::var("SC_CODE_CODEX_CLIENT_VERSION") {
         let v = v.trim();
         if !v.is_empty() {
             return v.to_string();
@@ -1593,12 +1602,12 @@ pub fn server_env(store: &SecretsStore) -> BTreeMap<String, String> {
     for r in resolve_all(store) {
         let up = r.provider.to_uppercase();
         if let Some(key) = r.api_key {
-            env.insert(format!("SIDEX_PROVIDER_{up}_KEY"), key);
+            env.insert(format!("SC_CODE_PROVIDER_{up}_KEY"), key);
         }
-        env.insert(format!("SIDEX_PROVIDER_{up}_BASE_URL"), r.base_url);
-        env.insert(format!("SIDEX_PROVIDER_{up}_AUTH"), r.auth_mode);
+        env.insert(format!("SC_CODE_PROVIDER_{up}_BASE_URL"), r.base_url);
+        env.insert(format!("SC_CODE_PROVIDER_{up}_AUTH"), r.auth_mode);
         if let Some(account) = r.account_id {
-            env.insert(format!("SIDEX_PROVIDER_{up}_ACCOUNT_ID"), account);
+            env.insert(format!("SC_CODE_PROVIDER_{up}_ACCOUNT_ID"), account);
         }
     }
     env
@@ -1689,10 +1698,10 @@ mod tests {
 
     #[test]
     fn slots_are_namespaced_per_provider() {
-        assert_eq!(api_key_slot("openai"), "sidex.apikey.openai");
-        assert_eq!(base_url_slot("openai"), "sidex.baseurl.openai");
-        assert_eq!(cli_opt_in_slot("openai"), "sidex.cli-auth.openai");
-        assert_eq!(provider_off_slot("openai"), "sidex.provider-off.openai");
+        assert_eq!(api_key_slot("openai"), "sc-code.apikey.openai");
+        assert_eq!(base_url_slot("openai"), "sc-code.baseurl.openai");
+        assert_eq!(cli_opt_in_slot("openai"), "sc-code.cli-auth.openai");
+        assert_eq!(provider_off_slot("openai"), "sc-code.provider-off.openai");
     }
 
     // -- explicit per-provider off switch --------------------------------
@@ -1705,12 +1714,16 @@ mod tests {
     /// would race each other, and a `cargo test` run could leave a provider
     /// switched off in the developer's real install.
     fn test_store() -> SecretsStore {
-        let path =
-            std::env::temp_dir().join(format!("sidex-providers-test-{}.db", uuid::Uuid::new_v4()));
+        let path = std::env::temp_dir().join(format!(
+            "sc-code-providers-test-{}.db",
+            uuid::Uuid::new_v4()
+        ));
         SecretsStore::new(
-            sidex_auth::SecretStorage::open_without_keyring(path.clone()).expect("open test secret store"),
+            sc_code_auth::SecretStorage::open_without_keyring(path.clone())
+                .expect("open test secret store"),
             path.parent().expect("temporary profile parent"),
-        ).expect("initialize test profile identity")
+        )
+        .expect("initialize test profile identity")
     }
 
     /// The four disable behaviours share one test on purpose.
@@ -1735,7 +1748,7 @@ mod tests {
         assert!(
             server_env(&store)
                 .keys()
-                .any(|k| k.starts_with("SIDEX_PROVIDER_OLLAMA_")),
+                .any(|k| k.starts_with("SC_CODE_PROVIDER_OLLAMA_")),
             "sanity: a keyless provider reaches server_env before being disabled"
         );
 
@@ -1747,7 +1760,7 @@ mod tests {
         assert!(
             !server_env(&store)
                 .keys()
-                .any(|k| k.starts_with("SIDEX_PROVIDER_OLLAMA_")),
+                .any(|k| k.starts_with("SC_CODE_PROVIDER_OLLAMA_")),
             "a disabled provider must never reach the server env the Go side reads"
         );
 
@@ -1844,7 +1857,13 @@ mod tests {
             .set_plain(&base_url_slot(provider), "https://example.com/v1")
             .unwrap();
         assert!(
-            resolve_direct_with_key(&store, provider, provider_base_url(&store, provider).unwrap(), key).is_some(),
+            resolve_direct_with_key(
+                &store,
+                provider,
+                provider_base_url(&store, provider).unwrap(),
+                key
+            )
+            .is_some(),
             "must resolve once both a base URL and a key are supplied"
         );
 
@@ -1879,7 +1898,10 @@ mod tests {
             .filter(|&id| id != "anthropic")
         {
             assert_eq!(
-                header_style(id, &dummy_resolved(id, AUTH_API_KEY, "https://example.com/v1")),
+                header_style(
+                    id,
+                    &dummy_resolved(id, AUTH_API_KEY, "https://example.com/v1")
+                ),
                 HeaderStyle::Bearer,
                 "{id} must use the default Bearer header style, not Anthropic's"
             );
@@ -1889,7 +1911,11 @@ mod tests {
     #[test]
     fn openai_oauth_retargets_stock_api_host_to_codex() {
         assert_eq!(
-            openai_oauth_base_url("openai", AUTH_OAUTH, "https://api.openai.com/v1".to_string()),
+            openai_oauth_base_url(
+                "openai",
+                AUTH_OAUTH,
+                "https://api.openai.com/v1".to_string()
+            ),
             OPENAI_CODEX_BASE_URL
         );
         assert_eq!(
@@ -1913,7 +1939,8 @@ mod tests {
     #[test]
     fn parse_codex_models_cache_version_reads_client_version() {
         assert_eq!(
-            parse_codex_models_cache_version(r#"{"client_version":"0.146.0","models":[]}"#).as_deref(),
+            parse_codex_models_cache_version(r#"{"client_version":"0.146.0","models":[]}"#)
+                .as_deref(),
             Some("0.146.0")
         );
         assert_eq!(parse_codex_models_cache_version("{}"), None);

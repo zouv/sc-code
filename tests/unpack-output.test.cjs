@@ -5,7 +5,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const os = require('node:os');
 const { buildPaths } = require('../scripts/package-output.cjs');
-const { exportUnpack, validateUnpack, requiredFiles, resourceDirs, removeStage } = require('../scripts/unpack-output.cjs');
+const { exportUnpack, validateUnpack, requiredFiles, resourceDirs, removeStage, assertUnpackTargetReady } = require('../scripts/unpack-output.cjs');
 const { clean } = require('../scripts/daily.cjs');
 const { sha256 } = require('../scripts/desktop-runtime.cjs');
 const { readZipEntries, readZipEntry } = require('../scripts/zip-writer.cjs');
@@ -29,7 +29,7 @@ test('unpack resources match both Tauri resource configurations', () => {
   for (const destination of Object.values(config.bundle.resources)) assert.ok(destination.endsWith('/') ? resourceDirs.includes(destination.slice(0, -1)) : requiredFiles.includes(destination), destination);
   const preparation = fs.readFileSync(path.join(root, 'scripts/prepare-desktop-runtime.cjs'), 'utf8');
   for (const name of ['bin', 'extension-host', 'extensions', 'licenses']) assert.ok(preparation.includes("'" + name + "/':'" + name + "/'"));
-  assert.ok(preparation.includes("'sidex-server.exe':'sidex-server.exe'"));
+  assert.ok(preparation.includes("'sc-code-agent.exe':'sc-code-agent.exe'"));
   assert.ok(preparation.includes("'manifest.json':'runtime-manifest.json'"));
 });
 test('complete Release unpack is archived with runtime/licenses/DLLs but excludes build cache and symbols', t => {
@@ -40,21 +40,24 @@ test('complete Release unpack is archived with runtime/licenses/DLLs but exclude
   const zip = exportUnpack(base, paths);
   assert.equal(zip, path.join(base, 'packages/release', releaseName + '.zip'));
   const entries = readZipEntries(zip).map(entry => entry.name);
-  for (const relative of requiredFiles.filter(file => !['ScCode.exe', 'runtime-manifest.json'].includes(file))) assert.equal(readZipEntry(zip, releaseName + '/' + relative).toString(), 'resource');
-  assert.equal(readZipEntry(zip, releaseName + '/ScCode.exe').toString(), 'executable');
-  assert.equal(JSON.parse(readZipEntry(zip, releaseName + '/runtime-manifest.json').toString()).platform, 'win32-x64');
-  assert.equal(readZipEntry(zip, releaseName + '/licenses/ScCode-LICENSE.txt').toString(), 'project license');
-  assert.equal(readZipEntry(zip, releaseName + '/WebView2Loader.dll').toString(), 'optional app-local DLL');
+  for (const relative of requiredFiles.filter(file => !['ScCode.exe', 'runtime-manifest.json'].includes(file))) assert.equal(readZipEntry(zip, relative).toString(), 'resource');
+  assert.equal(readZipEntry(zip, 'ScCode.exe').toString(), 'executable');
+  assert.equal(JSON.parse(readZipEntry(zip, 'runtime-manifest.json').toString()).platform, 'win32-x64');
+  assert.equal(readZipEntry(zip, 'licenses/ScCode-LICENSE.txt').toString(), 'project license');
+  assert.equal(readZipEntry(zip, 'WebView2Loader.dll').toString(), 'optional app-local DLL');
   for (const file of ['ScCode.pdb', 'ScCode.d', 'deps/cache', 'bundle/nsis/installer.exe', 'build/cache', '.cargo-lock']) assert.equal(entries.some(name => name.endsWith('/' + file)), false, file);
-  assert.ok(entries.every(name => name.startsWith(releaseName + '/')));
+  assert.ok(entries.includes('ScCode.exe'));
+  assert.ok(entries.every(name => !name.startsWith(releaseName + '/')));
+  assert.ok(fs.existsSync(path.join(base, 'packages/release/unpack/ScCode.exe')));
   assert.equal(fs.existsSync(path.join(base, 'packages/unpack')), false);
-  const manifest = JSON.parse(readZipEntry(zip, releaseName + '/unpack-manifest.json').toString());
+  assert.equal(fs.existsSync(path.join(base, 'packages/release/unpack/unpack-manifest.json')), true);
+  const manifest = JSON.parse(readZipEntry(zip, 'unpack-manifest.json').toString());
   for (const file of manifest.files) {
     const source = path.join(paths.build, file.path);
     if (!fs.existsSync(source)) continue; // README/manifest and the generated project license are not build outputs.
     assert.equal(sha256(source), file.sha256, file.path);
   }
-  const readme = readZipEntry(zip, releaseName + '/README.txt').toString();
+  const readme = readZipEntry(zip, 'README.txt').toString();
   assert.match(readme, /WebView2 Runtime/);
   assert.match(readme, /%APPDATA%\\ScCode/);
 });
@@ -65,10 +68,11 @@ test('Debug archive keeps PDB symbols and uses a distinct name', t => {
   const zip = exportUnpack(base, paths);
   assert.equal(zip, path.join(base, 'packages/dev', debugName + '.zip'));
   const entries = readZipEntries(zip).map(entry => entry.name);
-  assert.equal(readZipEntry(zip, debugName + '/ScCode.pdb').toString(), 'debug symbols');
-  assert.equal(readZipEntry(zip, debugName + '/ScCode.exe').toString(), 'debug executable');
-  assert.match(readZipEntry(zip, debugName + '/README.txt').toString(), /PDB symbols/);
-  assert.equal(entries.some(name => name.startsWith(releaseName + '/')), false);
+  assert.equal(readZipEntry(zip, 'ScCode.pdb').toString(), 'debug symbols');
+  assert.equal(readZipEntry(zip, 'ScCode.exe').toString(), 'debug executable');
+  assert.match(readZipEntry(zip, 'README.txt').toString(), /PDB symbols/);
+  assert.equal(entries.some(name => name.startsWith(debugName + '/')), false);
+  assert.ok(fs.existsSync(path.join(base, 'packages/dev/unpack/ScCode.exe')));
 });
 test('dev and release archives stay separate and rebuilding replaces the same zip', t => {
   const base = fixture(t), release = buildPaths([], base), debug = buildPaths(['--debug'], base);
@@ -78,10 +82,10 @@ test('dev and release archives stay separate and rebuilding replaces the same zi
   write(path.join(release.build, 'ScCode.exe'), 'release v2');
   exportUnpack(base, release);
   clean(base);
-  assert.equal(readZipEntry(releaseZip, releaseName + '/ScCode.exe').toString(), 'release v2');
-  assert.equal(readZipEntry(debugZip, debugName + '/ScCode.exe').toString(), 'debug');
-  assert.deepEqual(fs.readdirSync(release.packages), [releaseName + '.zip']);
-  assert.deepEqual(fs.readdirSync(debug.packages), [debugName + '.zip']);
+  assert.equal(readZipEntry(releaseZip, 'ScCode.exe').toString(), 'release v2');
+  assert.equal(readZipEntry(debugZip, 'ScCode.exe').toString(), 'debug');
+  assert.deepEqual(fs.readdirSync(release.packages).sort(), [releaseName + '.zip', 'unpack']);
+  assert.deepEqual(fs.readdirSync(debug.packages).sort(), [debugName + '.zip', 'unpack']);
 });
 test('missing/stale runtime and builtin artifacts cannot replace a good archive', t => {
   const base = fixture(t), paths = buildPaths([], base);
@@ -92,7 +96,7 @@ test('missing/stale runtime and builtin artifacts cannot replace a good archive'
   assert.throws(() => exportUnpack(base, paths), /stale unpack resource/);
   runtimeFixture(base, paths); write(path.join(paths.build, 'extensions/git/main.js'), 'tampered');
   assert.throws(() => exportUnpack(base, paths), /builtin extensions hash/);
-  assert.equal(readZipEntry(zip, releaseName + '/ScCode.exe').toString(), 'good');
+  assert.equal(readZipEntry(zip, 'ScCode.exe').toString(), 'good');
 });
 test('test host modules, malformed runtime paths and cross targets are rejected', t => {
   const base = fixture(t), paths = buildPaths([], base);
@@ -119,7 +123,7 @@ test('built profile runtime is used rather than a newer unrelated preparation tr
   const base = fixture(t), paths = buildPaths([], base);
   runtimeFixture(base, paths); write(path.join(base, '.runtime/desktop/bin/node.exe'), 'unrelated runtime');
   const zip = exportUnpack(base, paths);
-  assert.equal(readZipEntry(zip, releaseName + '/bin/node.exe').toString(), 'resource');
+  assert.equal(readZipEntry(zip, 'bin/node.exe').toString(), 'resource');
 });
 test('shipped host uses file hashes, not source tree fingerprint containing development shims', t => {
   const base = fixture(t), paths = buildPaths([], base);
@@ -143,7 +147,24 @@ test('failed archive write keeps the previous zip and removes the partial file',
   };
   try { assert.throws(() => exportUnpack(base, paths), /simulated archive failure/); }
   finally { fs.renameSync = rename; }
-  assert.equal(readZipEntry(zip, releaseName + '/ScCode.exe').toString(), 'old good');
+  assert.equal(readZipEntry(zip, 'ScCode.exe').toString(), 'old good');
   assert.equal(fs.existsSync(zip + '.partial'), false);
   assert.deepEqual(fs.readdirSync(path.join(base, '.runtime/package-staging')), []);
+});
+test('a held unpack folder fails early with a close-the-app message', t => {
+  const base = fixture(t), paths = buildPaths([], base);
+  const unpack = path.join(paths.packages, 'unpack');
+  fs.mkdirSync(unpack, { recursive: true });
+  const rename = fs.renameSync;
+  fs.renameSync = function(source, destination) {
+    if (source === unpack) {
+      const error = new Error('file is in use');
+      error.code = 'EPERM';
+      throw error;
+    }
+    return rename(source, destination);
+  };
+  try { assert.throws(() => assertUnpackTargetReady(base, paths), /close any running ScCode instance/); }
+  finally { fs.renameSync = rename; }
+  assert.ok(fs.existsSync(unpack));
 });

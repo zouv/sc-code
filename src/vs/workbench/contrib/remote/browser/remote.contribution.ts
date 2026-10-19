@@ -1,5 +1,5 @@
 /*---------------------------------------------------------------------------------------------
- *  SideX — Remote workbench contribution.`
+ *  ScCode — Remote workbench contribution.`
  *--------------------------------------------------------------------------------------------*/
 
 import { localize, localize2 } from '../../../../nls.js';
@@ -33,12 +33,12 @@ import {
 import { LifecyclePhase } from '../../../services/lifecycle/common/lifecycle.js';
 import { Disposable } from '../../../../base/common/lifecycle.js';
 import {
-	ISideXRemoteService,
+	IScCodeRemoteService,
 	SshHost,
 	WslDistro,
 	ContainerEntry,
 	RemoteKind
-} from '../../../../platform/sidex/browser/sidexRemoteService.js';
+} from '../../../../platform/scCode/browser/scCodeRemoteService.js';
 import { IViewsService } from '../../../services/views/common/viewsService.js';
 import { IQuickInputService, IQuickPickItem } from '../../../../platform/quickinput/common/quickInput.js';
 import { ICommandService } from '../../../../platform/commands/common/commands.js';
@@ -132,8 +132,8 @@ registerAction2(
 	class RefreshRemoteExplorer extends Action2 {
 		constructor() {
 			super({
-				id: 'sidex.remote.refresh',
-				title: localize2('sidex.remote.refresh', 'Refresh Remote Explorer'),
+				id: 'sc-code.remote.refresh',
+				title: localize2('sc-code.remote.refresh', 'Refresh Remote Explorer'),
 				icon: Codicon.refresh,
 				menu: [
 					{
@@ -156,14 +156,14 @@ registerAction2(
 registerAction2(
 	class ConnectRemote extends Action2 {
 		constructor() {
-			super({ id: 'sidex.remote.connect', title: localize2('sidex.remote.connect', 'Connect to Remote') });
+			super({ id: 'sc-code.remote.connect', title: localize2('sc-code.remote.connect', 'Connect to Remote') });
 		}
 		async run(
 			accessor: ServicesAccessor,
 			type: RemoteKind,
 			payload: SshHost | WslDistro | ContainerEntry | { name: string }
 		): Promise<void> {
-			const remoteService = accessor.get(ISideXRemoteService);
+			const remoteService = accessor.get(IScCodeRemoteService);
 			const notifications = accessor.get(INotificationService);
 			try {
 				if (type === 'ssh') {
@@ -188,8 +188,8 @@ registerAction2(
 	class OpenRemoteExplorer extends Action2 {
 		constructor() {
 			super({
-				id: 'sidex.remote.openExplorer',
-				title: localize2('sidex.remote.openExplorer', 'Remote Explorer'),
+				id: 'sc-code.remote.openExplorer',
+				title: localize2('sc-code.remote.openExplorer', 'Remote Explorer'),
 				menu: [{ id: MenuId.CommandPalette }]
 			});
 		}
@@ -204,15 +204,15 @@ registerAction2(
 	class OpenRemoteWindow extends Action2 {
 		constructor() {
 			super({
-				id: 'sidex.remote.openWindow',
-				title: localize2('sidex.remote.openWindow', 'Connect to…'),
+				id: 'sc-code.remote.openWindow',
+				title: localize2('sc-code.remote.openWindow', 'Connect to…'),
 				menu: [{ id: MenuId.CommandPalette }]
 			});
 		}
 		async run(accessor: ServicesAccessor): Promise<void> {
 			const quickInput = accessor.get(IQuickInputService);
 			const commandService = accessor.get(ICommandService);
-			const remoteService = accessor.get(ISideXRemoteService);
+			const remoteService = accessor.get(IScCodeRemoteService);
 			const notifications = accessor.get(INotificationService);
 
 			interface RemoteOption extends IQuickPickItem {
@@ -223,7 +223,7 @@ registerAction2(
 				{
 					label: '$(remote) ' + localize('remote.pick.connectToTunnel', 'Connect to Tunnel…'),
 					description: localize('remote.pick.tunnelsProvider', 'Remote-Tunnels'),
-					action: () => commandService.executeCommand('sidex.remote.signInTunnel', 'github')
+					action: () => commandService.executeCommand('sc-code.remote.signInTunnel', 'github')
 				},
 				{
 					label: '$(terminal-cmd) ' + localize('remote.pick.connectToHost', 'Connect to Host…'),
@@ -306,8 +306,8 @@ registerAction2(
 	class SignInTunnel extends Action2 {
 		constructor() {
 			super({
-				id: 'sidex.remote.signInTunnel',
-				title: localize2('sidex.remote.signInTunnel', 'Sign in to Remote Tunnels')
+				id: 'sc-code.remote.signInTunnel',
+				title: localize2('sc-code.remote.signInTunnel', 'Sign in to Remote Tunnels')
 			});
 		}
 
@@ -367,7 +367,7 @@ registerAction2(
 async function pickAndConnectSsh(
 	quickInput: IQuickInputService,
 	notifications: INotificationService,
-	remoteService: ISideXRemoteService
+	remoteService: IScCodeRemoteService
 ): Promise<void> {
 	const hosts = await remoteService.listSshHosts();
 
@@ -436,7 +436,7 @@ async function pickAndConnectSsh(
 async function pickAndConnectWsl(
 	quickInput: IQuickInputService,
 	notifications: INotificationService,
-	remoteService: ISideXRemoteService
+	remoteService: IScCodeRemoteService
 ): Promise<void> {
 	const distros = await remoteService.listWslDistros();
 	if (!distros.length) {
@@ -473,7 +473,7 @@ async function pickAndConnectWsl(
 async function pickAndAttachContainer(
 	quickInput: IQuickInputService,
 	notifications: INotificationService,
-	remoteService: ISideXRemoteService
+	remoteService: IScCodeRemoteService
 ): Promise<void> {
 	const containers = await remoteService.listContainers();
 
@@ -608,7 +608,7 @@ async function pollForGitHubToken(
 async function storeGitHubToken(token: string): Promise<void> {
 	const { invoke } = await import('@tauri-apps/api/core');
 	await invoke('secret_set', {
-		key: 'sidex.remote.github.device-flow',
+		key: 'sc-code.remote.github.device-flow',
 		value: token
 	});
 }
@@ -622,7 +622,7 @@ class RemoteStatusBarIndicator extends Disposable implements IWorkbenchContribut
 
 	constructor(
 		@IStatusbarService private readonly statusbarService: IStatusbarService,
-		@ISideXRemoteService private readonly remoteService: ISideXRemoteService
+		@IScCodeRemoteService private readonly remoteService: IScCodeRemoteService
 	) {
 		super();
 		this.entry = this._register(
@@ -647,7 +647,7 @@ class RemoteStatusBarIndicator extends Disposable implements IWorkbenchContribut
 			text,
 			ariaLabel,
 			tooltip: localize('noHost.tooltip', 'Open a Remote Window'),
-			command: 'sidex.remote.openWindow'
+			command: 'sc-code.remote.openWindow'
 		};
 	}
 

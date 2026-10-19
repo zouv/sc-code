@@ -9,7 +9,7 @@ case "${1:-help}" in
   dev) require npm; npm run desktop:dev ;;
   web) require npm; npm run dev ;;
   build) require npm; npm run build ;;
-  test) require npm; require cargo; npm run verify:import; npm test; npm run test:transport; npm run typecheck; cargo test -p sc-code-runtime -p sidex-auth -p sidex-workspace -p sidex-agent -p sidex-settings -p sidex-extensions; cargo test -p sc-code --lib; bash check-docs.sh ;;
+  test) require npm; require cargo; npm run verify:import; npm test; npm run test:transport; npm run typecheck; cargo test -p sc-code-runtime -p sc-code-auth -p sc-code-workspace -p sc-code-agent -p sc-code-settings -p sc-code-extensions; cargo test -p sc-code --lib; bash check-docs.sh ;;
   check) require cargo; cargo check -p sc-code ;;
   pack) require npm; npm run desktop:build ;;
   docs) bash check-docs.sh ;;

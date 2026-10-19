@@ -60,7 +60,7 @@ function build(mode, bundleArgs) {
 function sourceFingerprint() {
   const hash = crypto.createHash('sha256');
   const ignored = new Set(['node_modules', 'target', 'gen', '.git']);
-  const inputs = ['src', 'src-tauri', 'public', 'crates', 'sidexai/sidex-server', 'scripts', '.cargo',
+  const inputs = ['src', 'src-tauri', 'public', 'crates', 'agent/server', 'scripts', '.cargo',
     'index.html', 'vite.config.ts', 'package.json', 'package-lock.json', 'Cargo.toml', 'Cargo.lock', 'tsconfig.json', 'tsconfig.node.json', '.runtime/desktop/manifest.json'];
   function visit(file) {
     if (!fs.existsSync(file)) return;
@@ -87,7 +87,7 @@ function test() {
   dependencies();
   for (const script of ['test', 'test:transport', 'typecheck']) npm('run', script);
   const env = { ...process.env, AWS_LC_SYS_PREBUILT_NASM: '1' }; delete env.CC; delete env.CXX;
-  run('cargo', ['test', '-p', 'sc-code-runtime', '-p', 'sidex-auth', '-p', 'sidex-workspace', '-p', 'sidex-settings', '-p', 'sidex-extensions'], { env });
+  run('cargo', ['test', '-p', 'sc-code-runtime', '-p', 'sc-code-auth', '-p', 'sc-code-workspace', '-p', 'sc-code-settings', '-p', 'sc-code-extensions'], { env });
   run('cargo', ['test', '-p', 'sc-code', '--lib'], { env });
 }
 function help() {
@@ -101,11 +101,11 @@ function help() {
   verify.bat              test + import + runtime preflight + server smoke + docs
   clean.bat               Delete allowlisted generated output, not caches or profiles
   Any script --help / --dry-run: explain/preview without installing, building or launching.
-Packages: packages/dev (Debug unpack zip only), packages/release (Release setup exe + unpack zip).
-Unpack zip names: ScCode_<version>_x64-unpack-debug.zip (dev), ScCode_<version>_x64-unpack.zip (release).
+Packages: packages/dev (Debug unpack dir + zip), packages/release (Release setup exe + unpack dir + zip).
+Unpack dirs: packages/<mode>/unpack. Zip contents are rooted at the package root (no version subdirectory).
 Intermediate output: .runtime/{desktop,target,dist,public,metadata,logs,package-staging}.
 clean.bat preserves packages/, tools/downloads and user profiles.
-Known sidex-agent timeout, sidex-terminal Unix and sidex-remote test failures are NOT part of test.bat.
+Known sc-code-agent timeout, sc-code-terminal Unix and sc-code-remote test failures are NOT part of test.bat.
 No script commits, pushes, publishes, kills apps or deletes %APPDATA%/ScCode.`);
 }
 function main(action, args) {

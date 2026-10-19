@@ -1,5 +1,5 @@
 /*---------------------------------------------------------------------------------------------
- *  SideX — ExtHost telemetry stub. Telemetry is handled by the Tauri host directly;
+ *  ScCode — ExtHost telemetry stub. Telemetry is handled by the Tauri host directly;
  *  extension telemetry loggers accept sends and report them as no-ops.
  *--------------------------------------------------------------------------------------------*/
 

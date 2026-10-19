@@ -1,5 +1,5 @@
 /*---------------------------------------------------------------------------------------------
- *  SideX: Stub for removed external URI opener service.
+ *  ScCode: Stub for removed external URI opener service.
  *--------------------------------------------------------------------------------------------*/
 
 import { CancellationToken } from '../../../../base/common/cancellation.js';

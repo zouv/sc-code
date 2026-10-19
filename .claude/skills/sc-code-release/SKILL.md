@@ -1,6 +1,6 @@
 ---
 name: sc-code-release
-description: 构建 ScCode 的 Windows x64 成品（版本号同步、预检、Debug unpack zip / Release setup + unpack zip、冒烟与文档收尾）。仅当用户明确要求「打包 / 构建安装包 / 出 Release 包 / release build」时调用。
+description: 构建 ScCode 的 Windows x64 成品（版本号同步、预检、Debug/Release unpack 目录 + zip、冒烟与文档收尾）。仅当用户明确要求「打包 / 构建安装包 / 出 Release 包 / release build」时调用。
 ---
 
 # ScCode 打包 Skill
@@ -43,7 +43,7 @@ npm run desktop:release -- --dry-run   # 只打印路径，不构建
 | `src-tauri/tauri.conf.json` | `version` | Tauri 打包读取的版本 |
 | `src-tauri/tauri.conf.json` | `bundle.windows.wix.version` | 纯数字四段，如 `0.1.1.0` |
 | `src-tauri/Cargo.toml` | `[package].version` | Rust 可执行文件版本 |
-| `src/main.ts` | `sidexVersion` 回退值 | 取不到 Tauri 版本时的 About 显示 |
+| `src/main.ts` | `scCodeVersion` 回退值 | 取不到 Tauri 版本时的 About 显示 |
 | `Cargo.lock` | `name = "sc-code"` 的 `version` | cargo 构建也会自动更新 |
 
 **不要改**：
@@ -55,7 +55,7 @@ npm run desktop:release -- --dry-run   # 只打印路径，不构建
 ```bash
 npm run typecheck
 npm test                       # 至少跑完；失败必须如实报告
-npm run desktop:release        # prepare → Tauri Release → setup exe + unpack zip
+npm run desktop:release        # prepare → Tauri Release → unpack 目录 + setup exe + zip
 ```
 
 等价入口：`release.bat`。需要先能准备固定 Node/Go/内置扩展；构建中间产物都在 `.runtime/`。
@@ -64,19 +64,21 @@ npm run desktop:release        # prepare → Tauri Release → setup exe + unpac
 
 ```
 packages/dev/
-└── ScCode_<version>_x64-unpack-debug.zip   # Debug unpack 包（含 PDB），仅用于开发测试
+├── unpack/                                  # Debug 未压缩目录（含 PDB），仅用于开发测试
+└── ScCode_<version>_x64-unpack-debug.zip   # Debug zip
 
 packages/release/
+├── unpack/                                  # Release 未压缩目录
 ├── ScCode_<version>_x64-setup.exe          # NSIS 安装包
 └── ScCode_<version>_x64-unpack.zip         # Release 免安装 zip（发布必须上传）
 ```
 
-zip 内部统一以一个根目录开头（`ScCode_<version>_x64-unpack[-debug]/`），包含：
+zip 根目录直接是程序文件（**不再包含** `ScCode_<version>_x64-unpack[-debug]/` 外壳目录），包含：
 
 ```
 ScCode.exe
 bin/node.exe
-sidex-server.exe
+sc-code-agent.exe
 extension-host/
 extensions/
 licenses/
@@ -85,18 +87,18 @@ unpack-manifest.json                 # SHA256 文件清单
 README.txt
 ```
 
-**不再生成 `packages/unpack` 目录**；暂存目录在校验与 zip 写入后删除。
+**不再生成旧的 `packages/unpack` 路径**；`packages/<dev|release>/unpack/` 会保留，`.runtime/package-staging` 暂存目录在校验与 zip 写入后删除。
 
-构建脚本在 `scripts/build-desktop.cjs`：Release 只有本次新生成的安装包才会导出；Debug 只写 unpack zip，不导出 setup。unpack 先逐文件 hash 校验，随后 `scripts/unpack-output.cjs / archiveUnpack` 生成 zip（`scripts/zip-writer.cjs`，纯 Node，跨平台、不依赖系统 zip/tar）。
+构建脚本在 `scripts/build-desktop.cjs`：先 `prepareUnpack` 校验，再 `exportUnpacked` 发布未压缩目录，随后以该目录为源 `archiveUnpack` 生成 zip；Release 只有本次新生成的安装包才会导出，Debug 不导出 setup。zip 由 `scripts/zip-writer.cjs` 生成（纯 Node，跨平台、不依赖系统 zip/tar）。
 
 ## 构建后验收
 
 ```bash
 ls -la packages/dev/ packages/release/
 # zip 必须存在且关键条目可检索（压缩数据中文件名可读）
-grep -a -o 'ScCode_<version>_x64-unpack/ScCode.exe' packages/release/ScCode_<version>_x64-unpack.zip
-grep -a -o 'ScCode_<version>_x64-unpack/unpack-manifest.json' packages/release/ScCode_<version>_x64-unpack.zip
-grep -a -o 'ScCode_<version>_x64-unpack-debug/ScCode.pdb' packages/dev/ScCode_<version>_x64-unpack-debug.zip
+grep -a -o 'ScCode.exe' packages/release/ScCode_<version>_x64-unpack.zip
+grep -a -o 'unpack-manifest.json' packages/release/ScCode_<version>_x64-unpack.zip
+grep -a -o 'ScCode.pdb' packages/dev/ScCode_<version>_x64-unpack-debug.zip
 ```
 
 - 冒烟：把 Release zip 解压到临时目录，用隔离 profile 启动其中的 `ScCode.exe`（`SC_CODE_HOME=D:\Temp\sc-code-smoke`）；GUI 不可用时至少报告未做 GUI 验收。
@@ -111,11 +113,11 @@ grep -a -o 'ScCode_<version>_x64-unpack-debug/ScCode.pdb' packages/dev/ScCode_<v
 2. `ROADMAP.md`：对应条目打 ✅ 或记录交付里程碑。
 3. `HANDOFF.md`：刷新状态；任务完结时清掉开工计划痕迹。
 4. `ARCHITECTURE.md`：若改了打包链路的文件/函数/接口，同步更新。
-5. `docs/releases/v<version>.md`：写发布说明（供 publish 使用）。
+5. 在 `CHANGELOG.md` 对应版本小节确认发布说明（publish 直接读取，不再维护 docs/releases 历史文件）。
 6. 跑 `sh check-docs.sh`。
 
 ## 输出要求
 
-向用户报告：版本号与同步文件、产物绝对路径与大小、zip 是否包含 unpack、测试/冒烟结果、是否可进入 `sc-code-publish`。
+向用户报告：版本号与同步文件、产物绝对路径与大小、未压缩 unpack 目录与 zip 是否生成、测试/冒烟结果、是否可进入 `sc-code-publish`。
 
 **不要主动 commit / push / 发布**，除非用户明确要求。

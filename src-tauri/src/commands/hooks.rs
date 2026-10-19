@@ -11,7 +11,7 @@ use tokio::process::Command;
 const DEFAULT_TIMEOUT_MS: u64 = 30_000;
 const GLOBAL_HOOKS_FILE: &str = "hooks.json";
 
-fn global_sidex_config_dir() -> PathBuf {
+fn global_sc_code_config_dir() -> PathBuf {
     crate::app_dirs::app_data_dir()
 }
 
@@ -113,7 +113,7 @@ pub struct HooksState {
 
 impl HooksState {
     pub fn default_global() -> Self {
-        let global_path = global_sidex_config_dir().join(GLOBAL_HOOKS_FILE);
+        let global_path = global_sc_code_config_dir().join(GLOBAL_HOOKS_FILE);
         let config_paths = vec![global_path];
         let config = load_merged_config(&config_paths);
 
@@ -378,13 +378,17 @@ async fn execute_script(
 }
 
 fn inject_env_vars(cmd: &mut Command, ctx: &HookContext) {
-    cmd.env("SIDEX_CWD", &ctx.cwd);
-    cmd.env("SIDEX_EVENT", format!("{:?}", ctx.file_path));
+    cmd.env("SC_CODE_CWD", &ctx.cwd);
+    cmd.env("SC_CODE_CWD", &ctx.cwd);
+    cmd.env("SC_CODE_EVENT", format!("{:?}", ctx.file_path));
+    cmd.env("SC_CODE_EVENT", format!("{:?}", ctx.file_path));
     if let Some(f) = &ctx.file_path {
-        cmd.env("SIDEX_FILE", f);
+        cmd.env("SC_CODE_FILE", f);
+        cmd.env("SC_CODE_FILE", f);
     }
     if let Some(t) = &ctx.tool_name {
-        cmd.env("SIDEX_TOOL", t);
+        cmd.env("SC_CODE_TOOL", t);
+        cmd.env("SC_CODE_TOOL", t);
     }
 }
 

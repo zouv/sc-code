@@ -65,7 +65,7 @@
 	color: inherit !important;
 }
 
-/* Sidex: action bar uses gap for tab spacing */
+/* ScCode: action bar uses gap for tab spacing */
 .monaco-workbench .pane-composite-part > .title > .composite-bar-container > .composite-bar > .monaco-action-bar,
 .monaco-workbench .pane-composite-part > .header-or-footer > .composite-bar-container > .composite-bar > .monaco-action-bar {
 	line-height: 24px;
@@ -77,7 +77,7 @@
 	justify-content: center;
 }
 
-/* Sidex: flat tab items — clean, normal case, 30px */
+/* ScCode: flat tab items — clean, normal case, 30px */
 .monaco-workbench .pane-composite-part > .title > .composite-bar-container > .composite-bar > .monaco-action-bar .action-item,
 .monaco-workbench .pane-composite-part > .header-or-footer > .composite-bar-container > .composite-bar > .monaco-action-bar .action-item {
 	text-transform: none;
@@ -93,26 +93,26 @@
 	position: relative;
 }
 
-/* Sidex: active/checked tab — bright text */
+/* ScCode: active/checked tab — bright text */
 .monaco-workbench .pane-composite-part > .title > .composite-bar-container > .composite-bar > .monaco-action-bar .action-item.checked,
 .monaco-workbench .pane-composite-part > .header-or-footer > .composite-bar-container > .composite-bar > .monaco-action-bar .action-item.checked {
 	color: var(--vscode-panelTitle-activeForeground) !important;
 	background: none !important;
 }
 
-/* Sidex: inactive tab color */
+/* ScCode: inactive tab color */
 .monaco-workbench .pane-composite-part > .title > .composite-bar-container > .composite-bar > .monaco-action-bar .action-item:not(.checked),
 .monaco-workbench .pane-composite-part > .header-or-footer > .composite-bar-container > .composite-bar > .monaco-action-bar .action-item:not(.checked) {
 	color: var(--vscode-panelTitle-inactiveForeground) !important;
 }
 
-/* Sidex: hover — brighten inactive tabs */
+/* ScCode: hover — brighten inactive tabs */
 .monaco-workbench .pane-composite-part > .title > .composite-bar-container > .composite-bar > .monaco-action-bar .action-item:not(.checked):hover,
 .monaco-workbench .pane-composite-part > .header-or-footer > .composite-bar-container > .composite-bar > .monaco-action-bar .action-item:not(.checked):hover {
 	color: var(--vscode-panelTitle-activeForeground) !important;
 }
 
-/* Sidex: icon items inside panel composite bar — square containers */
+/* ScCode: icon items inside panel composite bar — square containers */
 .monaco-workbench .pane-composite-part > .title > .composite-bar-container > .composite-bar > .monaco-action-bar .action-item.icon,
 .monaco-workbench .pane-composite-part > .header-or-footer > .composite-bar-container > .composite-bar > .monaco-action-bar .action-item.icon {
 	width: 24px;
@@ -206,7 +206,7 @@
 	opacity: 1;
 }
 
-/* Sidex: action label — flat, no background, no margin */
+/* ScCode: action label — flat, no background, no margin */
 .monaco-workbench .pane-composite-part > .title > .composite-bar-container > .composite-bar > .monaco-action-bar .action-item .action-label,
 .monaco-workbench .pane-composite-part > .header-or-footer > .composite-bar-container > .composite-bar > .monaco-action-bar .action-item .action-label {
 	margin-right: 0;
@@ -215,7 +215,7 @@
 	color: inherit;
 }
 
-/* Sidex: icon action-labels centered with no extra padding */
+/* ScCode: icon action-labels centered with no extra padding */
 .monaco-workbench .pane-composite-part > .title > .composite-bar-container > .composite-bar > .monaco-action-bar .action-item.icon .action-label,
 .monaco-workbench .pane-composite-part > .header-or-footer > .composite-bar-container > .composite-bar > .monaco-action-bar .action-item.icon .action-label {
 	padding: 0;
@@ -307,19 +307,19 @@
 	-webkit-mask-size: 13px;
 }
 
-/* Sidex: active item indicator — hidden in panel (we use pill background instead) */
+/* ScCode: active item indicator — hidden in panel (we use pill background instead) */
 .monaco-workbench .part.panel .pane-composite-part > .title > .composite-bar-container > .composite-bar > .monaco-action-bar .action-item .active-item-indicator,
 .monaco-workbench .part.panel .pane-composite-part > .header-or-footer > .composite-bar-container > .composite-bar > .monaco-action-bar .action-item .active-item-indicator {
 	display: none !important;
 }
 
-/* Sidex: active item indicator — hidden, we use background highlight instead */
+/* ScCode: active item indicator — hidden, we use background highlight instead */
 .monaco-workbench .pane-composite-part:not(.panel) > .title > .composite-bar-container > .composite-bar > .monaco-action-bar .action-item .active-item-indicator,
 .monaco-workbench .pane-composite-part:not(.panel) > .header-or-footer > .composite-bar-container > .composite-bar > .monaco-action-bar .action-item .active-item-indicator {
 	display: none !important;
 }
 
-/* Sidex: highlighted background on checked icon items (Cursor-style) */
+/* ScCode: highlighted background on checked icon items (Cursor-style) */
 .monaco-workbench .pane-composite-part > .title > .composite-bar-container > .composite-bar > .monaco-action-bar .action-item.icon.checked,
 .monaco-workbench .pane-composite-part > .header-or-footer > .composite-bar-container > .composite-bar > .monaco-action-bar .action-item.icon.checked {
 	background-color: rgba(255, 255, 255, 0.1) !important;
@@ -328,7 +328,7 @@
 	height: 24px;
 }
 
-/* Sidex: active item indicator border — disabled (using bg highlight) */
+/* ScCode: active item indicator border — disabled (using bg highlight) */
 .monaco-workbench .pane-composite-part > .title > .composite-bar-container > .composite-bar > .monaco-action-bar .action-item.checked .active-item-indicator:before,
 .monaco-workbench .pane-composite-part > .title > .composite-bar-container > .composite-bar > .monaco-action-bar .action-item:focus .active-item-indicator:before,
 .monaco-workbench .pane-composite-part > .header-or-footer.header > .composite-bar-container > .composite-bar > .monaco-action-bar .action-item.checked .active-item-indicator:before,
@@ -342,7 +342,7 @@
 	display: none !important;
 }
 
-/* Sidex: hide indicator when clicked but not checked */
+/* ScCode: hide indicator when clicked but not checked */
 .monaco-workbench .pane-composite-part > .title > .composite-bar-container > .composite-bar > .monaco-action-bar .action-item.clicked:not(.checked):focus .active-item-indicator:before,
 .monaco-workbench .pane-composite-part > .header-or-footer.header > .composite-bar-container > .composite-bar > .monaco-action-bar .action-item.clicked:not(.checked):focus .active-item-indicator:before {
 	background-color: transparent !important;
@@ -352,7 +352,7 @@
 	background-color: transparent !important;
 }
 
-/* Sidex: focus indicator uses focus border color */
+/* ScCode: focus indicator uses focus border color */
 .monaco-workbench .pane-composite-part > .title > .composite-bar-container > .composite-bar > .monaco-action-bar .action-item:focus .active-item-indicator:before,
 .monaco-workbench .pane-composite-part > .header-or-footer.header > .composite-bar-container > .composite-bar > .monaco-action-bar .action-item:focus .active-item-indicator:before {
 	background-color: var(--vscode-focusBorder, #d0d0d0) !important;
@@ -362,7 +362,7 @@
 	background-color: var(--vscode-focusBorder, #d0d0d0) !important;
 }
 
-/* Sidex: hover/checked outlines — HC themes only */
+/* ScCode: hover/checked outlines — HC themes only */
 .monaco-workbench .pane-composite-part > .title > .composite-bar-container > .composite-bar > .monaco-action-bar .action-item.checked .action-label,
 .monaco-workbench .pane-composite-part > .title > .composite-bar-container > .composite-bar > .monaco-action-bar .action-item:hover .action-label,
 .monaco-workbench .pane-composite-part > .header-or-footer > .composite-bar-container > .composite-bar > .monaco-action-bar .action-item.checked .action-label,
@@ -395,7 +395,7 @@
 	text-align: center;
 }
 
-/* Sidex: remove focus highlight border from pane composite panels */
+/* ScCode: remove focus highlight border from pane composite panels */
 .monaco-workbench .pane-composite-part:focus,
 .monaco-workbench .pane-composite-part > .content *:focus {
 	outline: none !important;

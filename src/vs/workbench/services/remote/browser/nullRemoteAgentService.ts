@@ -10,7 +10,7 @@ import { IRemoteAgentEnvironment } from '../../../../platform/remote/common/remo
 import { IDiagnosticInfoOptions, IDiagnosticInfo } from '../../../../platform/diagnostics/common/diagnostics.js';
 import { ITelemetryData, TelemetryLevel } from '../../../../platform/telemetry/common/telemetry.js';
 import { IChannel, IServerChannel } from '../../../../base/parts/ipc/common/ipc.js';
-import { getSideXRemoteService, RemoteConnection } from '../../../../platform/sidex/browser/sidexRemoteService.js';
+import { getScCodeRemoteService, RemoteConnection } from '../../../../platform/scCode/browser/scCodeRemoteService.js';
 
 export const IRemoteAgentService = createDecorator<IRemoteAgentService>('remoteAgentService');
 
@@ -90,13 +90,13 @@ export class NullRemoteAgentService implements IRemoteAgentService {
 	}
 
 	/**
-	 * SideX extension: list active remote connections managed by the
-	 * Rust-backed `sidex-remote` crate.  Returns an empty array when the
+	 * ScCode extension: list active remote connections managed by the
+	 * Rust-backed `sc-code-remote` crate.  Returns an empty array when the
 	 * Tauri bridge is unavailable (e.g. plain browser dev mode).
 	 */
 	async listRemotes(): Promise<RemoteConnection[]> {
 		try {
-			return await getSideXRemoteService().activeConnections();
+			return await getScCodeRemoteService().activeConnections();
 		} catch {
 			return [];
 		}

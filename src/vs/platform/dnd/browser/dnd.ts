@@ -90,7 +90,7 @@ export function extractEditorsDropData(e: DragEvent): Array<IDraggedResourceEdit
 		}
 
 		// [CUSTOM-BEGIN] CUSTOM-20261017-005 - OS 文件拖入的「真实路径」来源：text/uri-list
-		// 背景：SideX 关掉了 Tauri 原生拖放（`dragDropEnabled:false`，否则 webview 内 HTML5 拖拽全哑），
+		// 背景：ScCode 关掉了 Tauri 原生拖放（`dragDropEnabled:false`，否则 webview 内 HTML5 拖拽全哑），
 		// 于是 OS 文件拖入时上面那条 `getPathForFile()`（Electron `webUtils`，只在 Electron 里存在）恒为
 		// 空，只剩 `extractFilesDropData()` 那条「读内容当未命名副本」的 web 退路。
 		// Windows 的 Chromium/WebView2 拖入 OS 文件时通常还会带一份 `text/uri-list`（file:// URL）——
@@ -211,7 +211,7 @@ interface IFileTransferData {
 }
 
 async function extractFilesDropData(accessor: ServicesAccessor, event: DragEvent): Promise<IFileTransferData[]> {
-	// SideX: drag/drop of filesystem handles is not supported — we use the Tauri
+	// ScCode: drag/drop of filesystem handles is not supported — we use the Tauri
 	// backend exclusively for file I/O. Extract any files via the standard FileList API.
 	const files = event.dataTransfer?.files;
 	if (!files) {

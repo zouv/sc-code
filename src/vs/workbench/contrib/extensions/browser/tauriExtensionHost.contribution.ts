@@ -131,7 +131,7 @@ function sanitizeForExtHost(text: string): string {
 
 
 interface HandshakeMessage {
-	type: 'sidex:handshake';
+	type: 'sc-code:handshake';
 	connectionToken: string;
 	reconnectionToken: string;
 	extensionCount: number;
@@ -224,7 +224,7 @@ class TauriExtensionHostContribution extends Disposable implements IWorkbenchCon
 	}
 
 	private async _init(): Promise<void> {
-		if ((globalThis as any).__SIDEX_TAURI__ !== true) {
+		if ((globalThis as any).__SC_CODE_TAURI__ !== true) {
 			return;
 		}
 		if (isRealExtensionHostEnabled()) {
@@ -380,7 +380,7 @@ class TauriExtensionHostContribution extends Disposable implements IWorkbenchCon
 
 		const wasmExtensions = this._bootstrapExtensions.filter(e => e.kind === 'wasm');
 		if (wasmExtensions.length > 0) {
-			listen<number>('sidex-wasm-extensions-ready', () => {
+			listen<number>('sc-code-wasm-extensions-ready', () => {
 				this.logService.info('[ExtHost] WASM extensions ready');
 				this._syncDocumentsToWasm();
 				setTimeout(() => this._registerWasmProviders(), 200);
@@ -821,7 +821,7 @@ class TauriExtensionHostContribution extends Disposable implements IWorkbenchCon
 		}
 
 		switch (msg.type) {
-			case 'sidex:handshake':
+			case 'sc-code:handshake':
 				this._onHandshake(msg as HandshakeMessage);
 				break;
 			case 'extensionActivated':
@@ -1188,13 +1188,13 @@ class TauriExtensionHostContribution extends Disposable implements IWorkbenchCon
 				options: { className: key },
 			};
 		});
-		(editor as any).setDecorationsByType('sidex-exthost', key, decorations);
+		(editor as any).setDecorationsByType('sc-code-exthost', key, decorations);
 	}
 
 	private _onRegisterDecorationType(key: string, options: any): void {
 		if (!key || this._decorationTypes.has(key)) {return;}
 		try {
-			this.codeEditorService.registerDecorationType('sidex-exthost', key, options || {});
+			this.codeEditorService.registerDecorationType('sc-code-exthost', key, options || {});
 			this._decorationTypes.set(key, { dispose: () => this.codeEditorService.removeDecorationType(key) });
 		} catch (e) {
 			this.logService.warn(`[ExtHost] registerDecorationType failed for ${key}:`, e);
@@ -1398,7 +1398,7 @@ class TauriExtensionHostContribution extends Disposable implements IWorkbenchCon
 			return unique.length > 0 ? unique as LanguageSelector : '*';
 		};
 
-		// SideX: New capability format — `{selector, extensionId, displayName}[]`.
+		// ScCode: New capability format — `{selector, extensionId, displayName}[]`.
 		// Old format was just `selector[][]` (arrays of selectors). Normalize.
 		const normalizeProviders = (raw: any): Array<{ selector: unknown[]; extensionId?: string; displayName?: string }> => {
 			if (!Array.isArray(raw)) { return []; }

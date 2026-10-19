@@ -1,5 +1,5 @@
 /*---------------------------------------------------------------------------------------------
- *  SideX — ExtHost filesystem-event stub. File watching and workspace-edit participation
+ *  ScCode — ExtHost filesystem-event stub. File watching and workspace-edit participation
  *  are handled by the Tauri backend; this service accepts subscriptions but never fires.
  *--------------------------------------------------------------------------------------------*/
 

@@ -1,0 +1,9 @@
+[extension]
+id = "sc-code.cpp-language"
+name = "cpp-language"
+version = "0.1.0"
+description = "ScCode C/C++ language features via clangd"
+wasm = "../target/wasm32-wasip2/release/cpp_language_extension.wasm"
+
+[activation]
+events = ["onLanguage:c", "onLanguage:cpp"]

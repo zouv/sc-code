@@ -429,7 +429,7 @@ export class ViewDescriptorService extends Disposable implements IViewDescriptor
 	}
 
 	private getEffectiveViewContainerLocation(location: ViewContainerLocation): ViewContainerLocation {
-		// Sidex always stays in its own panel — never redirected
+		// ScCode always stays in its own panel — never redirected
 		return location;
 	}
 

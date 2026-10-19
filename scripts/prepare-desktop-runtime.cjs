@@ -36,10 +36,10 @@ function buildServer() {
     env.PATH = llvmBin + path.delimiter + (env.PATH || '');
   }
   if (!env.CC && fs.existsSync(zig)) env.CC = `"${zig}" cc -target x86_64-windows-gnu`;
-  const output = path.join(runtime,process.platform === 'win32' ? 'sidex-server.exe' : 'sidex-server');
+  const output = path.join(runtime,process.platform === 'win32' ? 'sc-code-agent.exe' : 'sc-code-agent');
   fs.mkdirSync(runtime,{recursive:true});
-  if (process.argv.includes('--test-go')) run(go,['test','-tags','fts5','./...'],{cwd:path.join(root,'sidexai/sidex-server'),env});
-  run(go,['build','-trimpath','-tags','fts5','-o',output,'./cmd/server'],{cwd:path.join(root,'sidexai/sidex-server'),env});
+  if (process.argv.includes('--test-go')) run(go,['test','-tags','fts5','./...'],{cwd:path.join(root,'agent/server'),env});
+  run(go,['build','-trimpath','-tags','fts5','-o',output,'./cmd/server'],{cwd:path.join(root,'agent/server'),env});
   return output;
 }
 async function main() {
@@ -90,7 +90,7 @@ async function main() {
   const resourcesMap = {};
   for (const [source, destination] of Object.entries({
     'bin/':'bin/', 'extensions/':'extensions/', 'extension-host/':'extension-host/',
-    'licenses/':'licenses/', 'sidex-server.exe':'sidex-server.exe', 'manifest.json':'runtime-manifest.json',
+    'licenses/':'licenses/', 'sc-code-agent.exe':'sc-code-agent.exe', 'manifest.json':'runtime-manifest.json',
   })) resourcesMap[path.join(runtime,source).replaceAll('\\','/')] = destination;
   fs.writeFileSync(runtimeConfig,JSON.stringify({bundle:{resources:resourcesMap}},null,2));
   assertPrepared();

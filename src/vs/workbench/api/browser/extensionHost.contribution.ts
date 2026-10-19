@@ -74,8 +74,8 @@ import './mainThreadAuthentication.js';
 // Timeline — removed: the timeline contribution is not part of the web port
 import './mainThreadTesting.js';
 import './mainThreadSecretState.js';
-// Share — removed: SideX uses sidex-extension-api
-// ProfileContentHandlers — removed: SideX uses sidex-extension-api
+// Share — removed: ScCode uses sc-code-extension-api
+// ProfileContentHandlers — removed: ScCode uses sc-code-extension-api
 import './mainThreadDataChannels.js';
 import './mainThreadMeteredConnection.js';
 // Browsers — removed: the browser-view contribution is not part of the web port

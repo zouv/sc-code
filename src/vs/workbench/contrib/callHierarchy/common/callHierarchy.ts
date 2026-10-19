@@ -1,5 +1,5 @@
 /*---------------------------------------------------------------------------------------------
- *  SideX: Stub for removed call hierarchy types (handled by sidex-lsp).
+ *  ScCode: Stub for removed call hierarchy types (handled by sc-code-lsp).
  *--------------------------------------------------------------------------------------------*/
 
 import { IRange } from '../../../../editor/common/core/range.js';

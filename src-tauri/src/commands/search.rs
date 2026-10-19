@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 
-use sidex_workspace::search::{
+use sc_code_workspace::search::{
     search_files as crate_search_files, FileSearchOptions as CrateFileSearchOptions, SearchEngine,
     SearchOptions as CrateSearchOptions, SearchQuery as CrateSearchQuery,
 };
@@ -110,7 +110,7 @@ pub fn search_text(
 }
 
 // ---------------------------------------------------------------------------
-// Commands backed directly by sidex-workspace::SearchEngine (grouped / replace)
+// Commands backed directly by sc-code-workspace::SearchEngine (grouped / replace)
 // ---------------------------------------------------------------------------
 
 #[derive(Debug, Deserialize)]

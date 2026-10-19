@@ -1,4 +1,4 @@
-package sidex:extension@0.1.0;
+package sc-code:extension@0.1.0;
 
 // ---------------------------------------------------------------------------
 // Shared types used across all interfaces
@@ -916,7 +916,7 @@ interface extension-api {
 // World — the top-level contract
 // ---------------------------------------------------------------------------
 
-world sidex-extension {
+world sc-code-extension {
     import host-api;
     export extension-api;
 }

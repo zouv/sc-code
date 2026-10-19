@@ -1,5 +1,5 @@
 /*---------------------------------------------------------------------------------------------
- *  Copyright (c) SideX. All rights reserved.
+ *  Copyright (c) ScCode. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
@@ -10,10 +10,10 @@ import {
 	IStorageItemsChangeEvent,
 	IUpdateRequest
 } from '../../../../base/parts/storage/common/storage.js';
-import { invoke, isTauri } from '../../../../sidex-bridge.js';
+import { invoke, isTauri } from '../../../../scCodeBridge.js';
 
 /**
- * Storage database backed by the SideX Tauri (`storage_*`) commands,
+ * Storage database backed by the ScCode Tauri (`storage_*`) commands,
  * which persist to a local SQLite file on disk.
  *
  * Unlike the IndexedDB implementation this data survives webview

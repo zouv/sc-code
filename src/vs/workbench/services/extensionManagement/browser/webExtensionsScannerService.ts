@@ -957,8 +957,8 @@ export class WebExtensionsScannerService extends Disposable implements IWebExten
 			}
 		}
 
-		const isSidexTauri = (globalThis as any).__SIDEX_TAURI__ === true;
-		if (!isSidexTauri && !this.extensionManifestPropertiesService.canExecuteOnWeb(manifest)) {
+		const isScCodeTauri = (globalThis as any).__SC_CODE_TAURI__ === true;
+		if (!isScCodeTauri && !this.extensionManifestPropertiesService.canExecuteOnWeb(manifest)) {
 			throw new Error(
 				localize(
 					'not a web extension',
@@ -968,7 +968,7 @@ export class WebExtensionsScannerService extends Disposable implements IWebExten
 			);
 		}
 
-		if (isSidexTauri && !this.extensionManifestPropertiesService.canExecuteOnWeb(manifest)) {
+		if (isScCodeTauri && !this.extensionManifestPropertiesService.canExecuteOnWeb(manifest)) {
 			if (!manifest.browser && !manifest.main) {
 				(manifest as any).browser = '';
 			} else if (!manifest.browser && manifest.main) {
@@ -1079,7 +1079,7 @@ export class WebExtensionsScannerService extends Disposable implements IWebExten
 			readmeUrl: webExtension.readmeUri,
 			changelogUrl: webExtension.changelogUri,
 			metadata: webExtension.metadata,
-			targetPlatform: (globalThis as any).__SIDEX_TAURI__ === true ? TargetPlatform.UNDEFINED : TargetPlatform.WEB,
+			targetPlatform: (globalThis as any).__SC_CODE_TAURI__ === true ? TargetPlatform.UNDEFINED : TargetPlatform.WEB,
 			validations,
 			isValid,
 			preRelease: !!webExtension.metadata?.preRelease

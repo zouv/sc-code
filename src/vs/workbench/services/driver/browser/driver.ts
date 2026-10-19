@@ -1,8 +1,8 @@
 /*---------------------------------------------------------------------------------------------
- *  SideX — Driver stub.
+ *  ScCode — Driver stub.
  *
  *  VS Code's driver is a Playwright-oriented automation harness used only by
- *  smoke tests (`--enable-smoke-test-driver`). SideX doesn't run those tests
+ *  smoke tests (`--enable-smoke-test-driver`). ScCode doesn't run those tests
  *  today, so this is a no-op that preserves the public signature so the
  *  workbench can keep calling `registerWindowDriver` unconditionally.
  *--------------------------------------------------------------------------------------------*/

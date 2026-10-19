@@ -1,5 +1,5 @@
 /**
- * Normalized extension shape returned to SideX. Both MS Marketplace
+ * Normalized extension shape returned to ScCode. Both MS Marketplace
  * and Open VSX responses are flattened into this structure so the
  * client only has to know about one format.
  */

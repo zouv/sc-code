@@ -43,7 +43,7 @@ test('standard profile fallback and explicit disable list have no hidden blackli
   assert.equal(profileHome({XDG_CONFIG_HOME:'/config'},'linux','/home/test'),path.join('/config','ScCode'));
   for(const id of ['GitHub.copilot','sswg.swift-lang','anysphere.cursor','ms-python.vscode-pylance']) assert.equal(disabledExtension(id,{}),false);
   assert.equal(disabledExtension('GitHub.copilot',{SC_CODE_DISABLE_EXTENSION_IDS:' github.COPILOT,other.id '}),true);
-  assert.equal(disabledExtension('GitHub.copilot',{SC_CODE_DISABLE_EXTENSION_IDS:'',SIDEX_DISABLE_EXTENSION_IDS:'GitHub.copilot'}),false);
+  assert.equal(disabledExtension('GitHub.copilot',{SC_CODE_DISABLE_EXTENSION_IDS:''}),false);
 });
 test('secrets request native bridge, report changes only after success and never keep plaintext fallback',async()=>{
   const calls=[],listeners=[];let fail=false;

@@ -1,12 +1,12 @@
 use std::collections::HashMap;
 use std::sync::OnceLock;
 
-use serde::Serialize;
-use serde_json::Value;
-use sidex_keymap::{
+use sc_code_keymap::{
     default_keybindings, format_keybinding, parse_keybinding_string, ContextKeys, ContextValue,
     KeybindingResolver, KeybindingSource,
 };
+use serde::Serialize;
+use serde_json::Value;
 
 static RESOLVER: OnceLock<KeybindingResolver> = OnceLock::new();
 

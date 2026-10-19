@@ -32,7 +32,7 @@ import {
 import { isUserDataProfile, IUserDataProfile } from '../../../../platform/userDataProfile/common/userDataProfile.js';
 import { IAnyWorkspaceIdentifier } from '../../../../platform/workspace/common/workspace.js';
 import { IUserDataProfileService } from '../../userDataProfile/common/userDataProfile.js';
-import { isTauri } from '../../../../sidex-bridge.js';
+import { isTauri } from '../../../../scCodeBridge.js';
 import { TauriStorageDatabase } from './tauriStorageDatabase.js';
 
 /**

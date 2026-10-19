@@ -1,8 +1,8 @@
 /*---------------------------------------------------------------------------------------------
- *  custom-sidex —— 从本地 .vsix 安装扩展
+ *  ScCode —— 从本地 .vsix 安装扩展
  *
  *  为什么需要这个模块：
- *  SideX 前端跑在 Web 模式（`isWeb === true`），`ExtensionManagementServerService` 只注册了
+ *  ScCode 前端跑在 Web 模式（`isWeb === true`），`ExtensionManagementServerService` 只注册了
  *  web 扩展服务器，`localExtensionManagementServer` 恒为 null。于是上游 VSCode 的 VSIX 安装链路
  *  在本项目里整体断掉：
  *    - 「Install from VSIX...」菜单的 when 条件要求 hasLocalServer || hasRemoteServer（全为 false），
@@ -10,7 +10,7 @@
  *    - `ExtensionManagementService.getManifest(vsix)` 对 file:// 直接 reject('No Servers')，
  *      `installVSIX()` → `getServersToInstall()` 同样 reject('No Servers to Install')。
  *  Rust 侧的安装能力其实早已具备（`src-tauri/src/commands/extensions.rs` 的 `install_extension` →
- *  `crates/sidex-extensions/src/vsix.rs`，解压到 %APPDATA%\SideX\extensions\<publisher>.<name>），
+ *  `crates/sc-code-extensions/src/vsix.rs`，解压到 %APPDATA%\ScCode\extensions\<publisher>.<name>），
  *  只是前端从未接过线。
  *
  *  本模块把两端接起来（不改上游扩展管理逻辑）：
@@ -49,9 +49,9 @@ import { IHostService } from 'vs/workbench/services/host/browser/host.js';
 import { extractFileUrisFromDragEvent } from 'vs/platform/dnd/browser/dnd.js';
 import { IUserDataProfileService } from 'vs/workbench/services/userDataProfile/common/userDataProfile.js';
 
-export const INSTALL_VSIX_COMMAND_ID = 'sidex.extensions.installFromVSIX';
+export const INSTALL_VSIX_COMMAND_ID = 'sc-code.extensions.installFromVSIX';
 
-const isSidexTauri = (globalThis as any).__SIDEX_TAURI__ === true;
+const isScCodeTauri = (globalThis as any).__SC_CODE_TAURI__ === true;
 
 const ExtensionsCategory = {
 	value: localize('extensions', 'Extensions'),
@@ -63,7 +63,7 @@ interface InstalledVsix {
 	id: string;
 	name: string;
 	version: string;
-	/** 安装落地的目录（%APPDATA%\SideX\extensions\<publisher>.<name>） */
+	/** 安装落地的目录（%APPDATA%\ScCode\extensions\<publisher>.<name>） */
 	path: string;
 }
 
@@ -84,7 +84,7 @@ interface InstallContext {
 function createInstallContext(accessor: ServicesAccessor): InstallContext {
 	const extensionManagementServer = accessor.get(IExtensionManagementServerService).webExtensionManagementServer;
 	if (!extensionManagementServer) {
-		throw new Error(localize('sidex.installVSIX.noServer', 'No extension management server is available.'));
+		throw new Error(localize('sc-code.installVSIX.noServer', 'No extension management server is available.'));
 	}
 	return {
 		notificationService: accessor.get(INotificationService),
@@ -118,7 +118,7 @@ async function installVsixPaths(context: InstallContext, vsixPaths: string[]): P
 	await context.progressService.withProgress(
 		{
 			location: ProgressLocation.Notification,
-			title: localize('sidex.installVSIX.progress', 'Installing extension from VSIX...')
+			title: localize('sc-code.installVSIX.progress', 'Installing extension from VSIX...')
 		},
 		async progress => {
 			for (const vsixPath of vsixPaths) {
@@ -131,7 +131,7 @@ async function installVsixPaths(context: InstallContext, vsixPaths: string[]): P
 					context.notificationService.notify({
 						severity: Severity.Info,
 						message: localize(
-							'sidex.installVSIX.done',
+							'sc-code.installVSIX.done',
 							"Installed extension '{0}' ({1}).",
 							installed.name || installed.id,
 							installed.version
@@ -140,7 +140,7 @@ async function installVsixPaths(context: InstallContext, vsixPaths: string[]): P
 				} catch (error) {
 					context.notificationService.error(
 						localize(
-							'sidex.installVSIX.failed',
+							'sc-code.installVSIX.failed',
 							"Failed to install '{0}': {1}",
 							fileName,
 							getErrorMessage(error)
@@ -152,11 +152,11 @@ async function installVsixPaths(context: InstallContext, vsixPaths: string[]): P
 	);
 }
 
-if (isSidexTauri) {
+if (isScCodeTauri) {
 	CommandsRegistry.registerCommand({
 		id: INSTALL_VSIX_COMMAND_ID,
 		metadata: {
-			description: localize('sidex.installVSIX.description', 'Install an extension from a local .vsix package')
+			description: localize('sc-code.installVSIX.description', 'Install an extension from a local .vsix package')
 		},
 		handler: async (accessor: ServicesAccessor, ...resources: (URI | string)[]) => {
 			// 注意：以下 accessor.get 全部发生在第一个 await 之前（accessor 只在同步栈内有效）
@@ -165,7 +165,7 @@ if (isSidexTauri) {
 			try {
 				context = createInstallContext(accessor);
 			} catch (error) {
-				notificationService.error(localize('sidex.installVSIX.noServerError', 'Cannot install VSIX: {0}', getErrorMessage(error)));
+				notificationService.error(localize('sc-code.installVSIX.noServerError', 'Cannot install VSIX: {0}', getErrorMessage(error)));
 				return;
 			}
 
@@ -179,7 +179,7 @@ if (isSidexTauri) {
 			}
 
 			const picked = await context.fileDialogService.showOpenDialog({
-				title: localize('sidex.installVSIX.pickTitle', 'Install from VSIX'),
+				title: localize('sc-code.installVSIX.pickTitle', 'Install from VSIX'),
 				filters: [{ name: 'VSIX Extensions', extensions: ['vsix'] }],
 				canSelectFiles: true,
 				canSelectMany: true
@@ -195,7 +195,7 @@ if (isSidexTauri) {
 	MenuRegistry.appendMenuItem(MenuId.CommandPalette, {
 		command: {
 			id: INSTALL_VSIX_COMMAND_ID,
-			title: localize2('sidex.installVSIX.commandTitle', 'Install Extension from VSIX...'),
+			title: localize2('sc-code.installVSIX.commandTitle', 'Install Extension from VSIX...'),
 			category: ExtensionsCategory
 		}
 	});
@@ -204,7 +204,7 @@ if (isSidexTauri) {
 	MenuRegistry.appendMenuItem(MenuId.ViewContainerTitle, {
 		command: {
 			id: INSTALL_VSIX_COMMAND_ID,
-			title: localize('sidex.installVSIX.shortTitle', 'Install from VSIX...')
+			title: localize('sc-code.installVSIX.shortTitle', 'Install from VSIX...')
 		},
 		when: ContextKeyExpr.equals('viewContainer', VIEWLET_ID),
 		group: '3_install',
@@ -215,7 +215,7 @@ if (isSidexTauri) {
 	MenuRegistry.appendMenuItem(MenuId.ExplorerContext, {
 		command: {
 			id: INSTALL_VSIX_COMMAND_ID,
-			title: localize('sidex.installVSIX.contextTitle', 'Install Extension VSIX')
+			title: localize('sc-code.installVSIX.contextTitle', 'Install Extension VSIX')
 		},
 		when: ResourceContextKey.Extension.isEqualTo('.vsix'),
 		group: 'extensions'
@@ -247,7 +247,7 @@ if (isSidexTauri) {
  */
 class InstallVsixOnDropContribution extends Disposable implements IWorkbenchContribution {
 
-	static readonly ID = 'sidex.installVsixOnDrop';
+	static readonly ID = 'sc-code.installVsixOnDrop';
 
 	constructor(
 		@ICommandService private readonly commandService: ICommandService,
@@ -361,7 +361,7 @@ class InstallVsixOnDropContribution extends Disposable implements IWorkbenchCont
 		if (errors.length > 0) {
 			this.notificationService.warn(
 				localize(
-					'sidex.dropWorkspace.unreadable',
+					'sc-code.dropWorkspace.unreadable',
 					"Dropped '{0}' is not a readable workspace file: {1}",
 					file.name,
 					getParseErrorMessage(errors[0].error)
@@ -376,7 +376,7 @@ class InstallVsixOnDropContribution extends Disposable implements IWorkbenchCont
 
 		if (paths.length === 0) {
 			this.notificationService.warn(
-				localize('sidex.dropWorkspace.noFolders', "Dropped workspace '{0}' does not list any folders.", file.name)
+				localize('sc-code.dropWorkspace.noFolders', "Dropped workspace '{0}' does not list any folders.", file.name)
 			);
 			return;
 		}
@@ -419,17 +419,17 @@ class InstallVsixOnDropContribution extends Disposable implements IWorkbenchCont
 			void this.notificationService.prompt(
 				Severity.Info,
 				localize(
-					'sidex.dropWorkspace.relative',
+					'sc-code.dropWorkspace.relative',
 					"'{0}' uses relative folder paths, and a dropped file's location is not available to the system. Locate the workspace file to open it exactly.",
 					file.name
 				),
 				[{
-					label: localize('sidex.dropWorkspace.locateFile', 'Locate File…'),
+					label: localize('sc-code.dropWorkspace.locateFile', 'Locate File…'),
 					run: () => {
 						void (async () => {
 							try {
 								const picked = await this.fileDialogService.showOpenDialog({
-									title: localize('sidex.dropWorkspace.locateFileTitle', "Select '{0}'", file.name),
+									title: localize('sc-code.dropWorkspace.locateFileTitle', "Select '{0}'", file.name),
 									canSelectFiles: true,
 									canSelectFolders: false,
 									canSelectMany: false,
@@ -453,7 +453,7 @@ async function stageDroppedFile(file: File): Promise<string> {
 	const { invoke } = await import('@tauri-apps/api/core');
 	const { tempDir, join } = await import('@tauri-apps/api/path');
 	const bytes = new Uint8Array(await file.arrayBuffer());
-	const target = await join(await tempDir(), `sidex-drop-${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${file.name}`);
+	const target = await join(await tempDir(), `sc-code-drop-${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${file.name}`);
 	await invoke('write_file_bytes', { path: target, content: Array.from(bytes) });
 	return target;
 }
@@ -511,7 +511,7 @@ function isAbsolutePath(candidate: string): boolean {
 
 /**
  * 拿不到真实路径时，把本次拖拽的实际数据写进**日志文件**（dev 构建）。
- * 注意：webview 的 `console.*` / `ILogService` 都不会进 `SideX.log`，只有 `plugin:log|log` 这条路由
+ * 注意：webview 的 `console.*` / `ILogService` 都不会进 `ScCode.log`，只有 `plugin:log|log` 这条路由
  * 能落盘（见 pitfalls #6/#14/#18），所以这里走原始 IPC（= `@tauri-apps/plugin-log` 的 `log()` 实现）。
  */
 function logDropDiagnostics(reason: string, event: DragEvent, extra?: string): void {
@@ -557,7 +557,7 @@ async function discardStagedFiles(stagedPaths: string[]): Promise<void> {
 
 
 
-if (isSidexTauri) {
+if (isScCodeTauri) {
 	registerWorkbenchContribution2(
 		InstallVsixOnDropContribution.ID,
 		InstallVsixOnDropContribution,

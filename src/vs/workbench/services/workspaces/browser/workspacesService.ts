@@ -122,7 +122,7 @@ export class BrowserWorkspacesService extends Disposable implements IWorkspacesS
 				// this would require a window reload and local file access only
 				// works with explicit user gesture from the current session.
 				if (
-					!(globalThis as any).__SIDEX_TAURI__ &&
+					!(globalThis as any).__SC_CODE_TAURI__ &&
 					isRecentFolder(recent) &&
 					recent.folderUri.scheme === Schemas.file &&
 					!isTemporaryWorkspace(this.contextService.getWorkspace())

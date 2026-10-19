@@ -1,27 +1,95 @@
 # ScCode
 
-独立桌面代码编辑器与 AI 开发工作台。以 custom-sidex 功能为迁移基线，后续独立迭代，不使用 Custom overlay，也不跟随上游同步或更新渠道。
+<div align="center">
+  <img src="public/sc-code.svg" width="96" alt="ScCode" />
+  <h1>ScCode</h1>
+  <p>基于 <b>Tauri + Rust</b> 的独立桌面代码编辑器与 AI 开发工作台</p>
 
-**当前：0.1.1 开发验收版本，未签名；Windows x64 产物可本地打包并上传 GitHub Release。源码完整导入不等于全部行为验收完成。**
+[![平台](https://img.shields.io/badge/platform-Windows%2010%2B-0078D4?style=flat-square&logo=windows&logoColor=white)](#系统要求)
+[![Tauri](https://img.shields.io/badge/Tauri-2-FFC131?style=flat-square&logo=tauri&logoColor=black)](#技术栈)
+[![Rust](https://img.shields.io/badge/Rust-1.91%2B-000000?style=flat-square&logo=rust&logoColor=white)](#从源码构建)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?style=flat-square&logo=typescript&logoColor=white)](#技术栈)
+[![Release](https://img.shields.io/github/v/release/zouv/sc-code?style=flat-square&color=success&label=release)](../../releases/latest)
+[![License](https://img.shields.io/badge/license-MIT-green?style=flat-square)](LICENSE)
 
-## Windows 开发和构建
+  <img src="docs/assets/preview.jpg" width="880" alt="ScCode 工作台" />
+</div>
 
-需要 Node.js 22、npm、Rust stable（至少 1.91）、MSVC C++ 构建工具及 WebView2。准备脚本固定下载并校验 Node/内置扩展；Go agent 编译需要 Go 1.26+ 和支持 CGO 的 C 编译器。工具路径可用 `SC_CODE_GO_BINARY` / `CC` 指定（详见脚本）；本地 `.runtime/tools` 工具不会提交。
+ScCode 是一个从 VS Code workbench 迁移、并独立演进的桌面编辑器：前端保留熟悉的
+工作台、编辑器、终端与扩展 UI；原生层用 **Rust + Tauri 2** 替代 Electron；内置 Agent
+由**受监督的 Go 进程**提供本地模型调用与工具执行；扩展可由 **Node 扩展宿主**运行。
 
-日常入口（可从任意当前目录调用）：
+> 当前为 **0.1.1 开发验收版本**，Windows x64 产物可本地打包并上传 GitHub Release。
+> 未签名；源码完整迁移不等于全部行为验收完成，第三方扩展矩阵仍在验收中。
+
+## 特性
+
+**编辑器与工作台**
+- VS Code 1.110 workbench 基线：命令面板、多标签、分屏、资源管理器、搜索、SCM、任务、调试
+- Monaco 编辑器、TextMate 语法高亮、原生 Rust 文本/语法/搜索/主题服务
+- 集成终端（xterm）、shell integration、多根工作区与 `.code-workspace`
+- 设置、快捷键、主题与 UI 状态持久化；桌面版存储在 profile 内 SQLite
+
+**扩展**
+- 安装 VSIX、拖拽安装、扩展市场代理、扩展同步
+- Node 扩展宿主：默认 CJS 仿制宿主；可通过实验开关启用 VS Code 真实扩展宿主
+- WASM 扩展：Rust + WASI Component Model，`sc-code.toml` 清单
+- 扩展 secrets 走 OS keyring；Memento 串行、加锁、原子落盘
+
+**AI 工作台**
+- 本地 Go Agent 服务：聊天、工具调用、MCP、记忆、会话、上下文压缩
+- Workbench 聊天/内联编辑/补全入口；Agent 面板默认收起
+- 本地服务仅监听 loopback，每进程随机 token，Host/Origin 校验
+- 模型供应商凭据由 Rust 解析后经进程环境传入 Go 服务，不写配置文件
+
+**数据与配置**
+- 独立 profile：Windows 默认 `%APPDATA%\ScCode`，可用 `SC_CODE_HOME` 隔离
+- 设置、工作台状态与扩展 secrets 分别持久化到 profile SQLite 与 OS keyring
+- 数据库损坏或锁占用会报错并保留文件，不删除数据库假恢复
+
+## 下载安装
+
+前往 [Releases](../../releases/latest) 下载 Windows x64 产物：
+
+| 产物 | 用途 |
+|---|---|
+| `ScCode_<version>_x64-setup.exe` | NSIS 安装包 |
+| `ScCode_<version>_x64-unpack.zip` | 免安装目录包，解压即用（zip 内无版本子目录） |
+
+**免安装包使用方式：** 解压 `ScCode_<version>_x64-unpack.zip` 到任意空目录，直接双击
+`ScCode.exe`。zip 根目录就是程序根目录，不含 `ScCode_<version>_x64-unpack/` 外壳目录；
+必须复制**整个解压目录**，不能只复制 EXE；目录内含 Node、Agent 侧车、扩展宿主、内置扩展、终端集成与许可证。
+
+> 发布产物必须同时上传 setup exe 与 unpack zip；只上传安装包视为发布未完成。
+> 当前未做代码签名，首次运行可能触发 Windows SmartScreen：点「更多信息」→「仍要运行」。
+
+### 系统要求
+
+- **Windows 10 1809+ / Windows 11，x64**
+- **Microsoft Edge WebView2 Runtime**（Win10/11 通常已随 Edge 预装）
+- 免安装包不执行 WebView2 引导下载；缺失时请先安装 Evergreen 版
+
+免安装不等于 portable 模式：默认用户数据仍在 `%APPDATA%\ScCode`，
+可用 `SC_CODE_HOME` 指定其它目录。升级时解压新版本 zip 即可，不会触碰用户 profile。
+
+## 从源码构建
+
+前置：Node.js 22、npm、Rust stable（至少 1.91）、MSVC C++ 构建工具、WebView2；
+构建 Go Agent 需要 Go 1.26+ 与支持 CGO 的 C 编译器。工具路径可用
+`SC_CODE_GO_BINARY` / `CC` 指定。
+
+日常入口（可从任意目录调用，均支持 `--help` / `--dry-run`）：
 
 | 脚本 | 用途 |
 |---|---|
 | `setup.bat` | 安装依赖、准备固定 Node/Go/内置扩展并生成元数据 |
 | `run.bat [应用参数]` | 前台启动当前 Debug 桌面；缺失或源码变化时自动重建 |
 | `dev.bat` | Tauri 热更新开发，带完整 runtime 资源配置 |
-| `build.bat [Debug或Release]` | 构建成品包；Debug 只生成 unpack zip（含 PDB 调试信息），Release 生成 setup 安装包 + unpack zip；默认 Debug |
-| `release.bat` | 一键构建优化 Release setup 安装包与 unpack zip，不自动签名/发布 |
+| `build.bat [Debug或Release]` | 构建成品包；Debug 生成 unpack 目录 + zip，Release 生成 setup + unpack 目录 + zip |
+| `release.bat` | 一键构建 Release setup、未压缩 unpack 目录与 unpack zip，不自动签名/发布 |
 | `test.bat` | Node/transport/TS + 选定原生模块和桌面 lib 回归 |
-| `verify.bat` | 上述测试 + 来源清单/runtime/真实本地服务/文档检查 |
-| `clean.bat` | 清理生成输出；保留 packages/ 成品包、工具下载缓存、node_modules 和所有用户配置 |
-
-所有脚本支持 `--help` / `--dry-run`；不提交、不发布、不强杀应用。清理遇到文件占用会失败，请先自行关闭对应 ScCode 实例。`test.bat` 不包含已记录失败的 sidex-agent shell timeout、sidex-terminal Unix路径与 sidex-remote 测试，不代表全 Rust 套件通过。
+| `verify.bat` | 测试 + 来源清单/runtime/真实本地服务/文档检查 |
+| `clean.bat` | 清理生成输出；保留 packages/、工具缓存、node_modules 与用户配置 |
 
 ```powershell
 Set-Location D:\Git\zgithub\sc-code
@@ -29,86 +97,110 @@ Set-Location D:\Git\zgithub\sc-code
 .\run.bat
 .\build.bat Debug
 .\release.bat
-# 也可直接调用：
+```
+
+也可以直接调用 npm 脚本：
+
+```powershell
+npm run setup
 npm run runtime:prepare -- --test-go
 npm run desktop:dev
 npm run desktop:build -- --debug --target x86_64-pc-windows-msvc --bundles nsis
+npm run desktop:release
 ```
 
-正常安装/运行请使用桌面构建；`npm run dev` 只是 web 工作台开发服务器，不包含原生服务，不代表完整编辑器运行。首次准备需要网络；构建中间产物统一收拢至 `.runtime/`：`desktop/` 是 Node、94 个内置扩展、Go exe、生产宿主及许可证，`target/` 是 Cargo/安装包，`dist/` 是前端，`public/metadata/` 是静态资源和扩展元数据，`logs/` 是本地验证日志。`downloads/tools/` 保存缓存/工具。上述不入库；`scripts/`、扩展宿主源文件、锁文件和终端集成源仍需入库。Tauri 的 `src-tauri/gen/` 是工具强制生成的 schema，也忽略；npm 依赖仍按标准放 `node_modules/`。
+`npm run dev` 只是 web 工作台开发服务器，不包含原生服务，不代表完整编辑器运行。
 
-Release 成品包路径：`packages/release/ScCode_0.1.1_x64-setup.exe`（NSIS 安装包）与 `packages/release/ScCode_0.1.1_x64-unpack.zip`（免安装目录压缩包）。
+### 打包产物
 
-Debug（dev）成品包路径：`packages/dev/ScCode_0.1.1_x64-unpack-debug.zip`（仅 Debug unpack 包，不含 setup）。
+- `packages/dev/unpack/`
+  — Debug 未压缩运行目录，含 PDB 等调试信息，用于开发测试。
+- `packages/dev/ScCode_<version>_x64-unpack-debug.zip`
+  — Debug 压缩包，zip 根目录即程序根目录，无版本子目录。
+- `packages/release/unpack/`
+  — Release 未压缩运行目录，不含 Cargo 缓存、PDB 或用户配置。
+- `packages/release/ScCode_<version>_x64-setup.exe`
+  — Release NSIS 安装包。
+- `packages/release/ScCode_<version>_x64-unpack.zip`
+  — Release 压缩包，zip 根目录即程序根目录，无版本子目录。
 
-`build.bat`、`release.bat` 及 `npm run desktop:build` 在构建成功后先校验已构建的资源，再把完整运行资源打成带单一根目录的 unpack zip；**不再保留 `packages/unpack` 目录**。目录结构：
+打包顺序：先校验构建资源并导出 `packages/<mode>/unpack/`，再以该目录为源生成 zip；
+最后导出本次新生成的安装包。构建中间产物统一收拢至 `.runtime/`
+（`target/`、`dist/`、`desktop/` 等），不纳入版本管理。
 
-- `packages/dev/`：仅 `ScCode_<version>_x64-unpack-debug.zip`（Debug 构建，含 PDB 等调试信息，用于开发测试）。
-- `packages/release/`：`ScCode_<version>_x64-unpack.zip` + 本次新生成的 `ScCode_<version>_x64-setup.exe`（NSIS），用于发布上传。
+## 项目结构
 
-源包保留在 `.runtime/target/.../bundle/`。`--no-bundle` 只编译，不导出安装包或 zip；构建命令失败/资源缺失不覆盖已导出的成品。同名成品更新、其它版本保留；Debug/Release 分别写入 `packages/dev` 与 `packages/release`。`packages/` 已加入 `.gitignore`，`clean.bat` 不删除成品包。文件名随版本和架构变化。
+```
+src/                      # TypeScript 前端（VS Code workbench 定制）
+  sc-code/                #   自有功能：VSIX 安装、accessibility、profile 扩展同步
+  vs/                     #   workbench / 平台 / 编辑器
+src-tauri/                # Rust 原生层与 Tauri 装配
+  src/commands/           #   设置、扩展、存储、secrets、Agent、调试等命令
+  extension-host/         #   Node 扩展宿主（生产 CJS）
+crates/                   # Rust 工作区：sc-code-text / sc-code-syntax / sc-code-lsp ...
+agent/                    # Go Agent 服务（server）、独立 Rust agent-core 与 CLI
+src-wasm/                 # WASM 模块（hash / scroll / tfidf）
+extensions-rust/          # Rust → WASM 内置扩展
+packages/                 # 本地打包产物（不纳入版本管理）
+docs/                     # 来源清单与截图资源
+```
 
-**发布产物（GitHub Release）必须同时上传**：`ScCode_<version>_x64-setup.exe` 与 `ScCode_<version>_x64-unpack.zip`。只上传安装包视为发布未完成。
+## 技术栈
 
-**免安装包（Windows x64）使用方式：**
-- Release：解压 `packages/release/ScCode_<version>_x64-unpack.zip`，进入 `ScCode_<version>_x64-unpack/`，双击 `ScCode.exe`（推荐日常使用）。
-- Debug：解压 `packages/dev/ScCode_<version>_x64-unpack-debug.zip`，进入对应目录运行 `ScCode.exe`（开发调试；包含 PDB 等调试信息）。
+- **前端**：TypeScript + VS Code workbench 1.110 + Monaco + xterm
+- **原生层**：Rust + Tauri 2（Windows WebView2）
+- **Rust 服务层**：`crates/sc-code-*`（文本、语法、LSP、Git、终端、扩展、设置、存储等）
+- **Agent**：Go 1.26 本地服务 + Rust 工具桥 + Workbench 聊天/内联/编排
+- **扩展**：Node 扩展宿主 + Rust/WASM Component Model
+- **存储**：SQLite（profile/工作台状态）、OS keyring（扩展 secrets）
 
-迁移到其它位置时复制**整个解压目录**，不能只复制 EXE。目录包含内置 Node、Agent 侧车、扩展宿主、94 个内置扩展、终端集成、许可证、运行说明和 SHA256 文件清单；Release 包不含 Cargo 缓存、PDB 或用户配置。无需另外安装 Node 或保留源码仓库，但电脑必须已有 **Microsoft Edge WebView2 Runtime**；unpack 不执行安装器的 WebView2 引导下载。
+设计取舍：
 
-免安装不等于数据内置的 portable 模式：默认用户数据仍是 `%APPDATA%\ScCode`，可用 `SC_CODE_HOME` 指定其它目录。不要把项目/用户数据放进解压目录；升级时直接解压新版本 zip 即可，不会触碰用户 profile。
+- **用 Tauri 替代 Electron**：复用系统 WebView2，减小安装体积与常驻内存。
+- **保留 VS Code workbench**：命令/设置/扩展 API 兼容边界不重写，逐步替换原生能力。
+- **Agent 独立进程**：Go 服务只监听 loopback，崩溃可监督重启，不阻塞编辑器主进程。
+- **数据自包含**：所有用户数据位于独立 profile，不读写其它应用的数据目录。
 
-## 数据迁移
+## 数据与配置隔离
 
-1. 完全关闭旧 Sc-Code、SideX/custom-sidex 和其 agent；首次启动 ScCode 时确认导入源。
-   首次提示不是报错：确定后导入，取消退出本次启动且下次仍提示。显示名和默认 profile 目录统一为 ScCode。
-2. Windows 默认 profile 为 `%APPDATA%\ScCode`，优先从同级旧 `%APPDATA%\Sc-Code` 导入，再考虑 SideX 等旧来源。旧配置、扩展、profile、工作区/agent 数据只复制缺失项；不覆盖目标，不移动或删除来源。
-3. SQLite 使用一致快照并跳过 WAL/SHM；其它数据库仍要求旧应用停止。目标冲突保留现有数据，异常不删除数据库假恢复。
-4. Sc-Code 改名迁移继承已完成来源记录，防止从 SideX 重新导入用户删掉的数据。扩展凭据保存稳定的非秘密 profile 身份，延用旧目录的凭据命名；OS keyring 服务 ID 不变，旧凭据保留，keyring 不可用会报错而非明文保存。真实 keyring/旧数据 GUI 迁移仍待验收。
-5. 旧 WebView 历史状态和第三方扩展兼容性尚未全量验收；保留旧数据作为恢复源。目标已有文件时不会自动合并内容。
+Windows 默认 profile 为 `%APPDATA%\ScCode`。设置、工作台状态、扩展数据与 Agent
+状态都保存在该 profile 内，不读写其它应用的数据目录。
 
-### 隔离测试 / 自定义 profile
+隔离测试 / 自定义 profile：
 
 ```powershell
 $env:SC_CODE_HOME = 'D:\Temp\sc-code-test-profile'
-# 设置 HOME 后默认不探测/导入真实旧 profile；需要时显式指定合成源：
-$env:SC_CODE_MIGRATION_SOURCES = 'D:\Temp\synthetic-old-profile'
-# 多来源在 Windows 用分号；Linux/macOS 用冒号
 npm run desktop:dev
 ```
 
-WebView、原生数据、扩展宿主及自管 agent 使用同一新 profile 根。关闭应用后清除测试环境变量，避免误把测试 profile 当默认应用。
-
-内置 Agent 面板每次启动默认收起，包括旧版保存为展开的布局；本次会话可手动打开。仅修改面板恢复策略，不移除内置 Agent 或停止后台 Go 服务；ACP 替换仍是后续独立任务。
-
-## 扩展状态与凭据
-
-- `globalState` 位于 `<profile>/data/User/globalStorage/<extension-id>/.sc-code-state.json`；`workspaceState` 位于 `<profile>/data/workspaceStorage/<workspace-hash>/<extension-id>/.sc-code-state.json`。多根有序路径/工作区文件 URI 区分身份；空工作区的 workspaceState 仅内存。
-- 旧扩展目录 `.global-storage`/`.storage` 首次只复制缺失文件；旧共享 workspace 文件按每个工作区首次使用作种子，之后隔离。原宿主内存 Map 中未落盘的状态/秘密无法恢复，不能以文件复制承诺恢复这些值。
-- 保存串行、锁保护、重读合并、临时文件 fsync/rename；损坏/失败报错，不清空数据。崩溃残留 `.lock` 不自动抢占；遇锁错误应停止相关实例并保留数据等待恢复，勿在运行时手动删锁。
-- 扩展 secrets 经 Workbench → 原生 OS keyring，失败不改存明文；目前仅自动验证模拟 native 回包和原生命名逻辑，**真实 OS keyring 桌面链路仍待验收**。命名隔离不是原生扩展安全沙箱。
-- Memento 的 `setKeysForSync` 尚未实现云同步，缓存/secret change 不跨窗口实时广播；CJS 更新可重载，ESM 初次加载支持顶层 await，但 ESM 热重载仍需重启策略。
+WebView、原生数据、扩展宿主及自管 Agent 使用同一 profile 根。关闭应用后清除测试
+环境变量，避免误把测试 profile 当默认应用。
 
 ## 验证
 
 ```powershell
-npm run verify:import
 npm test
 npm run test:transport
 npm run typecheck
-cargo test -p sc-code-runtime -p sidex-auth -p sidex-workspace -p sidex-settings -p sidex-extensions
+cargo test -p sc-code-runtime -p sc-code-auth -p sc-code-workspace -p sc-code-settings -p sc-code-extensions
 cargo test -p sc-code --lib
 npm run runtime:prepare -- --test-go
 npm run test:server
-# Git Bash 执行
+npm run verify:import
+# Git Bash
 bash check-docs.sh
 ```
 
-`npm test` 包含实际 fork 生产 Node 宿主的合成扩展测试；不读取用户 profile 或真实 keyring。`test:server` 启动真实 Go exe，只用临时 profile 和随机凭据，验证 REST/WS/Origin/Host；不注入用户 API key，不调用模型。
+`npm test` 包含实际 fork 生产 Node 宿主的合成扩展测试；不读取用户 profile 或真实
+keyring。`test:server` 启动真实 Go exe，只用临时 profile 和随机凭据，验证
+REST/WS/Origin/Host；不注入用户 API key，不调用模型。
+
+性能基线：`npm run perf:baseline`（冷启动到窗口时间 + 进程树工作集，输出
+`.runtime/logs/perf-*.json`）。
 
 ## 实验开关：真实 Node 扩展宿主
 
-默认仍使用旧的 `host.cjs` 仿制宿主。启用 VSCode 真实扩展宿主（`src/vs/workbench/api/node` + `extensionHost.cjs`）：
+默认使用 `host.cjs` 仿制宿主。启用 VS Code 真实扩展宿主：
 
 ```powershell
 npm run ext-host:build          # 构建 .runtime/ext-host/extensionHost.cjs
@@ -116,22 +208,36 @@ $env:SC_CODE_REAL_EXT_HOST='1'  # 构建期注入；也可用 ?realExtHost=1
 npm run desktop:dev
 ```
 
-真实宿主通过 loopback WebSocket + `PersistentProtocol` 通信，扩展在独立的 Node 进程中运行；`extension-host/extensionHost.cjs` 会随 `runtime:prepare`/打包进入运行资源。当前为实验路径，第三方扩展矩阵尚未验收。
+真实宿主通过 loopback WebSocket + `PersistentProtocol` 通信，扩展在独立 Node
+进程中运行；`extension-host/extensionHost.cjs` 会随 `runtime:prepare`/打包进入运行
+资源。当前为实验路径，第三方扩展矩阵仍在验收。
 
-性能基线：`npm run perf:baseline`（冷启动到窗口时间 + 进程树工作集，输出 `.runtime/logs/perf-*.json`）。设置/UI 状态在桌面版存于 profile 内 SQLite，首次启动自动从 IndexedDB 复制一次。
+## 安全边界
 
-## 兼容与安全边界
+- 保留 VS Code API 1.110.0 基线；命令/设置 ID、`sc-code://` 协议与内部 Rust
+  crate/进程命名统一使用 ScCode 标识。
+- 扩展发现不再静默封禁固定 ID。可通过 `SC_CODE_DISABLE_EXTENSION_IDS`
+  （逗号分隔、大小写不敏感）禁用。
+- 自管 Go/Node 使用每进程 token，只监听 loopback。独立手动启动 Go server
+  必须配置 `SC_CODE_LOCAL_TOKEN`。
+- 默认关闭旧自动更新和遥测；`SC_CODE_TELEMETRY=1` 显式启用遥测。
+- 当前 checkpoint 是内存恢复与单文件冲突保护，不是持久化多文件事务，
+  不保证回滚任意 shell/Git/worktree 副作用。
+- CSP/workspace trust 尚未完善；不要把当前版本当作完全沙箱，不要运行不可信
+  扩展/项目。秘密索引 `secure_delete` 不能保证旧 WAL/空闲页已彻底擦除。
+- 未签名；完整 GUI/扩展矩阵与跨平台打包仍待验收。
 
-- 原 command/settings IDs 和 VS Code API 1.110.0 保留；产品版本独立。原定制功能基线见 `docs/history/custom/registry.md`，3704 项来源清单见 `docs/import-manifest.json`。
-- 扩展发现不再静默封禁固定 ID。可通过 `SC_CODE_DISABLE_EXTENSION_IDS`（逗号分隔、大小写不敏感）禁用；旧 `SIDEX_DISABLE_EXTENSION_IDS` 作为显式 alias。发现不等于兼容：专有 API/身份服务/扩展许可需逐项验证。
-- 自管 Go/Node 使用每进程 token，只监听 loopback。独立手动启动 Go server 必须配置 `SC_CODE_LOCAL_TOKEN`；只有桌面自管链路会自动传凭据，远程 server 凭据 UI 尚未实现。
-- 默认关闭旧自动更新和遥测；`SC_CODE_TELEMETRY=1` 显式启用遥测。`SC_CODE_LIVE_PRICING=0` 可禁用 OpenRouter 公共定价刷新；这不是 telemetry 开关。
-- 当前 checkpoint 是内存恢复与单文件冲突保护，不是持久化多文件事务，也不保证回滚任意 shell/Git/worktree 副作用。
-- CSP/trust 尚未完善；不要把当前版本当作完全沙箱，不要运行不可信扩展/项目。秘密索引 secure_delete 不能保证旧 WAL/空闲页已彻底擦除。
-- Windows x64 打包链路已实测；其它平台、签名、安装升级、全部 GUI/扩展矩阵和性能基准仍待验收。
+## 文档
 
-## 维护入口与许可
+| 文档 | 内容 |
+|---|---|
+| [`AGENTS.md`](AGENTS.md) | AI 代理工作规则（改代码前先读） |
+| [`ARCHITECTURE.md`](ARCHITECTURE.md) | 代码地图：文件职责、任务→位置、重点链路、易踩坑 |
+| [`ROADMAP.md`](ROADMAP.md) | 要做什么、做到哪了 |
+| [`CHANGELOG.md`](CHANGELOG.md) | 每个版本的变化 |
+| [`HANDOFF.md`](HANDOFF.md) | 当前会话接力与待办 |
+| [`docs/import-manifest.json`](docs/import-manifest.json) | 来源文件清单与哈希校验 |
 
-`AGENTS.md` 工作规则；`ARCHITECTURE.md` 链路导航；`ROADMAP.md` 完成度；`HANDOFF.md` 待办；`CHANGELOG.md` 用户变更。
+## 许可
 
-本项目保留 `LICENSE` 和第三方版权/许可声明；独立项目不意味着移除来源归属。未自动提交、推送或发布。
+本项目保留 `LICENSE` 与第三方版权/许可声明。独立项目不意味着移除来源归属。

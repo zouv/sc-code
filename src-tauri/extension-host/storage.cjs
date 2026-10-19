@@ -2,7 +2,7 @@
 // Extension data belongs to the profile, never to an installed code directory.
 const fs = require('node:fs'), path = require('node:path'), os = require('node:os'), crypto = require('node:crypto');
 function profileHome(env = process.env, platform = process.platform, home = os.homedir()) {
-  if (env.SC_CODE_HOME || env.SIDEX_HOME) return path.resolve(env.SC_CODE_HOME || env.SIDEX_HOME);
+  if (env.SC_CODE_HOME || env.SC_CODE_HOME) return path.resolve(env.SC_CODE_HOME || env.SC_CODE_HOME);
   if (platform === 'win32') return path.join(env.APPDATA || path.join(home, 'AppData/Roaming'), 'ScCode');
   if (platform === 'darwin') return path.join(home, 'Library/Application Support/ScCode');
   return path.join(env.XDG_CONFIG_HOME || path.join(home, '.config'), 'ScCode');
@@ -112,7 +112,7 @@ function createMemento(file) {
   };
 }
 function disabledExtension(id, env = process.env) {
-  const disabled = env.SC_CODE_DISABLE_EXTENSION_IDS ?? env.SIDEX_DISABLE_EXTENSION_IDS ?? '';
+  const disabled = env.SC_CODE_DISABLE_EXTENSION_IDS ?? '';
   return disabled.split(',').some(value => value.trim().toLowerCase() === id.toLowerCase());
 }
 function createSecretStorage(id, request) {

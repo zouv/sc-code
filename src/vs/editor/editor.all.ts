@@ -48,7 +48,7 @@ import './contrib/parameterHints/browser/parameterHints.js';
 import './contrib/placeholderText/browser/placeholderText.contribution.js';
 import './contrib/rename/browser/rename.js';
 import './contrib/sectionHeaders/browser/sectionHeaders.js';
-// SideX: removed — semantic tokens disabled (causes severe lag when scrolling)
+// ScCode: removed — semantic tokens disabled (causes severe lag when scrolling)
 import './contrib/smartSelect/browser/smartSelect.js';
 import './contrib/snippet/browser/snippetController2.js';
 import './contrib/stickyScroll/browser/stickyScrollContribution.js';

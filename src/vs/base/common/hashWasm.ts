@@ -1,5 +1,5 @@
 /*---------------------------------------------------------------------------------------------
- *  SideX WASM SHA-1 Bridge
+ *  ScCode WASM SHA-1 Bridge
  *  Accelerated SHA-1 hashing via WebAssembly with transparent JS fallback.
  *--------------------------------------------------------------------------------------------*/
 
@@ -17,7 +17,7 @@ async function ensureWasm(): Promise<any> {
 	if (!initPromise) {
 		initPromise = (async () => {
 			try {
-				const wasmPath = '/wasm/hash/sidex_hash_wasm.js';
+				const wasmPath = '/wasm/hash/sc_code_hash_wasm.js';
 				const resp = await fetch(wasmPath);
 				if (!resp.ok) {
 					throw new Error(`HTTP ${resp.status}`);

@@ -1,7 +1,7 @@
 'use strict';
 const test = require('node:test'), assert = require('node:assert/strict');
 const fs = require('node:fs'), path = require('node:path'), ts = require('typescript');
-const source = fs.readFileSync(path.join(__dirname, '../src/vs/workbench/contrib/sidexChat/browser/sidexChatService.ts'), 'utf8');
+const source = fs.readFileSync(path.join(__dirname, '../src/vs/workbench/contrib/scCodeChat/browser/scCodeChatService.ts'), 'utf8');
 const file = ts.createSourceFile('chat.ts', source, ts.ScriptTarget.Latest, true);
 let method;
 function visit(node) {

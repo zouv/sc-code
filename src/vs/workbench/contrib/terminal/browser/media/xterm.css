@@ -100,7 +100,7 @@
 	left: 0;
 	top: 0;
 	bottom: 0;
-	/* Show a native scrollbar for terminal scrollback (SideX has no
+	/* Show a native scrollbar for terminal scrollback (ScCode has no
 	   DomScrollableElement overlay on the terminal). */
 	overflow-y: scroll;
 	scrollbar-width: thin;

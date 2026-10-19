@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-sidex-extension-sdk = { path = "../../sidex-extension-sdk" }
+sc-code-extension-sdk = { path = "../../sc-code-extension-sdk" }
 
 [lib]
 crate-type = ["cdylib"]

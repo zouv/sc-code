@@ -4,7 +4,7 @@
   --vscode-editor-font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
   --vscode-editor-font-size: 14px;
 
-  /* SideX Monochrome Dark defaults */
+  /* ScCode Monochrome Dark defaults */
   --vscode-editor-background: #111111;
   --vscode-editor-foreground: #c8c8c8;
   --vscode-sideBar-background: #0e0e0e;
@@ -62,12 +62,12 @@
   --vscode-textLink-foreground: #b0b0b0;
   --vscode-descriptionForeground: #606060;
 
-  /* SideX layout tokens */
-  --sidex-radius-sm: 3px;
-  --sidex-radius-md: 6px;
-  --sidex-radius-lg: 10px;
-  --sidex-transition-fast: 120ms ease;
-  --sidex-transition-normal: 200ms ease;
+  /* ScCode layout tokens */
+  --sc-code-radius-sm: 3px;
+  --sc-code-radius-md: 6px;
+  --sc-code-radius-lg: 10px;
+  --sc-code-transition-fast: 120ms ease;
+  --sc-code-transition-normal: 200ms ease;
 }
 
 html, body {
@@ -139,8 +139,8 @@ html, body {
   cursor: pointer;
   color: var(--vscode-activityBar-inactiveForeground);
   position: relative;
-  transition: color var(--sidex-transition-fast);
-  border-radius: var(--sidex-radius-sm);
+  transition: color var(--sc-code-transition-fast);
+  border-radius: var(--sc-code-radius-sm);
 }
 
 .activity-item:hover {
@@ -226,8 +226,8 @@ html, body {
   outline: none;
   font-family: var(--vscode-font-family);
   font-size: var(--vscode-font-size);
-  border-radius: var(--sidex-radius-sm);
-  transition: border-color var(--sidex-transition-fast);
+  border-radius: var(--sc-code-radius-sm);
+  transition: border-color var(--sc-code-transition-fast);
 }
 
 .search-input-container input:focus {
@@ -255,7 +255,7 @@ html, body {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  border-radius: var(--sidex-radius-sm);
+  border-radius: var(--sc-code-radius-sm);
 }
 
 .search-result-line:hover {
@@ -277,7 +277,7 @@ html, body {
   min-width: 180px;
   padding: 4px;
   z-index: 1000;
-  border-radius: var(--sidex-radius-md);
+  border-radius: var(--sc-code-radius-md);
 }
 
 .context-menu-item {
@@ -287,7 +287,7 @@ html, body {
   cursor: pointer;
   display: flex;
   align-items: center;
-  border-radius: var(--sidex-radius-sm);
+  border-radius: var(--sc-code-radius-sm);
 }
 
 .context-menu-item:hover {
@@ -346,7 +346,7 @@ html, body {
   white-space: nowrap;
   position: relative;
   flex-shrink: 0;
-  transition: color var(--sidex-transition-fast), background var(--sidex-transition-fast);
+  transition: color var(--sc-code-transition-fast), background var(--sc-code-transition-fast);
 }
 
 .tab:hover {
@@ -401,7 +401,7 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: var(--sidex-radius-sm);
+  border-radius: var(--sc-code-radius-sm);
   margin-left: 6px;
   opacity: 0;
   font-size: 12px;
@@ -411,7 +411,7 @@ html, body {
   border: none;
   cursor: pointer;
   padding: 0;
-  transition: opacity var(--sidex-transition-fast);
+  transition: opacity var(--sc-code-transition-fast);
 }
 
 .tab:hover .tab-close,
@@ -456,7 +456,7 @@ html, body {
   background: var(--vscode-editor-background) !important;
 }
 
-/* ==================== WELCOME SCREEN — SideX branded, minimal ==================== */
+/* ==================== WELCOME SCREEN — ScCode branded, minimal ==================== */
 #welcome-screen {
   flex: 1;
   display: flex;
@@ -508,11 +508,11 @@ html, body {
   width: 100%;
   padding: 9px 0;
   border: none;
-  border-radius: var(--sidex-radius-sm);
+  border-radius: var(--sc-code-radius-sm);
   font-size: 13px;
   cursor: pointer;
   font-family: var(--vscode-font-family);
-  transition: background var(--sidex-transition-fast), opacity var(--sidex-transition-fast);
+  transition: background var(--sc-code-transition-fast), opacity var(--sc-code-transition-fast);
 }
 
 .primary-button {
@@ -553,11 +553,11 @@ html, body {
   align-items: center;
   height: 28px;
   padding: 0 8px;
-  border-radius: var(--sidex-radius-sm);
+  border-radius: var(--sc-code-radius-sm);
   cursor: pointer;
   font-size: 13px;
   color: var(--vscode-sideBar-foreground);
-  transition: background var(--sidex-transition-fast);
+  transition: background var(--sc-code-transition-fast);
   overflow: hidden;
 }
 
@@ -612,7 +612,7 @@ html, body {
   font-size: 10px;
   background: var(--vscode-badge-background);
   color: var(--vscode-badge-foreground);
-  border-radius: var(--sidex-radius-sm);
+  border-radius: var(--sc-code-radius-sm);
   margin: 0 2px;
 }
 
@@ -654,8 +654,8 @@ html, body {
   align-items: center;
   cursor: pointer;
   white-space: nowrap;
-  border-radius: var(--sidex-radius-sm);
-  transition: background var(--sidex-transition-fast);
+  border-radius: var(--sc-code-radius-sm);
+  transition: background var(--sc-code-transition-fast);
 }
 
 .statusbar-item:hover {
@@ -695,7 +695,7 @@ html, body {
   margin-top: 0;
   background: var(--vscode-quickInput-background);
   box-shadow: 0 8px 32px var(--vscode-widget-shadow);
-  border-radius: var(--sidex-radius-md);
+  border-radius: var(--sc-code-radius-md);
   overflow: hidden;
   border: 1px solid var(--vscode-input-border);
 }
@@ -728,8 +728,8 @@ html, body {
   cursor: pointer;
   font-size: 13px;
   color: var(--vscode-sideBar-foreground);
-  border-radius: var(--sidex-radius-sm);
-  transition: background var(--sidex-transition-fast);
+  border-radius: var(--sc-code-radius-sm);
+  transition: background var(--sc-code-transition-fast);
 }
 
 .command-item:hover,
@@ -757,7 +757,7 @@ html, body {
   background: transparent;
   position: relative;
   z-index: 5;
-  transition: background var(--sidex-transition-fast);
+  transition: background var(--sc-code-transition-fast);
 }
 
 .resize-handle:hover,
@@ -776,7 +776,7 @@ html, body {
   padding: 2px 6px;
   width: calc(100% - 40px);
   margin-left: 4px;
-  border-radius: var(--sidex-radius-sm);
+  border-radius: var(--sc-code-radius-sm);
 }
 
 /* ==================== DRAG AND DROP ==================== */
@@ -792,10 +792,10 @@ html, body {
   box-shadow: 0 4px 16px var(--vscode-widget-shadow);
   padding: 10px 16px;
   font-size: 13px;
-  border-radius: var(--sidex-radius-md);
+  border-radius: var(--sc-code-radius-md);
   z-index: 10000;
   max-width: 380px;
-  animation: slideIn var(--sidex-transition-normal);
+  animation: slideIn var(--sc-code-transition-normal);
   will-change: transform, opacity;
 }
 
@@ -822,12 +822,12 @@ html, body {
   margin-right: 2px;
   margin-left: 2px;
   padding: 0 5px;
-  border-radius: var(--sidex-radius-sm);
+  border-radius: var(--sc-code-radius-sm);
 }
 
 /* Quick input / command palette: rounded, premium */
 .monaco-workbench .quick-input-widget {
-  border-radius: var(--sidex-radius-md) !important;
+  border-radius: var(--sc-code-radius-md) !important;
   border: 1px solid var(--vscode-input-border) !important;
   box-shadow: 0 8px 32px var(--vscode-widget-shadow) !important;
   overflow: hidden;
@@ -838,12 +838,12 @@ html, body {
 }
 
 .monaco-workbench .quick-input-widget .quick-input-header .quick-input-filter .quick-input-box .monaco-inputbox {
-  border-radius: var(--sidex-radius-sm);
+  border-radius: var(--sc-code-radius-sm);
 }
 
 /* Quick-input list items: subtle rounded selection */
 .monaco-workbench .quick-input-widget .quick-input-list .monaco-list-row {
-  border-radius: var(--sidex-radius-sm);
+  border-radius: var(--sc-code-radius-sm);
   margin: 0 4px;
 }
 
@@ -870,18 +870,18 @@ html, body {
 /* Notifications — rounded, clean shadow */
 .monaco-workbench .notifications-center,
 .monaco-workbench .notifications-toasts .notification-toast {
-  border-radius: var(--sidex-radius-md);
+  border-radius: var(--sc-code-radius-md);
 }
 
 /* Suggest widget / autocomplete — rounded */
 .monaco-workbench .monaco-editor .suggest-widget {
-  border-radius: var(--sidex-radius-md) !important;
+  border-radius: var(--sc-code-radius-md) !important;
   border: 1px solid var(--vscode-input-border) !important;
 }
 
 /* Hover widget — rounded */
 .monaco-workbench .monaco-editor .monaco-hover {
-  border-radius: var(--sidex-radius-md) !important;
+  border-radius: var(--sc-code-radius-md) !important;
 }
 
 /* Editor minimap: slightly more transparent */

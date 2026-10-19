@@ -1,12 +1,12 @@
 /*---------------------------------------------------------------------------------------------
- *  SideX — Tauri-backed update service.
+ *  ScCode — Tauri-backed update service.
  *
  *  Mirrors VS Code's `IUpdateService` state machine (see
  *  `platform/update/common/update.ts`). All heavy lifting lives in the
- *  native `sidex-update` crate; this class is a thin bridge that:
+ *  native `sc-code-update` crate; this class is a thin bridge that:
  *
  *    1. invokes Rust Tauri commands for each VS Code lifecycle method
- *    2. subscribes to a single `sidex://update/state-change` Tauri event
+ *    2. subscribes to a single `sc-code://update/state-change` Tauri event
  *       and re-dispatches it through the workbench `onStateChange` emitter
  *--------------------------------------------------------------------------------------------*/
 
@@ -19,7 +19,7 @@ import { InstantiationType, registerSingleton } from '../../../../platform/insta
 import { INotificationService } from '../../../../platform/notification/common/notification.js';
 import { IUpdateService, State, StateType, UpdateType } from '../../../../platform/update/common/update.js';
 
-const STATE_EVENT = 'sidex://update/state-change';
+const STATE_EVENT = 'sc-code://update/state-change';
 
 interface TauriCore {
 	invoke<T = unknown>(cmd: string, args?: Record<string, unknown>): Promise<T>;
@@ -38,7 +38,7 @@ async function loadTauri(): Promise<{ core: TauriCore; event: TauriEvent } | und
 	}
 }
 
-export class SidexUpdateService implements IUpdateService {
+export class ScCodeUpdateService implements IUpdateService {
 	declare readonly _serviceBrand: undefined;
 
 	private readonly _onStateChange = new Emitter<State>();
@@ -84,7 +84,7 @@ export class SidexUpdateService implements IUpdateService {
 				this.setState(State.Idle(UpdateType.Archive));
 			}
 		} catch (err) {
-			console.error('[sidex-update] bootstrap failed:', err);
+			console.error('[sc-code-update] bootstrap failed:', err);
 			this.setState(State.Idle(UpdateType.Archive));
 		}
 	}
@@ -124,9 +124,9 @@ export class SidexUpdateService implements IUpdateService {
 			// feed that's temporarily unreachable. Only surface it as an
 			// error when the user asked for the check themselves.
 			if (explicit) {
-				console.error('[sidex-update] check failed:', err);
+				console.error('[sc-code-update] check failed:', err);
 			} else {
-				console.info('[sidex-update] background check skipped:', err);
+				console.info('[sc-code-update] background check skipped:', err);
 			}
 		}
 	}
@@ -139,7 +139,7 @@ export class SidexUpdateService implements IUpdateService {
 		try {
 			await tauri.core.invoke('update_download', { explicit });
 		} catch (err) {
-			console.error('[sidex-update] download failed:', err);
+			console.error('[sc-code-update] download failed:', err);
 		}
 	}
 
@@ -151,7 +151,7 @@ export class SidexUpdateService implements IUpdateService {
 		try {
 			await tauri.core.invoke('update_apply');
 		} catch (err) {
-			console.error('[sidex-update] apply failed:', err);
+			console.error('[sc-code-update] apply failed:', err);
 		}
 	}
 
@@ -163,12 +163,12 @@ export class SidexUpdateService implements IUpdateService {
 		try {
 			await tauri.core.invoke('update_quit_and_install');
 		} catch (err) {
-			console.error('[sidex-update] quit-and-install failed:', err);
+			console.error('[sc-code-update] quit-and-install failed:', err);
 		}
 	}
 
 	async _applySpecificUpdate(_packagePath: string): Promise<void> {
-		// SideX doesn't expose side-loaded update packages; the VS Code flow
+		// ScCode doesn't expose side-loaded update packages; the VS Code flow
 		// for this path isn't reachable in our UI.
 	}
 
@@ -185,4 +185,4 @@ function isState(value: unknown): value is State {
 	return typeof type === 'string';
 }
 
-registerSingleton(IUpdateService, SidexUpdateService, InstantiationType.Eager);
+registerSingleton(IUpdateService, ScCodeUpdateService, InstantiationType.Eager);

@@ -1,4 +1,4 @@
-use sidex_extension_sdk::prelude::*;
+use sc_code_extension_sdk::prelude::*;
 
 /// C/C++ language features via clangd LSP.
 /// Provides: completion, hover, definition, references, document symbols, formatting.
@@ -7,7 +7,7 @@ pub struct CppLanguageExtension;
 const SERVER: &str = "clangd";
 const CMD: &str = "clangd";
 
-impl SidexExtension for CppLanguageExtension {
+impl ScCodeExtension for CppLanguageExtension {
     fn activate() -> Result<(), String> {
         Ok(())
     }
@@ -24,7 +24,7 @@ impl SidexExtension for CppLanguageExtension {
         "0.1.0".to_string()
     }
     fn get_publisher() -> String {
-        "sidex".to_string()
+        "sc-code".to_string()
     }
 
     fn get_activation_events() -> Vec<String> {
@@ -116,7 +116,7 @@ impl SidexExtension for CppLanguageExtension {
         let payload = format!(
             r#"{{"server":"{SERVER}","cmd":"{CMD}","method":"textDocument/formatting","params":{{"textDocument":{{"uri":"{uri}"}}{extra_params}}}}}"#
         );
-        host::execute_command("__sidex.lsp", &payload)
+        host::execute_command("__sc_code.lsp", &payload)
             .ok()
             .and_then(|r| parse_lsp_text_edits(&r))
             .unwrap_or_default()
@@ -276,7 +276,7 @@ fn lsp_request(
     let payload = format!(
         r#"{{"server":"{server}","cmd":"{cmd}","method":"{method}","params":{{"textDocument":{{"uri":"{uri}"}}{pos_json}}}}}"#
     );
-    host::execute_command("__sidex.lsp", &payload).ok()
+    host::execute_command("__sc_code.lsp", &payload).ok()
 }
 
 fn parse_lsp_completions(json: &str) -> Option<CompletionList> {
@@ -712,4 +712,4 @@ fn lsp_completion_kind(kind: u32) -> u32 {
     kind.min(25)
 }
 
-sidex_extension_sdk::export_extension!(CppLanguageExtension);
+sc_code_extension_sdk::export_extension!(CppLanguageExtension);

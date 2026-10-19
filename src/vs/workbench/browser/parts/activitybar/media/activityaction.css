@@ -11,12 +11,12 @@
 
 /* Hover background for icon rail feel */
 .monaco-workbench .activitybar > .content :not(.monaco-menu) > .monaco-action-bar .action-item:hover {
-	background-color: var(--sidex-activitybar-hover-bg, rgba(255, 255, 255, 0.04));
+	background-color: var(--sc-code-activitybar-hover-bg, rgba(255, 255, 255, 0.04));
 }
 
 /* Active/checked background highlight */
 .monaco-workbench .activitybar > .content :not(.monaco-menu) > .monaco-action-bar .action-item.checked {
-	background-color: var(--sidex-activitybar-active-bg, rgba(255, 255, 255, 0.05));
+	background-color: var(--sc-code-activitybar-active-bg, rgba(255, 255, 255, 0.05));
 }
 
 /*

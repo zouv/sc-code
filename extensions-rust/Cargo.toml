@@ -25,7 +25,7 @@ members = [
 ]
 
 [workspace.dependencies]
-sidex-extension-sdk = { path = "../sidex-extension-sdk" }
+sc-code-extension-sdk = { path = "../sc-code-extension-sdk" }
 wit-bindgen = "0.41"
 
 [profile.release]

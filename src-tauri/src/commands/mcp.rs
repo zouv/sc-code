@@ -160,7 +160,7 @@ impl McpConnection {
                 "sampling": {}
             },
             "clientInfo": {
-                "name": "sidex",
+                "name": "sc-code",
                 "version": env!("CARGO_PKG_VERSION")
             }
         });

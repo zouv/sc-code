@@ -1,19 +1,19 @@
 //! Tauri command bindings for the native update manager.
 //!
 //! The TypeScript `IUpdateService` on the frontend invokes these commands
-//! and listens to the `sidex://update/state-change` event to mirror
+//! and listens to the `sc-code://update/state-change` event to mirror
 //! `onStateChange`.
 
 use std::path::PathBuf;
 use std::sync::{Arc, OnceLock};
 
-use sidex_update::{
+use sc_code_update::{
     DisablementReason, State, UpdateConfig, UpdateManager, UpdateObserver, UpdateResult, UpdateType,
 };
 use tauri::{AppHandle, Emitter, Manager};
 
 /// Tauri event name carrying the latest [`State`] payload.
-pub const STATE_EVENT: &str = "sidex://update/state-change";
+pub const STATE_EVENT: &str = "sc-code://update/state-change";
 
 /// Runtime opt-in for the update feed. `tauri.conf.json` intentionally ships
 /// with no `endpoints` entry under `plugins.updater` — a build from source
@@ -193,7 +193,7 @@ pub async fn update_check(
         // immediately without touching the manager or the network. This is
         // what makes both the periodic background poll and an explicit
         // "Check for Updates..." click silent-and-complete rather than
-        // erroring — see `sidexUpdate.contribution.ts` and
+        // erroring — see `scCodeUpdate.contribution.ts` and
         // `updateService.ts` for how each `explicit` value is handled.
         return Ok(not_configured());
     }
@@ -256,7 +256,7 @@ pub async fn update_cleanup(state: tauri::State<'_, UpdateManagerState>) -> Resu
 #[allow(clippy::needless_pass_by_value)]
 pub fn update_quit_and_install(app: AppHandle) -> Result<(), String> {
     let install_root = std::env::current_exe().map_err(|e| e.to_string())?;
-    sidex_update::install::relaunch(&install_root).map_err(|e| e.to_string())?;
+    sc_code_update::install::relaunch(&install_root).map_err(|e| e.to_string())?;
     app.exit(0);
     Ok(())
 }

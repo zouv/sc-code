@@ -341,7 +341,7 @@ export class TerminalService extends Disposable implements ITerminalService {
 		this._terminalShellTypeContextKey = TerminalContextKeys.shellType.bindTo(this._contextKeyService);
 		this._processSupportContextKey = TerminalContextKeys.processSupported.bindTo(this._contextKeyService);
 		this._processSupportContextKey.set(
-			!isWeb || this._remoteAgentService.getConnection() !== null || !!(globalThis as any).__SIDEX_TAURI__
+			!isWeb || this._remoteAgentService.getConnection() !== null || !!(globalThis as any).__SC_CODE_TAURI__
 		);
 		this._terminalHasBeenCreated = TerminalContextKeys.terminalHasBeenCreated.bindTo(this._contextKeyService);
 		this._terminalCountContextKey = TerminalContextKeys.count.bindTo(this._contextKeyService);

@@ -239,12 +239,12 @@ Object.assign(process, {
   },
   version: 'v20.0.0',
 
-  argv: ['sidex', 'extension-host'],
-  argv0: 'sidex',
-  execPath: '/usr/local/bin/sidex',
+  argv: ['sc-code', 'extension-host'],
+  argv0: 'sc-code',
+  execPath: '/usr/local/bin/sc-code',
   execArgv: [],
 
-  title: 'sidex-extension-host',
+  title: 'sc-code-extension-host',
 
   stdout: new ProcessWriteStream(1),
   stderr: new ProcessWriteStream(2),
@@ -301,7 +301,7 @@ Object.assign(process, {
   traceProcessWarnings: false,
 
   binding() {
-    throw new Error('process.binding is not supported in SideX polyfill');
+    throw new Error('process.binding is not supported in ScCode polyfill');
   },
 
   umask(mask) {

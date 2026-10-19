@@ -1,5 +1,5 @@
 /*---------------------------------------------------------------------------------------------
- *  SideX — Remote Explorer pane.
+ *  ScCode — Remote Explorer pane.
  *
  *  Uses VS Code's standard tree-view infrastructure (WorkbenchAsyncDataTree)
  *  to show SSH hosts, WSL distros, Dev Containers, Codespaces, and Tunnels
@@ -21,13 +21,13 @@ import { IOpenerService } from '../../../../platform/opener/common/opener.js';
 import { IThemeService } from '../../../../platform/theme/common/themeService.js';
 import { IHoverService } from '../../../../platform/hover/browser/hover.js';
 import {
-	ISideXRemoteService,
+	IScCodeRemoteService,
 	SshHost,
 	WslDistro,
 	ContainerEntry,
 	CodespaceEntry,
 	RemoteKind
-} from '../../../../platform/sidex/browser/sidexRemoteService.js';
+} from '../../../../platform/scCode/browser/scCodeRemoteService.js';
 import { ICommandService } from '../../../../platform/commands/common/commands.js';
 import { Codicon } from '../../../../base/common/codicons.js';
 import { ThemeIcon } from '../../../../base/common/themables.js';
@@ -194,7 +194,7 @@ export class RemoteExplorerViewPane extends ViewPane {
 		@IOpenerService openerService: IOpenerService,
 		@IThemeService themeService: IThemeService,
 		@IHoverService hoverService: IHoverService,
-		@ISideXRemoteService private readonly remoteService: ISideXRemoteService,
+		@IScCodeRemoteService private readonly remoteService: IScCodeRemoteService,
 		@ICommandService private readonly commandService: ICommandService,
 		@IQuickInputService private readonly quickInputService: IQuickInputService
 	) {
@@ -317,7 +317,7 @@ export class RemoteExplorerViewPane extends ViewPane {
 			active: false,
 			description: localize('remote.tunnelsProvider', 'Remote-Tunnels'),
 			actionLabel: localize('remote.signIn', 'Sign In'),
-			onActivate: () => this.commandService.executeCommand('sidex.remote.signInTunnel', 'microsoft')
+			onActivate: () => this.commandService.executeCommand('sc-code.remote.signInTunnel', 'microsoft')
 		});
 
 		if (!githubToken) {
@@ -329,7 +329,7 @@ export class RemoteExplorerViewPane extends ViewPane {
 				active: false,
 				description: localize('remote.tunnelsProvider', 'Remote-Tunnels'),
 				actionLabel: localize('remote.signIn', 'Sign In'),
-				onActivate: () => this.commandService.executeCommand('sidex.remote.signInTunnel', 'github')
+				onActivate: () => this.commandService.executeCommand('sc-code.remote.signInTunnel', 'github')
 			});
 		}
 
@@ -365,7 +365,7 @@ export class RemoteExplorerViewPane extends ViewPane {
 					description: host.hostname ?? undefined,
 					icon: Codicon.vm,
 					active: isConnected,
-					onActivate: () => this.commandService.executeCommand('sidex.remote.connect', 'ssh' as RemoteKind, host)
+					onActivate: () => this.commandService.executeCommand('sc-code.remote.connect', 'ssh' as RemoteKind, host)
 				});
 			}
 		}
@@ -390,7 +390,7 @@ export class RemoteExplorerViewPane extends ViewPane {
 				icon: Codicon.github,
 				active: false,
 				actionLabel: localize('remote.signIn', 'Sign In'),
-				onActivate: () => this.commandService.executeCommand('sidex.remote.signInTunnel', 'github')
+				onActivate: () => this.commandService.executeCommand('sc-code.remote.signInTunnel', 'github')
 			});
 		} else if (spaces.length === 0) {
 			children.push({
@@ -415,7 +415,7 @@ export class RemoteExplorerViewPane extends ViewPane {
 						try {
 							await this.remoteService.connectCodespace(space.name, githubToken);
 						} catch (err) {
-							this.commandService.executeCommand('sidex.notify.error', String(err));
+							this.commandService.executeCommand('sc-code.notify.error', String(err));
 						}
 					}
 				});
@@ -439,7 +439,7 @@ export class RemoteExplorerViewPane extends ViewPane {
 			description: `WSL${distro.version} • ${distro.state}`,
 			icon: Codicon.terminalLinux,
 			active: false,
-			onActivate: () => this.commandService.executeCommand('sidex.remote.connect', 'wsl' as RemoteKind, distro)
+			onActivate: () => this.commandService.executeCommand('sc-code.remote.connect', 'wsl' as RemoteKind, distro)
 		}));
 
 		return {
@@ -475,7 +475,7 @@ export class RemoteExplorerViewPane extends ViewPane {
 					active: isRunning,
 					onActivate: () =>
 						isRunning
-							? this.commandService.executeCommand('sidex.remote.connect', 'container' as RemoteKind, ctr)
+							? this.commandService.executeCommand('sc-code.remote.connect', 'container' as RemoteKind, ctr)
 							: undefined
 				});
 			}
@@ -510,7 +510,7 @@ export async function getCachedGitHubToken(): Promise<string | null> {
 		const { invoke } = await import('@tauri-apps/api/core');
 		const token =
 			(await invoke<string | null>('secret_get', {
-				key: 'sidex.remote.github.device-flow'
+				key: 'sc-code.remote.github.device-flow'
 			})) ?? null;
 		_githubTokenCache = { value: token, fetched: true };
 		return token;

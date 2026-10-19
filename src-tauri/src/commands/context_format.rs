@@ -1,5 +1,5 @@
+use sc_code_context::format::toon::serialize_array;
 use serde::{Deserialize, Serialize};
-use sidex_context::format::toon::serialize_array;
 
 /// A single result from the context search index, used for formatted output.
 #[derive(Debug, Clone, Serialize, Deserialize)]

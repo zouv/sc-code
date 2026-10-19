@@ -1,5 +1,5 @@
 /*---------------------------------------------------------------------------------------------
- *  SideX - A fast, native code editor
+ *  ScCode - A fast, native code editor
  *  Copyright (c) Siden Technologies, Inc. MIT Licensed.
  *--------------------------------------------------------------------------------------------*/
 
@@ -7,20 +7,20 @@
 
 import '../editor/editor.all.js';
 
-// SideX: Register null stubs for stripped services (must be early)
-import './sidexNullServices.js';
+// ScCode: Register null stubs for stripped services (must be early)
+import './scCodeNullServices.js';
 
-// SideX: Register Rust-backed bridge services as DI singletons
-import '../platform/sidex/browser/sidexFileSystemProvider.js';
-import '../platform/sidex/browser/sidexSearchProvider.js';
-import '../platform/sidex/browser/sidexSCMProvider.js';
-import '../platform/sidex/browser/sidexSyntaxService.js';
-import '../platform/sidex/browser/sidexLspService.js';
-import '../platform/sidex/browser/sidexDapService.js';
-import '../platform/sidex/browser/sidexRemoteService.js';
-import '../platform/sidex/common/sidexThemeService.js';
-import '../platform/sidex/common/sidexSettingsService.js';
-import '../platform/sidex/common/sidexKeymapService.js';
+// ScCode: Register Rust-backed bridge services as DI singletons
+import '../platform/scCode/browser/scCodeFileSystemProvider.js';
+import '../platform/scCode/browser/scCodeSearchProvider.js';
+import '../platform/scCode/browser/scCodeSCMProvider.js';
+import '../platform/scCode/browser/scCodeSyntaxService.js';
+import '../platform/scCode/browser/scCodeLspService.js';
+import '../platform/scCode/browser/scCodeDapService.js';
+import '../platform/scCode/browser/scCodeRemoteService.js';
+import '../platform/scCode/common/scCodeThemeService.js';
+import '../platform/scCode/common/scCodeSettingsService.js';
+import '../platform/scCode/common/scCodeKeymapService.js';
 
 import './api/browser/extensionHost.contribution.js';
 import './browser/workbench.contribution.js';
@@ -211,11 +211,11 @@ import './contrib/bulkEdit/browser/bulkEditService.js';
 import './contrib/search/browser/search.contribution.js';
 import './contrib/search/browser/searchView.js';
 
-// Sidex Chat
-import './contrib/sidexChat/browser/sidexChat.contribution.js';
+// ScCode Chat
+import './contrib/scCodeChat/browser/scCodeChat.contribution.js';
 
-// Sidex Complete
-import './contrib/sidexComplete/browser/sidexComplete.contribution.js';
+// ScCode Complete
+import './contrib/scCodeComplete/browser/scCodeComplete.contribution.js';
 
 // Search Editor
 import './contrib/searchEditor/browser/searchEditor.contribution.js';

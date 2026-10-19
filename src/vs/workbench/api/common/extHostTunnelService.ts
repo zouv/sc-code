@@ -1,5 +1,5 @@
 /*---------------------------------------------------------------------------------------------
- *  SideX — ExtHost tunnel service stub. Remote tunneling is handled by the sidex-remote
+ *  ScCode — ExtHost tunnel service stub. Remote tunneling is handled by the sc-code-remote
  *  Rust crate; extension-level tunnel APIs accept registrations but perform no work.
  *--------------------------------------------------------------------------------------------*/
 

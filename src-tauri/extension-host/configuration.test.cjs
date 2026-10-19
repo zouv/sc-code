@@ -140,14 +140,14 @@ test('activation gate can be shared by automatic and explicit activation paths',
 });
 
 test('host defers auto-activation until the Workbench snapshot is applied and released', async (t) => {
-  const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'sidex-config-host-'));
+  const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'sc-code-config-host-'));
   const extensionDir = path.join(temp, 'extension');
   const initDataPath = path.join(temp, 'init.json');
   const resultPath = path.join(temp, 'activated-config.json');
   fs.mkdirSync(extensionDir);
   fs.writeFileSync(path.join(extensionDir, 'package.json'), JSON.stringify({
     name: 'config-probe',
-    publisher: 'sidex-test',
+    publisher: 'sc-code-test',
     version: '1.0.0',
     main: 'extension.js',
     activationEvents: [],
@@ -161,14 +161,14 @@ test('host defers auto-activation until the Workbench snapshot is applied and re
     "const vscode = require('vscode');",
     'exports.activate = () => {',
     "  const config = vscode.workspace.getConfiguration('vac');",
-    `  fs.writeFileSync(process.env.SIDEX_TEST_CONFIG_RESULT, JSON.stringify({ agents: config.get('agents'), models: config.get('customModels') }));`,
+    `  fs.writeFileSync(process.env.SC_CODE_TEST_CONFIG_RESULT, JSON.stringify({ agents: config.get('agents'), models: config.get('customModels') }));`,
     '};',
   ].join('\n'));
   fs.writeFileSync(initDataPath, JSON.stringify({ extensions: [{ extensionLocation: { path: extensionDir } }] }));
 
   const child = fork(path.join(__dirname, 'host.cjs'), ['--type=extensionHost'], {
     silent: true,
-    env: { ...process.env, SIDEX_EXTENSION_HOST: 'true', SIDEX_INIT_DATA_FILE: initDataPath, SIDEX_TEST_CONFIG_RESULT: resultPath },
+    env: { ...process.env, SC_CODE_EXTENSION_HOST: 'true', SC_CODE_INIT_DATA_FILE: initDataPath, SC_CODE_TEST_CONFIG_RESULT: resultPath },
   });
   t.after(async () => {
     if (child.exitCode === null && child.signalCode === null) child.kill();
@@ -181,7 +181,7 @@ test('host defers auto-activation until the Workbench snapshot is applied and re
     const id = nextId++;
     const timeout = setTimeout(() => reject(new Error(`timeout waiting for ${type}`)), 10000);
     const listener = (message) => {
-      if (message?.type !== 'sidex:host-reply' || message.reply?.id !== id) return;
+      if (message?.type !== 'sc-code:host-reply' || message.reply?.id !== id) return;
       clearTimeout(timeout);
       child.off('message', listener);
       if (message.reply.error) reject(new Error(message.reply.error));
@@ -202,7 +202,7 @@ test('host defers auto-activation until the Workbench snapshot is applied and re
     child.once('error', reject);
   });
 
-  await assert.rejects(request('activateExtension', { extensionId: 'sidex-test.config-probe' }), /before the initial configuration snapshot/);
+  await assert.rejects(request('activateExtension', { extensionId: 'sc-code-test.config-probe' }), /before the initial configuration snapshot/);
   const settings = {
     'vac.agents': { 'Claude Code': { command: 'npx' }, 'Codex CLI': { command: 'codex' } },
     'vac.customModels': [{ name: 'Model A', modelId: 'model-a' }, { name: 'Model B', modelId: 'model-b' }],
@@ -210,19 +210,19 @@ test('host defers auto-activation until the Workbench snapshot is applied and re
   assert.equal((await request('setConfiguration', { settings })).applied, true);
   assert.equal(fs.existsSync(resultPath), false);
   assert.equal(await request('releaseExtensionActivation', {}), true);
-  assert.deepEqual(await request('activateExtension', { extensionId: 'sidex-test.config-probe' }), { activated: true });
+  assert.deepEqual(await request('activateExtension', { extensionId: 'sc-code-test.config-probe' }), { activated: true });
   assert.deepEqual(JSON.parse(fs.readFileSync(resultPath, 'utf8')), {
     agents: settings['vac.agents'],
     models: settings['vac.customModels'],
   });
 
-  await request('deactivateExtension', { extensionId: 'sidex-test.config-probe' });
+  await request('deactivateExtension', { extensionId: 'sc-code-test.config-probe' });
   await request('beginConfigurationSync', {});
-  assert.deepEqual(await request('activateExtension', { extensionId: 'sidex-test.config-probe' }), { activated: false, deferred: true });
+  assert.deepEqual(await request('activateExtension', { extensionId: 'sc-code-test.config-probe' }), { activated: false, deferred: true });
   const updatedSettings = { 'vac.agents': { Updated: { command: 'codex' } }, 'vac.customModels': [] };
   assert.equal((await request('setConfiguration', { settings: updatedSettings })).applied, true);
   assert.equal(await request('releaseExtensionActivation', {}), true);
-  assert.deepEqual(await request('activateExtension', { extensionId: 'sidex-test.config-probe' }), { activated: true });
+  assert.deepEqual(await request('activateExtension', { extensionId: 'sc-code-test.config-probe' }), { activated: true });
   assert.deepEqual(JSON.parse(fs.readFileSync(resultPath, 'utf8')), {
     agents: updatedSettings['vac.agents'],
     models: updatedSettings['vac.customModels'],

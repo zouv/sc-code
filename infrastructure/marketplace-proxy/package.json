@@ -1,8 +1,8 @@
 {
-	"name": "sidex-marketplace-proxy",
+	"name": "sc-code-marketplace-proxy",
 	"version": "0.1.0",
 	"private": true,
-	"description": "Edge-cached dual-backend (Microsoft Marketplace + Open VSX) proxy for SideX.",
+	"description": "Edge-cached dual-backend (Microsoft Marketplace + Open VSX) proxy for ScCode.",
 	"scripts": {
 		"dev": "wrangler dev",
 		"deploy": "wrangler deploy",

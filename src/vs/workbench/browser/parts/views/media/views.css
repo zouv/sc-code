@@ -158,7 +158,7 @@
 	padding-left: 0px;
 }
 
-/* Sidex: tighter tree view items — 24px height, rounded hover/selection */
+/* ScCode: tighter tree view items — 24px height, rounded hover/selection */
 .customview-tree .monaco-list .monaco-list-row .custom-view-tree-node-item {
 	display: flex;
 	height: 24px;
@@ -211,7 +211,7 @@
 	display: block;
 }
 
-/* Sidex: muted icons — 15px, slightly lower opacity */
+/* ScCode: muted icons — 15px, slightly lower opacity */
 .timeline-tree-view .monaco-list .monaco-list-row .custom-view-tree-node-item > .custom-view-tree-node-item-icon,
 .customview-tree .monaco-list .monaco-list-row .custom-view-tree-node-item > .custom-view-tree-node-item-resourceLabel > .custom-view-tree-node-item-icon {
 	background-size: 15px;

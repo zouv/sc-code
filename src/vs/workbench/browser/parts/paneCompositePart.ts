@@ -365,7 +365,7 @@ export abstract class AbstractPaneCompositePart extends CompositePart<PaneCompos
 			return undefined;
 		}
 
-		titleArea.classList.add('sidex-header');
+		titleArea.classList.add('sc-code-header');
 
 		this._register(
 			addDisposableListener(titleArea, EventType.CONTEXT_MENU, e => {

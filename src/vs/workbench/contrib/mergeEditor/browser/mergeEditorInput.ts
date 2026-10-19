@@ -1,5 +1,5 @@
 /*---------------------------------------------------------------------------------------------
- *  SideX: Stub for removed merge editor input.
+ *  ScCode: Stub for removed merge editor input.
  *--------------------------------------------------------------------------------------------*/
 
 export class MergeEditorInput {

@@ -1,5 +1,5 @@
 /*---------------------------------------------------------------------------------------------
- *  SideX WASM TF-IDF Bridge
+ *  ScCode WASM TF-IDF Bridge
  *  Accelerated TF-IDF scoring via WebAssembly with transparent JS fallback.
  *--------------------------------------------------------------------------------------------*/
 
@@ -17,7 +17,7 @@ async function ensureWasm(): Promise<any> {
 	if (!initPromise) {
 		initPromise = (async () => {
 			try {
-				const wasmPath = '/wasm/tfidf/sidex_tfidf_wasm.js';
+				const wasmPath = '/wasm/tfidf/sc_code_tfidf_wasm.js';
 				const resp = await fetch(wasmPath);
 				if (!resp.ok) {
 					throw new Error(`HTTP ${resp.status}`);

@@ -1,5 +1,5 @@
 /*---------------------------------------------------------------------------------------------
- *  SideX: Stub for removed custom text editor model.
+ *  ScCode: Stub for removed custom text editor model.
  *--------------------------------------------------------------------------------------------*/
 
 export class CustomTextEditorModel {

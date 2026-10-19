@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------------------------
- *  SideX: Stub for removed language configuration extension point.
+ *  ScCode: Stub for removed language configuration extension point.
  *  This was part of the codeEditor contribution. The actual language config
- *  handling is done in sidex-editor.
+ *  handling is done in sc-code-editor.
  *--------------------------------------------------------------------------------------------*/
 
 export class LanguageConfigurationFileHandler {

@@ -39,7 +39,7 @@
 	margin-top: 4px;
 }
 
-/* Sidex: section titles — 10px uppercase, 600 weight, muted color */
+/* ScCode: section titles — 10px uppercase, 600 weight, muted color */
 .monaco-pane-view .pane > .pane-header h3.title {
 	white-space: nowrap;
 	text-overflow: ellipsis;

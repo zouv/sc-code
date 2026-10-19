@@ -1,6 +1,6 @@
 /*---------------------------------------------------------------------------------------------
- *  SideX — ExtHost managed sockets stub. Remote socket multiplexing is handled by the
- *  sidex-remote Rust crate; extension-level factories are accepted but not routed.
+ *  ScCode — ExtHost managed sockets stub. Remote socket multiplexing is handled by the
+ *  sc-code-remote Rust crate; extension-level factories are accepted but not routed.
  *--------------------------------------------------------------------------------------------*/
 
 import { ExtHostManagedSocketsShape } from './extHost.protocol.js';

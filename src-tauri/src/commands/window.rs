@@ -103,7 +103,7 @@ pub struct WindowState {
     pub maximized: bool,
 }
 
-const WINDOW_STATE_KEY: &str = "sidex.windowState";
+const WINDOW_STATE_KEY: &str = "sc-code.windowState";
 
 #[allow(clippy::cast_possible_wrap)]
 pub fn restore_and_show(app: &tauri::App, db: &StorageDb) {

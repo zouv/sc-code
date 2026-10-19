@@ -1,5 +1,5 @@
 /*---------------------------------------------------------------------------------------------
- *  Tauri Debug Adapter — replaces Node.js ExecutableDebugAdapter for SideX.
+ *  Tauri Debug Adapter — replaces Node.js ExecutableDebugAdapter for ScCode.
  *  Spawns debug adapter processes via Tauri IPC and communicates over the
  *  DAP wire protocol (Content-Length header framing over stdin/stdout).
  *--------------------------------------------------------------------------------------------*/

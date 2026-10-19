@@ -110,7 +110,7 @@ export default {
 					const body = await runSearch(query, pageSize, 0, shape, origin);
 					const etag = etagFor(body);
 					const cacheKey = `search2:${shape}:${pageSize}:0:${query.toLowerCase()}`;
-					const edgeReq = new Request(`https://sidex-cache/${encodeURIComponent(cacheKey)}`);
+					const edgeReq = new Request(`https://sc-code-cache/${encodeURIComponent(cacheKey)}`);
 					await Promise.all([
 						env.MARKETPLACE_CACHE.put(cacheKey, body, {
 							expirationTtl: SEARCH_CACHE_TTL * 2 // double TTL for pre-warmed entries
@@ -150,17 +150,17 @@ async function handleVsGallery(url: URL, request: Request, env: Env, ctx: Execut
 	// asset URL rewriting fixes (wrong assetUri format causing 404s).
 	const cacheKey = `gallery2:${etag}`;
 
-	const edgeReq = new Request(`https://sidex-cache/${encodeURIComponent(cacheKey)}`);
+	const edgeReq = new Request(`https://sc-code-cache/${encodeURIComponent(cacheKey)}`);
 	const edgeHit = await caches.default.match(edgeReq);
 	if (edgeHit) {
 		const respEtag = edgeHit.headers.get('etag');
 		if (respEtag) {
 			const nm = notModifiedResponse(request, respEtag);
 			if (nm) {
-				return withHeaders(nm, { 'x-sidex-cache': 'edge-304' });
+				return withHeaders(nm, { 'x-sc-code-cache': 'edge-304' });
 			}
 		}
-		return withHeaders(edgeHit, { 'x-sidex-cache': 'edge' });
+		return withHeaders(edgeHit, { 'x-sc-code-cache': 'edge' });
 	}
 
 	const kvHit = await env.MARKETPLACE_CACHE.get(cacheKey, 'text');
@@ -168,7 +168,7 @@ async function handleVsGallery(url: URL, request: Request, env: Env, ctx: Execut
 		const respEtag = etagFor(kvHit);
 		const nm = notModifiedResponse(request, respEtag);
 		if (nm) {
-			return withHeaders(nm, { 'x-sidex-cache': 'kv-304' });
+			return withHeaders(nm, { 'x-sc-code-cache': 'kv-304' });
 		}
 		const resp = galleryResponse(kvHit, 'kv', respEtag);
 		ctx.waitUntil(caches.default.put(edgeReq, resp.clone()));
@@ -197,10 +197,10 @@ function galleryResponse(body: string, cacheState: string, etag: string): Respon
 			'content-type': 'application/json; charset=utf-8',
 			'cache-control': `public, max-age=${SEARCH_CACHE_TTL}, stale-while-revalidate=${SEARCH_STALE_WHILE_REVALIDATE}`,
 			'access-control-allow-origin': '*',
-			'access-control-expose-headers': 'etag, x-sidex-cache, server-timing',
+			'access-control-expose-headers': 'etag, x-sc-code-cache, server-timing',
 			vary: 'accept-encoding',
 			etag,
-			'x-sidex-cache': cacheState
+			'x-sc-code-cache': cacheState
 		}
 	});
 }
@@ -221,7 +221,7 @@ async function handleSearch(
 	const offset = Math.max(Number(url.searchParams.get('offset')) || 0, 0);
 	const cacheKey = `search2:${shape}:${pageSize}:${offset}:${query.toLowerCase()}`;
 
-	const edgeReq = new Request(`https://sidex-cache/${encodeURIComponent(cacheKey)}`);
+	const edgeReq = new Request(`https://sc-code-cache/${encodeURIComponent(cacheKey)}`);
 	const edgeHit = await caches.default.match(edgeReq);
 	if (edgeHit) {
 		const age = Number(edgeHit.headers.get('age') ?? '0');
@@ -232,10 +232,10 @@ async function handleSearch(
 		if (etag) {
 			const notModified = notModifiedResponse(request, etag);
 			if (notModified) {
-				return withHeaders(notModified, { 'x-sidex-cache': 'edge-304' });
+				return withHeaders(notModified, { 'x-sc-code-cache': 'edge-304' });
 			}
 		}
-		return withHeaders(edgeHit, { 'x-sidex-cache': 'edge' });
+		return withHeaders(edgeHit, { 'x-sc-code-cache': 'edge' });
 	}
 
 	const kvHit = await env.MARKETPLACE_CACHE.get(cacheKey, 'text');
@@ -243,7 +243,7 @@ async function handleSearch(
 		const etag = etagFor(kvHit);
 		const notModified = notModifiedResponse(request, etag);
 		if (notModified) {
-			return withHeaders(notModified, { 'x-sidex-cache': 'kv-304' });
+			return withHeaders(notModified, { 'x-sc-code-cache': 'kv-304' });
 		}
 		const resp = jsonResponse(kvHit, SEARCH_CACHE_TTL, 'kv', etag);
 		ctx.waitUntil(caches.default.put(edgeReq, resp.clone()));
@@ -257,7 +257,7 @@ async function handleSearch(
 	const notModified = notModifiedResponse(request, etag);
 	if (notModified) {
 		ctx.waitUntil(caches.default.put(edgeReq, jsonResponse(body, SEARCH_CACHE_TTL, 'miss', etag).clone()));
-		return withHeaders(notModified, { 'x-sidex-cache': 'miss-304' });
+		return withHeaders(notModified, { 'x-sc-code-cache': 'miss-304' });
 	}
 	const resp = jsonResponse(body, SEARCH_CACHE_TTL, 'miss', etag);
 	ctx.waitUntil(caches.default.put(edgeReq, resp.clone()));
@@ -275,7 +275,7 @@ async function refreshSearch(
 	const query = (url.searchParams.get('q') ?? url.searchParams.get('query') ?? '').trim();
 	const pageSize = Math.min(Number(url.searchParams.get('pageSize') ?? url.searchParams.get('size')) || 50, 100);
 	const offset = Math.max(Number(url.searchParams.get('offset')) || 0, 0);
-	const body = await runSearch(query, pageSize, offset, shape, 'https://sidex-cache');
+	const body = await runSearch(query, pageSize, offset, shape, 'https://sc-code-cache');
 	const etag = etagFor(body);
 	await env.MARKETPLACE_CACHE.put(cacheKey, body, { expirationTtl: SEARCH_CACHE_TTL });
 	await caches.default.put(edgeReq, jsonResponse(body, SEARCH_CACHE_TTL, 'miss', etag).clone());
@@ -379,14 +379,14 @@ async function handleIcon(url: URL, _request: Request, _env: Env, ctx: Execution
 	}
 
 	const cacheKey = `icon:${target.host}${target.pathname}`;
-	const edgeReq = new Request(`https://sidex-cache/${encodeURIComponent(cacheKey)}`);
+	const edgeReq = new Request(`https://sc-code-cache/${encodeURIComponent(cacheKey)}`);
 	const edgeHit = await caches.default.match(edgeReq);
 	if (edgeHit) {
-		return withHeaders(edgeHit, { 'x-sidex-cache': 'edge' });
+		return withHeaders(edgeHit, { 'x-sc-code-cache': 'edge' });
 	}
 
 	const upstream = await fetch(target.toString(), {
-		headers: { 'user-agent': 'sidex-marketplace-proxy/1.0' }
+		headers: { 'user-agent': 'sc-code-marketplace-proxy/1.0' }
 	});
 	if (!upstream.ok) {
 		return iconPlaceholder();
@@ -397,7 +397,7 @@ async function handleIcon(url: URL, _request: Request, _env: Env, ctx: Execution
 		'content-type': ct,
 		'cache-control': `public, max-age=${DOWNLOAD_CACHE_TTL}, immutable`,
 		'access-control-allow-origin': '*',
-		'x-sidex-cache': 'miss'
+		'x-sc-code-cache': 'miss'
 	});
 	const resp = new Response(await upstream.arrayBuffer(), { status: 200, headers });
 	ctx.waitUntil(caches.default.put(edgeReq, resp.clone()));
@@ -441,13 +441,13 @@ async function handleAsset(url: URL, _request: Request, _env: Env, ctx: Executio
 			const vsixUrl = base64UrlDecode(b64);
 			// vsixUrl is the real upstream Open VSX VSIX URL
 			const cacheKey = `vsix:${vsixUrl}`;
-			const edgeReq = new Request(`https://sidex-cache/${encodeURIComponent(cacheKey)}`);
+			const edgeReq = new Request(`https://sc-code-cache/${encodeURIComponent(cacheKey)}`);
 			const edgeHit = await caches.default.match(edgeReq);
 			if (edgeHit) {
-				return withHeaders(edgeHit, { 'x-sidex-cache': 'edge' });
+				return withHeaders(edgeHit, { 'x-sc-code-cache': 'edge' });
 			}
 			const upstream = await fetch(vsixUrl, {
-				headers: { 'user-agent': 'sidex-marketplace-proxy/1.0', accept: '*/*' },
+				headers: { 'user-agent': 'sc-code-marketplace-proxy/1.0', accept: '*/*' },
 				redirect: 'follow'
 			});
 			if (!upstream.ok) {
@@ -458,7 +458,7 @@ async function handleAsset(url: URL, _request: Request, _env: Env, ctx: Executio
 				'content-type': ct,
 				'cache-control': `public, max-age=${DOWNLOAD_CACHE_TTL}, immutable`,
 				'access-control-allow-origin': '*',
-				'x-sidex-cache': 'miss'
+				'x-sc-code-cache': 'miss'
 			});
 			const resp = new Response(await upstream.arrayBuffer(), { status: 200, headers });
 			ctx.waitUntil(caches.default.put(edgeReq, resp.clone()));
@@ -515,15 +515,15 @@ async function handleAsset(url: URL, _request: Request, _env: Env, ctx: Executio
 	}
 
 	const cacheKey = `asset:${upstreamUrl}`;
-	const edgeReq = new Request(`https://sidex-cache/${encodeURIComponent(cacheKey)}`);
+	const edgeReq = new Request(`https://sc-code-cache/${encodeURIComponent(cacheKey)}`);
 	const edgeHit = await caches.default.match(edgeReq);
 	if (edgeHit) {
-		return withHeaders(edgeHit, { 'x-sidex-cache': 'edge' });
+		return withHeaders(edgeHit, { 'x-sc-code-cache': 'edge' });
 	}
 
 	const upstream = await fetch(upstreamUrl, {
 		headers: {
-			'user-agent': 'sidex-marketplace-proxy/1.0',
+			'user-agent': 'sc-code-marketplace-proxy/1.0',
 			accept: '*/*'
 		},
 		redirect: 'follow'
@@ -547,7 +547,7 @@ async function handleAsset(url: URL, _request: Request, _env: Env, ctx: Executio
 		'content-type': ct,
 		'cache-control': `public, max-age=${DOWNLOAD_CACHE_TTL}, immutable`,
 		'access-control-allow-origin': '*',
-		'x-sidex-cache': 'miss'
+		'x-sc-code-cache': 'miss'
 	});
 	const resp = new Response(await upstream.arrayBuffer(), { status: 200, headers });
 	ctx.waitUntil(caches.default.put(edgeReq, resp.clone()));
@@ -597,19 +597,19 @@ async function handleDownload(url: URL, request: Request, env: Env, ctx: Executi
 
 	const range = request.headers.get('range');
 	const cacheKey = `dl:${source}:${target.host}${target.pathname}${target.search}`;
-	const edgeReq = new Request(`https://sidex-cache/${encodeURIComponent(cacheKey)}`);
+	const edgeReq = new Request(`https://sc-code-cache/${encodeURIComponent(cacheKey)}`);
 
 	// Cache API does not natively return partial content, so we fetch
 	// the full cached body and slice it ourselves when the client asks
 	// for a range.
 	const edgeHit = await caches.default.match(edgeReq);
 	if (edgeHit && edgeHit.body) {
-		return range ? partialFrom(edgeHit, range, 'edge') : withHeaders(edgeHit, { 'x-sidex-cache': 'edge' });
+		return range ? partialFrom(edgeHit, range, 'edge') : withHeaders(edgeHit, { 'x-sc-code-cache': 'edge' });
 	}
 
 	const upstream = await fetch(target.toString(), {
 		headers: new Headers({
-			'user-agent': 'sidex-marketplace-proxy/1.0',
+			'user-agent': 'sc-code-marketplace-proxy/1.0',
 			'accept-encoding': 'identity' // store the raw bytes so range math is simple
 		})
 	});
@@ -619,7 +619,7 @@ async function handleDownload(url: URL, request: Request, env: Env, ctx: Executi
 
 	const headers = stripHopByHop(upstream.headers);
 	headers.set('cache-control', `public, max-age=${DOWNLOAD_CACHE_TTL}, immutable`);
-	headers.set('x-sidex-cache', 'miss');
+	headers.set('x-sc-code-cache', 'miss');
 	headers.set('accept-ranges', 'bytes');
 
 	// Cloudflare only caches responses we `put` with a 200. Buffer the
@@ -638,7 +638,7 @@ async function handleDownload(url: URL, request: Request, env: Env, ctx: Executi
 async function partialFrom(full: Response, range: string, cacheState: string): Promise<Response> {
 	const match = /^bytes=(\d*)-(\d*)$/.exec(range.trim());
 	if (!match) {
-		return withHeaders(full, { 'x-sidex-cache': cacheState });
+		return withHeaders(full, { 'x-sc-code-cache': cacheState });
 	}
 	const buf = await full.clone().arrayBuffer();
 	const total = buf.byteLength;
@@ -662,7 +662,7 @@ async function partialFrom(full: Response, range: string, cacheState: string): P
 	const headers = new Headers(full.headers);
 	headers.set('content-range', `bytes ${start}-${end}/${total}`);
 	headers.set('content-length', String(slice.byteLength));
-	headers.set('x-sidex-cache', cacheState);
+	headers.set('x-sc-code-cache', cacheState);
 	return new Response(slice, { status: 206, headers });
 }
 
@@ -675,8 +675,8 @@ function jsonResponse(body: string, ttl: number, cacheState: string, etag?: stri
 		'content-type': 'application/json; charset=utf-8',
 		'cache-control': `public, max-age=${ttl}, stale-while-revalidate=${SEARCH_STALE_WHILE_REVALIDATE}`,
 		'access-control-allow-origin': '*',
-		'access-control-expose-headers': 'etag, x-sidex-cache, server-timing',
-		'x-sidex-cache': cacheState,
+		'access-control-expose-headers': 'etag, x-sc-code-cache, server-timing',
+		'x-sc-code-cache': cacheState,
 		vary: 'accept-encoding'
 	};
 	if (etag) {
@@ -716,7 +716,7 @@ function iconPlaceholder(): Response {
 			'content-type': 'image/png',
 			'cache-control': 'public, max-age=86400',
 			'access-control-allow-origin': '*',
-			'x-sidex-cache': 'placeholder'
+			'x-sc-code-cache': 'placeholder'
 		}
 	});
 }

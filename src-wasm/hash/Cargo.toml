@@ -1,5 +1,5 @@
 [package]
-name = "sidex-hash-wasm"
+name = "sc-code-hash-wasm"
 version = "0.1.0"
 edition = "2021"
 

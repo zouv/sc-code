@@ -1,5 +1,5 @@
 /*---------------------------------------------------------------------------------------------
- *  SideX — ExtHost search stub. Search is routed through TauriSearchService; extension-
+ *  ScCode — ExtHost search stub. Search is routed through TauriSearchService; extension-
  *  registered search providers are accepted but not wired to a manager.
  *--------------------------------------------------------------------------------------------*/
 

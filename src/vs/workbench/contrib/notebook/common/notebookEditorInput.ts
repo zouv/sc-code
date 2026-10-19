@@ -1,5 +1,5 @@
 /*---------------------------------------------------------------------------------------------
- *  SideX: Stub for removed notebook editor input.
+ *  ScCode: Stub for removed notebook editor input.
  *--------------------------------------------------------------------------------------------*/
 
 export class NotebookEditorInput {

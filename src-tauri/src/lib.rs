@@ -3,7 +3,7 @@ mod commands;
 mod server;
 
 use commands::auth::AuthState;
-use commands::db_state::SidexDbState;
+use commands::db_state::ScCodeDbState;
 use commands::debug::{DapClientStore, DebugAdapterStore};
 use commands::ext_host::ExtensionPlatformSupervisor;
 use commands::extension_diagnostics::ExtensionDiagnosticsStore;
@@ -339,7 +339,7 @@ fn build_menu(app: &tauri::AppHandle) -> tauri::Result<Menu<tauri::Wry>> {
         .separator()
         .build()?;
 
-    let sidex_menu = SubmenuBuilder::with_id(app, "sidex_menu", "ScCode")
+    let sc_code_menu = SubmenuBuilder::with_id(app, "sc_code_menu", "ScCode")
         .item(&PredefinedMenuItem::about(app, Some("About ScCode"), None)?)
         .separator()
         .item(&PredefinedMenuItem::services(app, None)?)
@@ -354,7 +354,7 @@ fn build_menu(app: &tauri::AppHandle) -> tauri::Result<Menu<tauri::Wry>> {
     let menu = Menu::with_items(
         app,
         &[
-            &sidex_menu,
+            &sc_code_menu,
             &file_menu,
             &edit_menu,
             &selection_menu,
@@ -448,16 +448,6 @@ pub fn run() {
         dotenvy::from_path(&env_path).ok();
     }
 
-    match crate::app_dirs::confirm_first_migration() {
-        Ok(true) => {},
-        Ok(false) => return,
-        Err(error) => {
-            rfd::MessageDialog::new().set_title("ScCode — migration blocked")
-                .set_description(error).set_level(rfd::MessageLevel::Error).show();
-            return;
-        }
-    }
-
     let mut context = tauri::generate_context!();
     // Keep browser state in the same isolated profile as settings and agent data.
     // SC_CODE_HOME tests must never open a real user's WebView database.
@@ -489,17 +479,14 @@ pub fn run() {
         ))
         .manage(ExtensionDiagnosticsStore::new())
         .manage(Arc::new(SettingsStore::new()))
-        .manage(Arc::new(sidex_extension_api::CommandRegistry::new()))
+        .manage(Arc::new(sc_code_extension_api::CommandRegistry::new()))
         .manage(Arc::new(RemoteManagerStore::new()))
         .manage(Arc::new(
             WasmExtensionRuntime::new().expect("failed to initialize WASM runtime"),
         ))
         .setup(|app| {
-            let app_data = crate::app_dirs::resolve_and_migrate();
+            let app_data = crate::app_dirs::resolve_app_data_dir();
             std::fs::create_dir_all(&app_data).ok();
-            // [CUSTOM-BEGIN] CUSTOM-20261013-009 - migrate old Workbench user data before startup consumers load
-            commands::os::migrate_legacy_user_data(app.handle(), &app_data);
-            // [CUSTOM-END] CUSTOM-20261013-009
             // Only extension resources are globally eligible for the browser asset protocol.
             // Workspace roots/files are added explicitly when opened; never all of HOME/TEMP.
             for root in [commands::extension_platform::resolve_builtin_extensions_dir(app.handle()),
@@ -508,7 +495,7 @@ pub fn run() {
                     app.asset_protocol_scope().allow_directory(&root, true)?;
                 }
             }
-            let db_path = app_data.join("sidex_storage.db");
+            let db_path = app_data.join("sc_code_storage.db");
             // Opening failure (locked/corrupt/permissions) is never permission to delete user data.
             let db_path_str = db_path.to_string_lossy().to_string();
             let db = StorageDb::new(&db_path_str)
@@ -516,9 +503,9 @@ pub fn run() {
 
             restore_and_show(app, &db);
 
-            // Debug-only: SIDEX_DEVTOOLS=1 auto-opens devtools to capture boot errors
+            // Debug-only: SC_CODE_DEVTOOLS=1 auto-opens devtools to capture boot errors
             #[cfg(debug_assertions)]
-            if std::env::var("SIDEX_DEVTOOLS").is_ok() {
+            if std::env::var("SC_CODE_DEVTOOLS").is_ok() {
                 if let Some(w) = app.get_webview_window("main") {
                     w.open_devtools();
                 }
@@ -529,7 +516,7 @@ pub fn run() {
             // Full extension-API dispatcher (ext_api_call), sharing the
             // already-managed CommandRegistry.
             {
-                use sidex_extension_api as ext;
+                use sc_code_extension_api as ext;
                 let registry = app
                     .state::<Arc<ext::CommandRegistry>>()
                     .inner()
@@ -562,18 +549,18 @@ pub fn run() {
                 // [CUSTOM-END] CUSTOM-20261013-009
             }
 
-            let sidex_db_path = app_data.join("sidex_state.db");
+            let sc_code_db_path = app_data.join("sc_code_state.db");
             // Same graceful-recreate policy as the storage DB above.
-            let sidex_db = match sidex_db::Database::open(&sidex_db_path) {
+            let sc_code_db = match sc_code_db::Database::open(&sc_code_db_path) {
                 Ok(db) => db,
                 Err(e) => {
-                    log::error!("state DB open failed ({e}); recreating {}", sidex_db_path.display());
-                    let _ = std::fs::remove_file(&sidex_db_path);
-                    sidex_db::Database::open(&sidex_db_path)
-                        .map_err(|e| format!("failed to initialize sidex-db state database: {e}"))?
+                    log::error!("state DB open failed ({e}); recreating {}", sc_code_db_path.display());
+                    let _ = std::fs::remove_file(&sc_code_db_path);
+                    sc_code_db::Database::open(&sc_code_db_path)
+                        .map_err(|e| format!("failed to initialize sc-code-db state database: {e}"))?
                 }
             };
-            app.manage(Arc::new(SidexDbState::new(sidex_db)));
+            app.manage(Arc::new(ScCodeDbState::new(sc_code_db)));
 
             if let Err(err) = commands::updater::initialize(app.handle()) {
                 log::warn!("update manager disabled: {err}");
@@ -619,7 +606,7 @@ pub fn run() {
             if let Some(window) = app.get_webview_window("main") {
                 let escaped = id.replace('\\', "\\\\").replace('\'', "\\'");
                 let _ = window.eval(format!(
-                    "window.dispatchEvent(new CustomEvent('sidex-native-menu', {{ detail: '{escaped}' }}))"
+                    "window.dispatchEvent(new CustomEvent('sc-code-native-menu', {{ detail: '{escaped}' }}))"
                 ));
             }
         })
@@ -851,7 +838,7 @@ pub fn run() {
             commands::uninstall_extension,
             commands::list_installed_extensions,
             commands::list_available_extensions,
-            // Marketplace & contributions (sidex-extensions)
+            // Marketplace & contributions (sc-code-extensions)
             commands::extension_search_marketplace,
             commands::extension_get_contributions,
             // WASM extensions

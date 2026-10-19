@@ -96,7 +96,7 @@
 	z-index: 5;
 }
 
-/* Sidex: panel titles are shorter at 30px */
+/* ScCode: panel titles are shorter at 30px */
 .monaco-workbench .part.panel > .content > .monaco-progress-container {
 	top: 28px;
 }

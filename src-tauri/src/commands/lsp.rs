@@ -1,9 +1,9 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use sc_code_lsp::{LspClient, ServerConfig, ServerRegistry};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use sidex_lsp::{LspClient, ServerConfig, ServerRegistry};
 use tauri::{AppHandle, Emitter, State};
 use tokio::sync::Mutex;
 

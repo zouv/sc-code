@@ -1,6 +1,6 @@
 //! Local account.
 //!
-//! SideX has no sign-in. There is no identity provider, no token exchange and
+//! ScCode has no sign-in. There is no identity provider, no token exchange and
 //! no remote profile — the "account" is just the person at the keyboard, and
 //! every model call is made with credentials they supplied themselves (see
 //! `commands::providers`).
@@ -34,7 +34,7 @@ impl UserProfile {
     /// own name (macOS Computer Name, Windows COMPUTERNAME, else hostname) so
     /// the account row reads as this device on every OS.
     fn local() -> Self {
-        let name = std::env::var("SIDEX_USER_NAME")
+        let name = std::env::var("SC_CODE_USER_NAME")
             .ok()
             .map(|s| s.trim().to_string())
             .filter(|s| !s.is_empty())

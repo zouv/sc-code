@@ -646,7 +646,7 @@ export class BrowserHostService extends Disposable implements IHostService {
 
 	async toggleFullScreen(targetWindow: Window): Promise<void> {
 		// Tauri: use native window fullscreen API
-		if ((globalThis as any).__SIDEX_TAURI__) {
+		if ((globalThis as any).__SC_CODE_TAURI__) {
 			try {
 				const { getCurrentWindow } = await import('@tauri-apps/api/window');
 				const appWindow = getCurrentWindow();

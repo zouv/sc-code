@@ -15,7 +15,7 @@ import { AbstractFileDialogService } from './abstractFileDialogService.js';
 import { Schemas } from '../../../../base/common/network.js';
 
 /**
- * SideX file dialog service — always routes through the Tauri native dialog
+ * ScCode file dialog service — always routes through the Tauri native dialog
  * plugin. The HTML File System Access / IndexedDB fallbacks from upstream
  * VS Code have been removed; all file I/O flows through the Rust backend.
  */

@@ -529,7 +529,7 @@ export class MovePanelToSecondarySideBarAction extends MoveViewsBetweenPanelsAct
 registerAction2(MovePanelToSidePanelAction);
 registerAction2(MovePanelToSecondarySideBarAction);
 
-// --- Move Sidex Views To Panel
+// --- Move ScCode Views To Panel
 
 class MoveSidePanelToPanelAction extends MoveViewsBetweenPanelsAction {
 	static readonly ID = 'workbench.action.moveSidePanelToPanel';

@@ -106,7 +106,7 @@
 	max-width: 150px;
 }
 
-/* Sidex: remove focus highlight border from auxiliary bar */
+/* ScCode: remove focus highlight border from auxiliary bar */
 .monaco-workbench .part.auxiliarybar:focus,
 .monaco-workbench .part.auxiliarybar *:focus {
 	outline: none !important;

@@ -148,7 +148,7 @@ export function mapHasAddressLocalhostOrAllInterfaces<T>(
 	return mapHasAddress(map, host, port);
 }
 
-// Stub: TunnelModel is now handled by sidex-remote Rust crate
+// Stub: TunnelModel is now handled by sc-code-remote Rust crate
 export class TunnelModel extends Disposable {
 	readonly forwarded: Map<string, Tunnel> = new Map();
 	readonly detected: Map<string, Tunnel> = new Map();
@@ -187,7 +187,7 @@ export class TunnelModel extends Disposable {
 	addAttributesProvider(_provider: PortAttributesProvider): void {}
 }
 
-// Stub: PortsAttributes is now handled by sidex-remote Rust crate
+// Stub: PortsAttributes is now handled by sc-code-remote Rust crate
 export class PortsAttributes extends Disposable {
 	readonly onDidChangeAttributes = new Emitter<void>().event;
 	getAttributes(_port: number, _host: string, _commandLine?: string): Attributes | undefined {

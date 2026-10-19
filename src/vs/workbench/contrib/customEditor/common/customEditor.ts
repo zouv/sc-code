@@ -1,5 +1,5 @@
 /*---------------------------------------------------------------------------------------------
- *  SideX: Stub for removed custom editor service.
+ *  ScCode: Stub for removed custom editor service.
  *--------------------------------------------------------------------------------------------*/
 
 import { createDecorator } from '../../../../platform/instantiation/common/instantiation.js';

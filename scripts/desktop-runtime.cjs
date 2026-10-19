@@ -50,7 +50,7 @@ function copyHostModules(source, target) {
   for (const name of names) fs.copyFileSync(path.join(source,name),path.join(target,name));
   return names;
 }
-function serverSourceHash() { return treeHash(path.join(root,'sidexai/sidex-server'), f => /\.(go|mod|sum)$/.test(f)); }
+function serverSourceHash() { return treeHash(path.join(root,'agent/server'), f => /\.(go|mod|sum)$/.test(f)); }
 function assertPrepared() {
   const marker = path.join(runtime,'manifest.json');
   if (!fs.existsSync(marker)) throw new Error('Runtime not prepared. Run npm run runtime:prepare (Windows x64 with Go + a C compiler).');

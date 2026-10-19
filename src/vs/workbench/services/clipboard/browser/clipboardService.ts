@@ -19,12 +19,12 @@ import { getActiveWindow } from '../../../../base/browser/dom.js';
 export class BrowserClipboardService extends BaseBrowserClipboardService {
 	private get isTauriDesktop(): boolean {
 		const globalScope = globalThis as typeof globalThis & {
-			__SIDEX_TAURI__?: boolean;
+			__SC_CODE_TAURI__?: boolean;
 			__TAURI__?: unknown;
 			__TAURI_INTERNALS__?: unknown;
 		};
 		return (
-			globalScope.__SIDEX_TAURI__ === true ||
+			globalScope.__SC_CODE_TAURI__ === true ||
 			typeof globalScope.__TAURI__ !== 'undefined' ||
 			typeof globalScope.__TAURI_INTERNALS__ !== 'undefined' ||
 			globalThis.location?.protocol === 'tauri:'

@@ -112,7 +112,7 @@ function _initXhrStrategy() {
   if (typeof XMLHttpRequest === 'undefined') return false;
 
   _syncCallImpl = function syncCallViaXhr(command, args) {
-    const port = _syncHttpPort || (globalThis.__sidexSyncPort || 24198);
+    const port = _syncHttpPort || (globalThis.__scCodeSyncPort || 24198);
     const xhr = new XMLHttpRequest();
     xhr.open('POST', `http://127.0.0.1:${port}/__sync_invoke`, false);
     xhr.setRequestHeader('Content-Type', 'application/json');

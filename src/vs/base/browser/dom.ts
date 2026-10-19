@@ -1763,8 +1763,8 @@ export function computeScreenAwareSize(window: Window, cssPx: number): number {
  * See https://mathiasbynens.github.io/rel-noopener/
  */
 export function windowOpenNoOpener(url: string): void {
-	if ((globalThis as any).__SIDEX_TAURI__ && (globalThis as any).__sidex_shellOpen) {
-		(globalThis as any).__sidex_shellOpen(url);
+	if ((globalThis as any).__SC_CODE_TAURI__ && (globalThis as any).__sc_code_shellOpen) {
+		(globalThis as any).__sc_code_shellOpen(url);
 		return;
 	}
 	mainWindow.open(url, '_blank', 'noopener');

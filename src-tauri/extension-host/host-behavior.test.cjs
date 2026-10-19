@@ -23,7 +23,7 @@ c.subscriptions.push(vscode.window.registerTreeDataProvider('scSmoke.tree',{getC
 };`);
 }
 async function start(t,f,extraEnv={}) {
-  const child=fork(path.join(f.host,'host.cjs'),[],{silent:true,env:{PATH:process.env.PATH||process.env.Path,SystemRoot:process.env.SystemRoot,TEMP:process.env.TEMP,TMP:process.env.TMP,SC_CODE_HOME:f.home,SIDEX_EXTENSION_HOST:'true',SIDEX_INIT_DATA:JSON.stringify({extensions:[{extensionLocation:{path:f.extension.replaceAll('\\','/')}}]}),...extraEnv}});
+  const child=fork(path.join(f.host,'host.cjs'),[],{silent:true,env:{PATH:process.env.PATH||process.env.Path,SystemRoot:process.env.SystemRoot,TEMP:process.env.TEMP,TMP:process.env.TMP,SC_CODE_HOME:f.home,SC_CODE_EXTENSION_HOST:'true',SC_CODE_INIT_DATA:JSON.stringify({extensions:[{extensionLocation:{path:f.extension.replaceAll('\\','/')}}]}),...extraEnv}});
   let seq=0,stderr='',secretFail=false;const pending=new Map(),dialogResults=new Map(),events=[];child.stderr.on('data',b=>stderr+=b);
   let readyResolve,readyReject;const ready=new Promise((resolve,reject)=>{readyResolve=resolve;readyReject=reject;});
   child.on('error',readyReject);child.on('exit',code=>{readyReject(Error('host exited '+code+': '+stderr));for(const p of pending.values()){clearTimeout(p.timer);p.reject(Error('host exited'));}pending.clear();});

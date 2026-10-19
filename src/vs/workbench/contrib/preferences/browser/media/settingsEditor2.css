@@ -1,5 +1,5 @@
 /*---------------------------------------------------------------------------------------------
- *  SideX Settings Editor — JetBrains-inspired design
+ *  ScCode Settings Editor — JetBrains-inspired design
  *--------------------------------------------------------------------------------------------*/
 
 .editor-instance#workbench\.editor\.settings2:focus {
@@ -1226,10 +1226,10 @@
 }
 
 /* ============================================================
-   SIDEX SETTINGS MODAL FRAME
+   SC_CODE SETTINGS MODAL FRAME
    ============================================================ */
 
-/* Match the Sidex settings shell without touching other modal editors. */
+/* Match the ScCode settings shell without touching other modal editors. */
 .monaco-modal-editor-block .modal-editor-resizable:has(.settings-editor) > .monaco-sash.disabled {
 	display: none !important;
 }

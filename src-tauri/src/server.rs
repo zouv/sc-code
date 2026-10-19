@@ -1,6 +1,6 @@
 //! Local agent server supervisor.
 //!
-//! SideX's agent loop, tools, MCP and memory all live in `sidex-server`. With
+//! ScCode's agent loop, tools, MCP and memory all live in `sc-code-agent`. With
 //! no account there is no hosted instance to talk to, so the app runs its own
 //! copy: a child process bound to loopback, started on launch and stopped when
 //! the app exits.
@@ -51,9 +51,9 @@ const WATCHDOG_POLL_INTERVAL: Duration = Duration::from_secs(5);
 
 /// Name of the server executable, as bundled and as built in development.
 #[cfg(windows)]
-const SERVER_BIN: &str = "sidex-server.exe";
+const SERVER_BIN: &str = "sc-code-agent.exe";
 #[cfg(not(windows))]
-const SERVER_BIN: &str = "sidex-server";
+const SERVER_BIN: &str = "sc-code-agent";
 
 /// The running child, or `None` when the server could not be started.
 struct ServerProc {
@@ -153,7 +153,7 @@ impl LocalServer {
         match child.try_wait() {
             Ok(None) => true,
             Ok(Some(status)) => {
-                log::warn!("[sidex-server] exited unexpectedly ({status})");
+                log::warn!("[sc-code-agent] exited unexpectedly ({status})");
                 p.error = Some(format!("server exited unexpectedly ({status})"));
                 p.child = None;
                 false
@@ -161,7 +161,7 @@ impl LocalServer {
             Err(e) => {
                 // Can't reason about this handle any more; treat it as gone
                 // rather than claim a liveness we can't verify.
-                log::warn!("[sidex-server] could not check child status: {e}");
+                log::warn!("[sc-code-agent] could not check child status: {e}");
                 p.child = None;
                 false
             }
@@ -188,7 +188,7 @@ impl LocalServer {
             if let Some(mut child) = p.child.take() {
                 let _ = child.kill();
                 let _ = child.wait();
-                log::info!("[sidex-server] stopped");
+                log::info!("[sc-code-agent] stopped");
             }
         });
     }
@@ -248,9 +248,10 @@ fn free_port() -> Result<u16, String> {
 
 /// Locate the server binary.
 ///
-/// Order matters: a bundled sidecar is what ships to users, `SIDEX_SERVER_BIN`
-/// and `PATH` let people run their own build, and the repo-relative paths keep
-/// `tauri dev` working without an install step.
+/// Order matters: a bundled sidecar is what ships to users,
+/// `SC_CODE_AGENT_BIN` and `PATH` let people run
+/// their own build, and the repo-relative paths keep `tauri dev` working
+/// without an install step.
 fn find_server_binary(app: &AppHandle) -> Option<PathBuf> {
     if let Ok(resource_dir) = app.path().resource_dir() {
         let bundled = resource_dir.join(SERVER_BIN);
@@ -259,7 +260,7 @@ fn find_server_binary(app: &AppHandle) -> Option<PathBuf> {
         }
     }
 
-    if let Ok(explicit) = std::env::var("SIDEX_SERVER_BIN") {
+    if let Ok(explicit) = std::env::var("SC_CODE_AGENT_BIN") {
         let p = PathBuf::from(explicit);
         if p.is_file() {
             return Some(p);
@@ -277,9 +278,9 @@ fn find_server_binary(app: &AppHandle) -> Option<PathBuf> {
     let cwd = std::env::current_dir().unwrap_or_default();
     for candidate in [
         manifest_dir.join("../.runtime/desktop").join(SERVER_BIN),
-        manifest_dir.join("../sidexai/sidex-server").join(SERVER_BIN),
-        cwd.join("sidexai/sidex-server").join(SERVER_BIN),
-        cwd.join("../sidexai/sidex-server").join(SERVER_BIN),
+        manifest_dir.join("../agent/server").join(SERVER_BIN),
+        cwd.join("agent/server").join(SERVER_BIN),
+        cwd.join("../agent/server").join(SERVER_BIN),
     ] {
         if candidate.is_file() {
             return Some(candidate);
@@ -328,9 +329,9 @@ fn pipe_logs(child: &mut Child) {
     std::thread::spawn(move || {
         for line in BufReader::new(stderr).lines().map_while(Result::ok) {
             if looks_like_a_problem(&line) {
-                log::warn!("[sidex-server] {line}");
+                log::warn!("[sc-code-agent] {line}");
             } else {
-                log::debug!("[sidex-server] {line}");
+                log::debug!("[sc-code-agent] {line}");
             }
         }
     });
@@ -338,7 +339,7 @@ fn pipe_logs(child: &mut Child) {
 
 /// Heuristic, since the child has no structured log levels: matches the
 /// vocabulary its own error paths actually use (`failed`, `error`, `panic`,
-/// `fatal`, `warning` — see `sidex-server/internal/**/*.go`). Occasionally
+/// `fatal`, `warning` — see `sc-code-agent/internal/**/*.go`). Occasionally
 /// promotes a benign line that happens to contain one of these words; that's
 /// the safer failure mode than burying a real one.
 fn looks_like_a_problem(line: &str) -> bool {
@@ -348,8 +349,8 @@ fn looks_like_a_problem(line: &str) -> bool {
         .any(|kw| lower.contains(kw))
 }
 
-/// A previous `tauri dev` / crash can leave `sidex-server` running with
-/// `~/.sidex/state.db` locked. The next spawn then sits on that lock until
+/// A previous `tauri dev` / crash can leave `sc-code-agent` running with
+/// `~/.sc-code/state.db` locked. The next spawn then sits on that lock until
 /// the health timeout, never binds, and the UI talks to an empty port.
 fn kill_orphan_servers(bin: &Path) {
     let bin_s = bin.to_string_lossy();
@@ -360,7 +361,7 @@ fn kill_orphan_servers(bin: &Path) {
         return;
     }
     for pid in String::from_utf8_lossy(&out.stdout).split_whitespace() {
-        log::warn!("[sidex-server] stopping leftover process {pid} ({bin_s})");
+        log::warn!("[sc-code-agent] stopping leftover process {pid} ({bin_s})");
         let _ = Command::new("kill").arg("-TERM").arg(pid).status();
     }
     std::thread::sleep(Duration::from_millis(300));
@@ -382,14 +383,17 @@ fn spawn_and_confirm(
     let connection_token = uuid::Uuid::new_v4().simple().to_string();
     let mut cmd = Command::new(bin);
     cmd.env("SC_CODE_HOME", crate::app_dirs::app_data_dir())
-        .env("SIDEX_HOME", crate::app_dirs::app_data_dir())
-        .env("SIDEX_DATA_DIR", crate::app_dirs::app_data_dir().join("data"))
-        .env("SIDEX_PORT", port.to_string())
+        .env("SC_CODE_HOME", crate::app_dirs::app_data_dir())
+        .env(
+            "SC_CODE_DATA_DIR",
+            crate::app_dirs::app_data_dir().join("data"),
+        )
+        .env("SC_CODE_PORT", port.to_string())
         // No account, no tokens: the server only listens on loopback and
         // serves the single local user who launched it.
-        .env("SIDEX_NO_AUTH", "1")
+        .env("SC_CODE_NO_AUTH", "1")
         .env("SC_CODE_LOCAL_TOKEN", &connection_token)
-        .env("SIDEX_BIND_ADDR", "127.0.0.1")
+        .env("SC_CODE_BIND_ADDR", "127.0.0.1")
         .envs(provider_env)
         .stdout(Stdio::null())
         .stderr(Stdio::piped());
@@ -450,7 +454,7 @@ fn watch_for_crash(
         }
 
         if restarts_left == 0 {
-            log::error!("[sidex-server] crashed repeatedly; giving up automatic restarts");
+            log::error!("[sc-code-agent] crashed repeatedly; giving up automatic restarts");
             server.with_proc(|p| {
                 if p.generation == generation {
                     p.error = Some("server crashed repeatedly and was not restarted".to_string());
@@ -460,13 +464,13 @@ fn watch_for_crash(
         }
         restarts_left -= 1;
         log::warn!(
-            "[sidex-server] process exited unexpectedly; attempting restart ({restarts_left} left)"
+            "[sc-code-agent] process exited unexpectedly; attempting restart ({restarts_left} left)"
         );
 
         let port = match free_port() {
             Ok(p) => p,
             Err(e) => {
-                log::error!("[sidex-server] could not reserve a port for restart: {e}");
+                log::error!("[sc-code-agent] could not reserve a port for restart: {e}");
                 return;
             }
         };
@@ -478,14 +482,14 @@ fn watch_for_crash(
 
         match spawn_and_confirm(bin, port, provider_env, server, generation) {
             Ok(()) => {
-                log::info!("[sidex-server] recovered on 127.0.0.1:{port}");
+                log::info!("[sc-code-agent] recovered on 127.0.0.1:{port}");
                 server.with_proc(|p| {
                     if p.generation == generation {
                         p.error = None;
                     }
                 });
             }
-            Err(e) => log::error!("[sidex-server] restart failed: {e}"),
+            Err(e) => log::error!("[sc-code-agent] restart failed: {e}"),
         }
     }
 }
@@ -509,7 +513,7 @@ fn run_supervised(
 
         match spawn_and_confirm(bin, port, provider_env, server, generation) {
             Ok(()) => {
-                log::info!("[sidex-server] ready on 127.0.0.1:{port}");
+                log::info!("[sc-code-agent] ready on 127.0.0.1:{port}");
                 server.with_proc(|p| {
                     if p.generation == generation {
                         p.error = None;
@@ -519,7 +523,7 @@ fn run_supervised(
                 return;
             }
             Err(e) => {
-                log::error!("[sidex-server] attempt {attempt}/{MAX_SPAWN_ATTEMPTS}: {e}");
+                log::error!("[sc-code-agent] attempt {attempt}/{MAX_SPAWN_ATTEMPTS}: {e}");
                 let superseded = server.with_proc(|p| p.generation) != generation;
                 if attempt == MAX_SPAWN_ATTEMPTS || superseded {
                     server.with_proc(|p| {
@@ -566,11 +570,11 @@ fn start(app: &AppHandle, server: &Arc<LocalServer>) {
     });
 
     let Some(bin) = find_server_binary(app) else {
-        let msg = "sidex-server binary not found. Build it with `cd sidexai/sidex-server && \
-                    go build -tags fts5 -o sidex-server ./cmd/server`, or set SIDEX_SERVER_BIN \
+        let msg = "sc-code-agent binary not found. Build it with `cd agent/server && \
+                    go build -tags fts5 -o sc-code-agent ./cmd/server`, or set SC_CODE_AGENT_BIN \
                     to point at an existing build."
             .to_string();
-        log::warn!("[sidex-server] {msg}");
+        log::warn!("[sc-code-agent] {msg}");
         server.with_proc(|p| p.error = Some(msg));
         return;
     };
@@ -587,7 +591,7 @@ fn start(app: &AppHandle, server: &Arc<LocalServer>) {
         match free_port() {
             Ok(p) => p,
             Err(e) => {
-                log::error!("[sidex-server] could not reserve a port: {e}");
+                log::error!("[sc-code-agent] could not reserve a port: {e}");
                 server.with_proc(|p| p.error = Some(format!("could not reserve a port: {e}")));
                 return;
             }
@@ -755,7 +759,7 @@ mod tests {
     fn run_supervised_gives_up_after_bounded_attempts_when_the_binary_cannot_spawn() {
         let server = Arc::new(LocalServer::new());
         let generation = server.bump_generation();
-        let bin = PathBuf::from("/definitely/does/not/exist/sidex-server-test-binary");
+        let bin = PathBuf::from("/definitely/does/not/exist/sc-code-agent-test-binary");
         let port = free_port().expect("reserve a port for the test");
 
         run_supervised(&server, &bin, &BTreeMap::new(), port, generation);
@@ -803,7 +807,7 @@ mod tests {
 
     /// The Go server has no structured log levels, so `pipe_logs` classifies
     /// lines by keyword. These are drawn from its actual call sites (see
-    /// `sidex-server/internal/**/*.go`) so the heuristic is checked against
+    /// `sc-code-agent/internal/**/*.go`) so the heuristic is checked against
     /// real output, not an idealized example.
     #[test]
     fn log_classification_promotes_failures_and_demotes_routine_lines() {

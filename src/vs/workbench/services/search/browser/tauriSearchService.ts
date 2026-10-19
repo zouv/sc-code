@@ -1,5 +1,5 @@
 /*---------------------------------------------------------------------------------------------
- *  SideX — Tauri-backed search provider.
+ *  ScCode — Tauri-backed search provider.
  *  Delegates file search and text search to Rust via invoke().
  *--------------------------------------------------------------------------------------------*/
 

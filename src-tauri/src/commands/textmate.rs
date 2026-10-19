@@ -1,6 +1,6 @@
 //! Native `TextMate` tokenizer commands.
 //!
-//! Thin Tauri wrappers around the `sidex-textmate` crate. Grammars and
+//! Thin Tauri wrappers around the `sc-code-textmate` crate. Grammars and
 //! themes are loaded once into a shared [`TextMateStore`]; the webview
 //! then drives line-by-line tokenization over IPC, receiving the
 //! packed 32-bit metadata stream Monaco consumes without translation.
@@ -9,7 +9,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
-use sidex_textmate::{
+use sc_code_textmate::{
     EmbeddedLanguagesMap, Grammar, RawGrammar, RawSettings, RawThemeSetting, Registry, ScopeField,
     StateStackImpl, Theme, Token, TokenizeLineBinaryResult, TokenizeLineResult,
 };

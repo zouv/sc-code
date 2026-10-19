@@ -50,7 +50,7 @@ import {
 import type { IGrammar, IOnigLib, IRawTheme } from 'vscode-textmate';
 import { IFontTokenOptions } from '../../../../platform/theme/common/themeService.js';
 
-const isTauri = !!(globalThis as any).__SIDEX_TAURI__;
+const isTauri = !!(globalThis as any).__SC_CODE_TAURI__;
 
 async function loadVscodeTextmate(): Promise<typeof import('vscode-textmate')> {
 	if (isTauri) {

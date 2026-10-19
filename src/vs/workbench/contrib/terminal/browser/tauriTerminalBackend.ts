@@ -1,5 +1,5 @@
 /*---------------------------------------------------------------------------------------------
- *  Tauri Terminal Backend for SideX
+ *  Tauri Terminal Backend for ScCode
  *  Bridges VSCode's terminal infrastructure to Tauri's PTY commands.
  *--------------------------------------------------------------------------------------------*/
 
@@ -526,7 +526,7 @@ export class TauriTerminalBackendContribution implements IWorkbenchContribution 
 		@ITerminalService terminalService: ITerminalService,
 		@IConfigurationService configurationService: IConfigurationService
 	) {
-		if (!(globalThis as any).__SIDEX_TAURI__) {
+		if (!(globalThis as any).__SC_CODE_TAURI__) {
 			return;
 		}
 

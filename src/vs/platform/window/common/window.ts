@@ -170,7 +170,7 @@ export function hasNativeContextMenu(
 }
 
 export function hasNativeMenu(configurationService: IConfigurationService, titleBarStyle?: TitlebarStyle): boolean {
-	if ((globalThis as any).__SIDEX_TAURI__ && isMacintosh) {
+	if ((globalThis as any).__SC_CODE_TAURI__ && isMacintosh) {
 		return true;
 	}
 

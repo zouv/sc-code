@@ -1,4 +1,4 @@
-use sidex_extension_sdk::prelude::*;
+use sc_code_extension_sdk::prelude::*;
 
 /// TypeScript/JavaScript language features.
 /// Acts as a thin Rust client that routes requests to tsserver (bundled binary).
@@ -6,7 +6,7 @@ use sidex_extension_sdk::prelude::*;
 /// signature help, code actions, rename, and inlay hints.
 pub struct TypeScriptLanguageExtension;
 
-impl SidexExtension for TypeScriptLanguageExtension {
+impl ScCodeExtension for TypeScriptLanguageExtension {
     fn activate() -> Result<(), String> {
         Ok(())
     }
@@ -23,7 +23,7 @@ impl SidexExtension for TypeScriptLanguageExtension {
         "0.1.0".to_string()
     }
     fn get_publisher() -> String {
-        "sidex".to_string()
+        "sc-code".to_string()
     }
 
     fn get_activation_events() -> Vec<String> {
@@ -185,7 +185,7 @@ impl SidexExtension for TypeScriptLanguageExtension {
     fn execute_command(command_id: String, args: String) -> Result<String, String> {
         match command_id.as_str() {
             "typescript.restartTsServer" => {
-                let _ = host::execute_command("__sidex.restartTsServer", &args);
+                let _ = host::execute_command("__sc_code.restartTsServer", &args);
                 Ok("restarted".to_string())
             }
             "typescript.organizeImports" => Ok(r#"{"action":"organizeImports"}"#.to_string()),
@@ -411,7 +411,7 @@ fn tsserver_request(
         file.replace('"', "\\\"")
     );
 
-    host::execute_command("__sidex.tsserver", &payload).ok()
+    host::execute_command("__sc_code.tsserver", &payload).ok()
 }
 
 fn parse_ts_completions(json: &str) -> Option<CompletionList> {
@@ -815,4 +815,4 @@ fn ts_kind_to_symbol_kind(kind: &str) -> u32 {
     }
 }
 
-sidex_extension_sdk::export_extension!(TypeScriptLanguageExtension);
+sc_code_extension_sdk::export_extension!(TypeScriptLanguageExtension);

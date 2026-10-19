@@ -125,7 +125,7 @@ export async function searchMicrosoftMarketplace(
 		headers: {
 			accept: MS_GALLERY_ACCEPT,
 			'content-type': 'application/json',
-			'user-agent': 'sidex-marketplace-proxy/1.0'
+			'user-agent': 'sc-code-marketplace-proxy/1.0'
 		},
 		body: JSON.stringify(body),
 		signal

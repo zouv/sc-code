@@ -67,7 +67,7 @@ else {
 			nameLong: 'ScCode',
 			applicationName: 'sc-code',
 			dataFolderName: '.sc-code',
-			urlProtocol: 'sidex',
+			urlProtocol: 'sc-code',
 			reportIssueUrl: 'https://github.com/zouv/sc-code/issues/new',
 			licenseName: 'MIT',
 			licenseUrl: 'https://github.com/zouv/sc-code/blob/main/LICENSE',

@@ -22,13 +22,13 @@ function request(port, route, headers = {}) {
   });
 }
 async function smoke() {
-  const binary = path.join(root, '.runtime/desktop', process.platform === 'win32' ? 'sidex-server.exe' : 'sidex-server');
+  const binary = path.join(root, '.runtime/desktop', process.platform === 'win32' ? 'sc-code-agent.exe' : 'sc-code-agent');
   if (!fs.existsSync(binary)) throw new Error('Run npm run runtime:prepare first');
   const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'sc-code-server-smoke-'));
   const port = await freePort(), token = crypto.randomBytes(32).toString('hex');
   // Only the minimum OS environment: no inherited API keys, credentials, or real profile.
   const env = { SC_CODE_HOME: profile, SC_CODE_LOCAL_TOKEN: token, SC_CODE_LIVE_PRICING: '0', SC_CODE_TELEMETRY: '0',
-    SIDEX_PORT: String(port), SIDEX_BIND_ADDR: '127.0.0.1', SIDEX_NO_AUTH: '1',
+    SC_CODE_PORT: String(port), SC_CODE_BIND_ADDR: '127.0.0.1', SC_CODE_NO_AUTH: '1',
     HOME: profile, USERPROFILE: profile, APPDATA: profile, LOCALAPPDATA: profile, TMP: profile, TEMP: profile };
   for (const name of ['SystemRoot', 'WINDIR', 'COMSPEC', 'PATH', 'Path', 'PATHEXT']) {
     const key = Object.keys(process.env).find(key => key.toLowerCase() === name.toLowerCase());

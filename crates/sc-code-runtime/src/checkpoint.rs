@@ -3,7 +3,24 @@
 use std::collections::BTreeMap;
 use std::io::{self, Read, Write};
 use std::path::{Path, PathBuf};
-use crate::migration::reject_symlink_ancestors;
+
+/// Reject any symlink in the path ancestry.
+fn reject_symlink_ancestors(path: &Path) -> io::Result<()> {
+    for ancestor in path.ancestors() {
+        match std::fs::symlink_metadata(ancestor) {
+            Ok(meta) if meta.file_type().is_symlink() => {
+                return Err(io::Error::new(
+                    io::ErrorKind::PermissionDenied,
+                    "symlink path is not authorized",
+                ));
+            }
+            Ok(_) => {}
+            Err(error) if error.kind() == io::ErrorKind::NotFound => {}
+            Err(error) => return Err(error),
+        }
+    }
+    Ok(())
+}
 
 const MAX_FILE_BYTES: u64 = 5 * 1024 * 1024;
 const MAX_TOTAL_BYTES: usize = 100 * 1024 * 1024;

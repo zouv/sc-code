@@ -64,12 +64,12 @@ export class BrowserClipboardService extends Disposable implements IClipboardSer
 
 	private get isTauriProtocol(): boolean {
 		const globalScope = globalThis as typeof globalThis & {
-			__SIDEX_TAURI__?: boolean;
+			__SC_CODE_TAURI__?: boolean;
 			__TAURI__?: unknown;
 			__TAURI_INTERNALS__?: unknown;
 		};
 		return (
-			globalScope.__SIDEX_TAURI__ === true ||
+			globalScope.__SC_CODE_TAURI__ === true ||
 			typeof globalScope.__TAURI__ !== 'undefined' ||
 			typeof globalScope.__TAURI_INTERNALS__ !== 'undefined' ||
 			getActiveWindow().location?.protocol === 'tauri:'

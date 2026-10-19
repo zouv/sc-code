@@ -30,7 +30,7 @@ import { IUserDataProfilesService } from '../../../../platform/userDataProfile/c
 import { IWorkbenchEnvironmentService } from '../../environment/common/environmentService.js';
 import { IDefaultLogLevelsService } from '../../log/common/defaultLogLevels.js';
 import * as platform from '../../../../base/common/platform.js';
-import { invoke, isTauri, logToHost } from '../../../../sidex-bridge.js';
+import { invoke, isTauri, logToHost } from '../../../../scCodeBridge.js';
 import { ExtensionHostExitCode, IExtensionHostInitData, MessageType, UIKind, createMessageOfType, isMessageOfType } from '../common/extensionHostProtocol.js';
 import { ExtensionHostExtensions, ExtensionHostStartup, IExtensionHost } from '../common/extensions.js';
 import { LocalProcessRunningLocation } from '../common/extensionRunningLocation.js';

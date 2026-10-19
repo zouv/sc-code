@@ -420,9 +420,9 @@ export class Workbench extends Layout {
 			classes: ['auxiliarybar', 'basepanel', this.getSideBarPosition() === Position.LEFT ? 'right' : 'left']
 		},
 		{
-			id: Parts.SIDEX_PART,
+			id: Parts.SC_CODE_PART,
 			role: 'none',
-			classes: ['sidex', 'basepanel', this.getSideBarPosition() === Position.LEFT ? 'right' : 'left']
+			classes: ['sc-code', 'basepanel', this.getSideBarPosition() === Position.LEFT ? 'right' : 'left']
 		},
 		{ id: Parts.STATUSBAR_PART, role: 'status', classes: ['statusbar'] }
 		]) {

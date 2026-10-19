@@ -6043,7 +6043,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0fda2ff0d084019ba4d7c6f371c95d8fd75ce3524c3cb8fb653a3023f6323e64"
 
 [[package]]
-name = "sidex"
+name = "sc-code"
 version = "0.1.3"
 dependencies = [
  "anyhow",
@@ -6073,25 +6073,25 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2",
- "sidex-auth",
- "sidex-dap",
- "sidex-db",
- "sidex-extension-api",
- "sidex-extensions",
- "sidex-git",
- "sidex-keymap",
- "sidex-lsp",
- "sidex-profiles",
- "sidex-remote",
- "sidex-settings",
- "sidex-syntax",
- "sidex-tasks",
- "sidex-terminal",
- "sidex-text",
- "sidex-textmate",
- "sidex-theme",
- "sidex-update",
- "sidex-workspace",
+ "sc-code-auth",
+ "sc-code-dap",
+ "sc-code-db",
+ "sc-code-extension-api",
+ "sc-code-extensions",
+ "sc-code-git",
+ "sc-code-keymap",
+ "sc-code-lsp",
+ "sc-code-profiles",
+ "sc-code-remote",
+ "sc-code-settings",
+ "sc-code-syntax",
+ "sc-code-tasks",
+ "sc-code-terminal",
+ "sc-code-text",
+ "sc-code-textmate",
+ "sc-code-theme",
+ "sc-code-update",
+ "sc-code-workspace",
  "tauri",
  "tauri-build",
  "tauri-plugin-dialog",
@@ -6112,7 +6112,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "sidex-auth"
+name = "sc-code-auth"
 version = "0.2.0"
 dependencies = [
  "anyhow",
@@ -6127,7 +6127,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "sidex-dap"
+name = "sc-code-dap"
 version = "0.2.0"
 dependencies = [
  "anyhow",
@@ -6139,7 +6139,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "sidex-db"
+name = "sc-code-db"
 version = "0.2.0"
 dependencies = [
  "anyhow",
@@ -6153,27 +6153,27 @@ dependencies = [
 ]
 
 [[package]]
-name = "sidex-extension-api"
+name = "sc-code-extension-api"
 version = "0.2.0"
 dependencies = [
  "anyhow",
  "log",
  "serde",
  "serde_json",
- "sidex-extensions",
+ "sc-code-extensions",
  "tokio",
  "uuid",
 ]
 
 [[package]]
-name = "sidex-extension-sdk"
+name = "sc-code-extension-sdk"
 version = "0.1.0"
 dependencies = [
  "wit-bindgen 0.41.0",
 ]
 
 [[package]]
-name = "sidex-extensions"
+name = "sc-code-extensions"
 version = "0.2.0"
 dependencies = [
  "anyhow",
@@ -6194,7 +6194,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "sidex-git"
+name = "sc-code-git"
 version = "0.2.0"
 dependencies = [
  "anyhow",
@@ -6206,7 +6206,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "sidex-keymap"
+name = "sc-code-keymap"
 version = "0.2.0"
 dependencies = [
  "anyhow",
@@ -6218,7 +6218,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "sidex-lsp"
+name = "sc-code-lsp"
 version = "0.2.0"
 dependencies = [
  "anyhow",
@@ -6226,13 +6226,13 @@ dependencies = [
  "lsp-types",
  "serde",
  "serde_json",
- "sidex-text",
+ "sc-code-text",
  "thiserror 2.0.18",
  "tokio",
 ]
 
 [[package]]
-name = "sidex-profiles"
+name = "sc-code-profiles"
 version = "0.2.0"
 dependencies = [
  "anyhow",
@@ -6242,7 +6242,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "sidex-remote"
+name = "sc-code-remote"
 version = "0.2.0"
 dependencies = [
  "anyhow",
@@ -6265,7 +6265,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "sidex-settings"
+name = "sc-code-settings"
 version = "0.2.0"
 dependencies = [
  "anyhow",
@@ -6277,7 +6277,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "sidex-syntax"
+name = "sc-code-syntax"
 version = "0.2.0"
 dependencies = [
  "bitflags 2.11.1",
@@ -6288,7 +6288,7 @@ dependencies = [
  "regex",
  "serde",
  "serde_json",
- "sidex-text",
+ "sc-code-text",
  "streaming-iterator",
  "thiserror 2.0.18",
  "tree-sitter",
@@ -6296,7 +6296,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "sidex-tasks"
+name = "sc-code-tasks"
 version = "0.2.0"
 dependencies = [
  "anyhow",
@@ -6309,7 +6309,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "sidex-terminal"
+name = "sc-code-terminal"
 version = "0.2.0"
 dependencies = [
  "bitflags 2.11.1",
@@ -6328,7 +6328,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "sidex-text"
+name = "sc-code-text"
 version = "0.2.0"
 dependencies = [
  "memchr",
@@ -6341,7 +6341,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "sidex-textmate"
+name = "sc-code-textmate"
 version = "0.2.0"
 dependencies = [
  "anyhow",
@@ -6358,7 +6358,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "sidex-theme"
+name = "sc-code-theme"
 version = "0.2.0"
 dependencies = [
  "anyhow",
@@ -6369,7 +6369,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "sidex-update"
+name = "sc-code-update"
 version = "0.2.0"
 dependencies = [
  "anyhow",
@@ -6391,7 +6391,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "sidex-workspace"
+name = "sc-code-workspace"
 version = "0.2.0"
 dependencies = [
  "anyhow",
@@ -6409,7 +6409,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2",
- "sidex-theme",
+ "sc-code-theme",
  "tempfile",
  "thiserror 2.0.18",
  "tokio",

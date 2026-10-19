@@ -88,7 +88,7 @@ import {
 import { TelemetryTrustedValue } from '../../telemetry/common/telemetryUtils.js';
 
 const CURRENT_TARGET_PLATFORM =
-	isWeb && !(globalThis as any).__SIDEX_TAURI__ ? TargetPlatform.WEB : getTargetPlatform(platform, arch);
+	isWeb && !(globalThis as any).__SC_CODE_TAURI__ ? TargetPlatform.WEB : getTargetPlatform(platform, arch);
 const SEARCH_ACTIVITY_HEADER_NAME = 'X-Market-Search-Activity-Id';
 const ACTIVITY_HEADER_NAME = 'Activityid';
 const SERVER_HEADER_NAME = 'Server';
@@ -813,7 +813,7 @@ export abstract class AbstractExtensionGalleryService implements IExtensionGalle
 	private readonly extensionsEnabledWithApiProposalVersion: string[];
 
 	/**
-	 * SideX: short-lived cache of marketplace endpoints that recently
+	 * ScCode: short-lived cache of marketplace endpoints that recently
 	 * returned HTTP 429. Prevents tight retry loops from hammering the
 	 * gallery — any request against a key in here short-circuits to a
 	 * `RateLimited` error until the TTL expires.

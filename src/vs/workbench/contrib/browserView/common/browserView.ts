@@ -1,5 +1,5 @@
 /*---------------------------------------------------------------------------------------------
- *  SideX: Stub for removed browser view service.
+ *  ScCode: Stub for removed browser view service.
  *--------------------------------------------------------------------------------------------*/
 
 import { createDecorator } from '../../../../platform/instantiation/common/instantiation.js';

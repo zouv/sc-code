@@ -33,7 +33,7 @@ export const enum Parts {
 	PANEL_PART = 'workbench.parts.panel',
 	AUXILIARYBAR_PART = 'workbench.parts.auxiliarybar',
 	CHATBAR_PART = 'workbench.parts.chatbar',
-	SIDEX_PART = 'workbench.parts.sidex',
+	SC_CODE_PART = 'workbench.parts.sc-code',
 	EDITOR_PART = 'workbench.parts.editor',
 	STATUSBAR_PART = 'workbench.parts.statusbar'
 }

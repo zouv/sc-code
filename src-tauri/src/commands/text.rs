@@ -1,8 +1,8 @@
+use sc_code_text::diff::{compute_line_diff, LineDiff};
+use sc_code_text::encoding::detect_encoding;
+use sc_code_text::Buffer;
+use sc_code_text::{detect_line_ending, line_ending_label, normalize_line_endings, LineEnding};
 use serde::Serialize;
-use sidex_text::diff::{compute_line_diff, LineDiff};
-use sidex_text::encoding::detect_encoding;
-use sidex_text::Buffer;
-use sidex_text::{detect_line_ending, line_ending_label, normalize_line_endings, LineEnding};
 use std::io::Read;
 
 #[derive(Debug, Serialize)]
@@ -41,7 +41,7 @@ pub fn file_summary(path: String) -> Result<FileSummary, String> {
     let content = std::fs::read(&path).map_err(|e| format!("Failed to read file: {e}"))?;
 
     let encoding = detect_encoding(&content);
-    let has_bom = matches!(encoding, sidex_text::encoding::Encoding::Utf8Bom);
+    let has_bom = matches!(encoding, sc_code_text::encoding::Encoding::Utf8Bom);
 
     let text_start = if has_bom { 3 } else { 0 };
     let text = String::from_utf8_lossy(&content[text_start..]);
@@ -53,7 +53,7 @@ pub fn file_summary(path: String) -> Result<FileSummary, String> {
     let mut word_count = 0usize;
     for line_idx in 0..buffer.len_lines() {
         for word_info in buffer.words_at(line_idx) {
-            if word_info.word_type == sidex_text::WordType::Word {
+            if word_info.word_type == sc_code_text::WordType::Word {
                 word_count += 1;
             }
         }
@@ -119,7 +119,7 @@ pub struct WordBoundary {
 pub fn get_word_boundaries(line: String, column: usize) -> Result<WordBoundary, String> {
     let buffer = Buffer::from_str(&line);
     #[allow(clippy::cast_possible_truncation)]
-    let pos = sidex_text::Position::new(0, column as u32);
+    let pos = sc_code_text::Position::new(0, column as u32);
 
     if let Some(word) = buffer.get_word_at_position(pos) {
         Ok(WordBoundary {

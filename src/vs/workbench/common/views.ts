@@ -44,7 +44,7 @@ export const enum ViewContainerLocation {
 	Sidebar,
 	Panel,
 	AuxiliaryBar,
-	Sidex
+	ScCode
 }
 
 export function ViewContainerLocationToString(viewContainerLocation: ViewContainerLocation) {
@@ -55,8 +55,8 @@ export function ViewContainerLocationToString(viewContainerLocation: ViewContain
 			return 'panel';
 		case ViewContainerLocation.AuxiliaryBar:
 			return 'auxiliarybar';
-		case ViewContainerLocation.Sidex:
-			return 'sidex';
+		case ViewContainerLocation.ScCode:
+			return 'sc-code';
 	}
 }
 

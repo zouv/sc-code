@@ -18,9 +18,9 @@ test('generated assets and frontend builds live inside .runtime, source scripts 
 });
 test('Agent stays collapsed at startup even when old layout says visible', () => {
   const layout = read('src/vs/workbench/browser/layout.ts');
-  assert.match(layout, /SIDEX_HIDDEN: new RuntimeStateKey<boolean>\([\s\S]{0,200}true/);
-  assert.match(layout, /this.stateCache.set\(LayoutStateKeys.SIDEX_HIDDEN.name, true\)/);
-  assert.match(layout, /setSidexHidden\(/); // User can still open it manually.
+  assert.match(layout, /SC_CODE_HIDDEN: new RuntimeStateKey<boolean>\([\s\S]{0,200}true/);
+  assert.match(layout, /this.stateCache.set\(LayoutStateKeys.SC_CODE_HIDDEN.name, true\)/);
+  assert.match(layout, /setScCodeHidden\(/); // User can still open it manually.
 });
 test('cleanup dry run and actual cleanup preserve dependencies, downloads, tools and user-like source', t => {
   const base = fs.mkdtempSync(path.join(os.tmpdir(), 'sc-daily-clean-'));
@@ -61,10 +61,4 @@ test('BAT works from another cwd and invalid arguments keep nonzero status', { s
   const shortDebug = invoke('release.bat', '-d --dry-run'); assert.equal(shortDebug.status, 2, shortDebug.stderr + shortDebug.stdout);
   const dev = invoke('build.bat', 'Debug --dry-run'); assert.equal(dev.status, 0, dev.stderr + dev.stdout); assert.match(dev.stdout, /Package output: .*packages[\\/]dev/); assert.doesNotMatch(dev.stdout, /packages[\\/]unpack/i);
   const conflict = invoke('build.bat', 'Release --debug --dry-run'); assert.equal(conflict.status, 2, conflict.stderr + conflict.stdout);
-});
-test('old profile migration precedes SideX and stable credentials are persisted after migration', () => {
-  const dirs = read('src-tauri/src/app_dirs.rs');
-  assert.ok(dirs.indexOf('sources.push(parent.join("Sc-Code"))') < dirs.indexOf('sources.push(parent.join("SideX"))'));
-  assert.match(read('src-tauri/src/commands/secrets.rs'), /sc-code.extension-secret-profile-id.v1/);
-  const lib = read('src-tauri/src/lib.rs'); assert.ok(lib.indexOf('resolve_and_migrate()') < lib.indexOf('commands::secrets::initialize'));
 });

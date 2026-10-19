@@ -277,7 +277,7 @@ export class StatusbarEntryItem extends Disposable {
 			this.foregroundListener.clear();
 		}
 
-		// Sidex: suppress all background colors in non-HC themes so that
+		// ScCode: suppress all background colors in non-HC themes so that
 		// kind items (warning, error, remote, etc.) stay monochrome.
 		// The CSS handles hover/active states with rgba values instead.
 		if (isBackground && !isHighContrast(this.themeService.getColorTheme().type)) {

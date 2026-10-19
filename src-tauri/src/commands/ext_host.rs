@@ -105,7 +105,10 @@ impl ExtensionPlatformSupervisor {
     pub fn authenticated_endpoint(&self) -> Result<String, String> {
         let guard = self.inner.lock().map_err(|e| e.to_string())?;
         let session = guard.session.as_ref().ok_or("extension host not started")?;
-        Ok(format!("ws://127.0.0.1:{}/?token={}", session.port, session.connection_token))
+        Ok(format!(
+            "ws://127.0.0.1:{}/?token={}",
+            session.port, session.connection_token
+        ))
     }
 
     pub fn stop(&self) -> Result<(), String> {
@@ -273,7 +276,7 @@ fn spawn_host_process(
     )
     .map_err(|e| format!("failed to encode search paths: {e}"))?;
 
-    let init_data_file = std::env::temp_dir().join(format!("sidex-init-{}.json", &session_id));
+    let init_data_file = std::env::temp_dir().join(format!("sc-code-init-{}.json", &session_id));
     std::fs::write(&init_data_file, &init_data_json)
         .map_err(|e| format!("failed to write init data file: {e}"))?;
 
@@ -282,13 +285,12 @@ fn spawn_host_process(
         .arg("--max-old-space-size=3072")
         .arg(&server_js)
         .env("SC_CODE_HOME", crate::app_dirs::app_data_dir())
-        .env("SIDEX_HOME", crate::app_dirs::app_data_dir())
-        .env("SIDEX_EXTENSIONS_DIR", &user_ext_dir)
-        .env("SIDEX_BUILTIN_EXTENSIONS_DIR", &builtin_ext_dir)
-        .env("SIDEX_GLOBAL_STORAGE_DIR", &global_store_dir)
-        .env("SIDEX_EXTENSION_SEARCH_PATHS", &search_paths_json)
-        .env("SIDEX_INIT_DATA_FILE", &init_data_file)
-        .env("SIDEX_SESSION_ID", &session_id)
+        .env("SC_CODE_EXTENSIONS_DIR", &user_ext_dir)
+        .env("SC_CODE_BUILTIN_EXTENSIONS_DIR", &builtin_ext_dir)
+        .env("SC_CODE_GLOBAL_STORAGE_DIR", &global_store_dir)
+        .env("SC_CODE_EXTENSION_SEARCH_PATHS", &search_paths_json)
+        .env("SC_CODE_INIT_DATA_FILE", &init_data_file)
+        .env("SC_CODE_SESSION_ID", &session_id)
         .env("SC_CODE_EXT_HOST_TOKEN", &connection_token)
         .env("NODE_ENV", "production")
         .stdin(Stdio::piped())

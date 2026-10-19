@@ -44,7 +44,7 @@
 	border-right-width: 0;
 }
 
-/* Sidex: panel title bar — compact, seamless */
+/* ScCode: panel title bar — compact, seamless */
 .monaco-workbench .part.panel > .title {
 	height: 35px;
 	min-height: 35px;
@@ -59,7 +59,7 @@
 	letter-spacing: 0.06em;
 }
 
-/* Sidex: compact title actions — smaller, more muted */
+/* ScCode: compact title actions — smaller, more muted */
 .monaco-workbench .part.panel > .title > .title-actions {
 	height: 35px;
 	display: flex;
@@ -106,13 +106,13 @@
 	background-color: inherit;
 }
 
-/* Sidex: active tab indicator — pill background instead of underline */
+/* ScCode: active tab indicator — pill background instead of underline */
 .monaco-workbench .part.panel > .title > .composite-bar-container > .composite-bar > .monaco-action-bar .action-item.checked:not(:focus) .active-item-indicator:before,
 .monaco-workbench .part.panel > .title > .composite-bar-container > .composite-bar > .monaco-action-bar .action-item.checked.clicked:focus .active-item-indicator:before {
 	display: none !important;
 }
 
-/* Sidex: active tab — pill background, no border */
+/* ScCode: active tab — pill background, no border */
 .monaco-workbench .part.panel .composite-bar .action-item.checked .action-label,
 .monaco-workbench .part.panel > .composite.title > .composite-bar-container > .composite-bar > .monaco-action-bar .action-item.checked > .action-label {
 	background: var(--vscode-toolbar-hoverBackground, rgba(255, 255, 255, 0.07)) !important;
@@ -126,7 +126,7 @@
 	transition: opacity 100ms ease, background 100ms ease;
 }
 
-/* Sidex: inactive tabs — same dimensions, transparent bg */
+/* ScCode: inactive tabs — same dimensions, transparent bg */
 .monaco-workbench .part.panel .composite-bar .action-item:not(.checked) .action-label,
 .monaco-workbench .part.panel > .composite.title > .composite-bar-container > .composite-bar > .monaco-action-bar .action-item:not(.checked) > .action-label {
 	background: transparent !important;
@@ -140,14 +140,14 @@
 	transition: opacity 100ms ease, background 100ms ease;
 }
 
-/* Sidex: hover on inactive tab */
+/* ScCode: hover on inactive tab */
 .monaco-workbench .part.panel .composite-bar .action-item:not(.checked):hover .action-label,
 .monaco-workbench .part.panel > .composite.title > .composite-bar-container > .composite-bar > .monaco-action-bar .action-item:not(.checked):hover > .action-label {
 	background: var(--vscode-toolbar-hoverBackground, rgba(255, 255, 255, 0.07)) !important;
 	opacity: 0.9 !important;
 }
 
-/* Sidex: panel tab text */
+/* ScCode: panel tab text */
 .monaco-workbench .part.panel > .title > .composite-bar-container > .composite-bar > .monaco-action-bar .action-item:not(.icon) .action-label {
 	font-size: 11px;
 	font-weight: 500;
@@ -156,7 +156,7 @@
 	color: inherit;
 }
 
-/* Sidex: hover/focus on panel tab */
+/* ScCode: hover/focus on panel tab */
 .monaco-workbench .part.panel > .title > .composite-bar-container > .composite-bar > .monaco-action-bar .action-item:focus .action-label,
 .monaco-workbench .part.panel > .title > .composite-bar-container > .composite-bar > .monaco-action-bar .action-item:hover .action-label {
 	color: var(--vscode-panelTitle-activeForeground, #e0e0e0) !important;
@@ -194,7 +194,7 @@
 	transform: rotate(180deg);
 }
 
-/* Sidex: clean up panel header toolbar — all actions match the zsh tab style */
+/* ScCode: clean up panel header toolbar — all actions match the zsh tab style */
 .monaco-workbench .part.panel > .title > .title-actions .monaco-action-bar .action-item,
 .monaco-workbench .part.panel > .title > .global-actions .monaco-action-bar .action-item {
 	margin-right: 1px;
@@ -220,7 +220,7 @@
 	background: var(--vscode-toolbar-hoverBackground, rgba(255, 255, 255, 0.07));
 }
 
-/* Sidex: smaller chevron dropdown next to + button */
+/* ScCode: smaller chevron dropdown next to + button */
 .monaco-workbench .part.panel > .title .dropdown-action-container .action-label {
 	height: 18px !important;
 	line-height: 18px !important;
@@ -253,28 +253,28 @@
 	border-radius: 0 4px 4px 0 !important;
 }
 
-/* Sidex: hide separator in panel toolbar */
+/* ScCode: hide separator in panel toolbar */
 .monaco-workbench .part.panel > .title > .title-actions .action-item.disabled .action-label.separator {
 	display: none !important;
 }
 
-/* Sidex: hide duplicate title-label when composite bar shows tab names */
+/* ScCode: hide duplicate title-label when composite bar shows tab names */
 .monaco-workbench .part.panel > .title.has-composite-bar > .title-label {
 	display: none !important;
 }
 
-/* Sidex: override Dark Modern blue on panel active tab indicator */
+/* ScCode: override Dark Modern blue on panel active tab indicator */
 .monaco-workbench .part.panel .composite-bar .action-item.checked .action-label {
 	border-bottom-color: var(--vscode-panelTitle-activeForeground, #d0d0d0) !important;
 }
 
-/* Sidex: override badge backgrounds in panel */
+/* ScCode: override badge backgrounds in panel */
 .monaco-workbench .part.panel .badge .badge-content {
 	background-color: var(--vscode-badge-background) !important;
 	color: var(--vscode-badge-foreground) !important;
 }
 
-/* Sidex: override inline foreground colors on panel tabs */
+/* ScCode: override inline foreground colors on panel tabs */
 .monaco-workbench .part.panel .composite-bar .action-item:not(.checked) .action-label {
 	color: var(--vscode-panelTitle-inactiveForeground) !important;
 }
@@ -287,7 +287,7 @@
 	color: var(--vscode-panelTitle-activeForeground) !important;
 }
 
-/* Sidex: terminal tab in title-actions — clean it up */
+/* ScCode: terminal tab in title-actions — clean it up */
 .monaco-workbench .part.panel > .title > .title-actions .single-terminal-tab {
 	font-size: 11px !important;
 	opacity: 0.5;
@@ -297,12 +297,12 @@
 	width: auto !important;
 }
 
-/* Sidex: clean terminal tab bar */
+/* ScCode: clean terminal tab bar */
 .monaco-workbench .part.panel .terminal-tabs-entry {
 	font-size: 11px;
 }
 
-/* Sidex: remove focus highlight border from panel */
+/* ScCode: remove focus highlight border from panel */
 .monaco-workbench .part.panel:focus,
 .monaco-workbench .part.panel *:focus {
 	outline: none !important;

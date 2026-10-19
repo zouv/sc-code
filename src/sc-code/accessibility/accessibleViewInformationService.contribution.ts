@@ -1,8 +1,8 @@
 /*---------------------------------------------------------------------------------------------
- *  custom-sidex —— 补注册 IAccessibleViewInformationService（移植缺口）
+ *  ScCode —— 补注册 IAccessibleViewInformationService（移植缺口）
  *
  *  为什么需要这个模块：
- *  SideX 移植版里 `src/vs/workbench/services/accessibility/common/accessibleViewInformationService.ts`
+ *  ScCode 移植版里 `src/vs/workbench/services/accessibility/common/accessibleViewInformationService.ts`
  *  同时提供了接口和实现，但**全仓库没有任何 `registerSingleton` 调用**
  *  （上游 VSCode 负责注册的 accessibility contribution 没有被移植过来）。
  *

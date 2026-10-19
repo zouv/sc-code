@@ -1,5 +1,5 @@
 /*---------------------------------------------------------------------------------------------
- *  SideX - A fast, native code editor
+ *  ScCode - A fast, native code editor
  *  Copyright (c) Siden Technologies, Inc. MIT Licensed.
  *--------------------------------------------------------------------------------------------*/
 
@@ -163,7 +163,7 @@ export class SuggestEnabledInput extends Widget {
 	}
 
 	onHide(): void {
-		// no-op — SideX uses a plain <input>, not a CodeEditorWidget
+		// no-op — ScCode uses a plain <input>, not a CodeEditorWidget
 	}
 
 	get onFocus(): Event<void> {

@@ -5,7 +5,7 @@ import { nlsPlugin } from './scripts/vite-plugin-nls';
 function quietMissingSourceMaps() {
   const skip = [/\/vscode-textmate\/.*\.js\.map$/];
   return {
-    name: 'sidex-quiet-missing-source-maps',
+    name: 'sc-code-quiet-missing-source-maps',
     configureServer(server: import('vite').ViteDevServer) {
       server.middlewares.use((req, res, next) => {
         if ((req.url ?? '').startsWith('/extensions/')) {
@@ -121,7 +121,7 @@ export default defineConfig({
           if (
             id.includes('/vs/base/') ||
             id.endsWith('/vs/amdX.ts') || id.endsWith('/vs/amdX.js') ||
-            id.endsWith('/vs/sidex-bridge.ts') || id.endsWith('/vs/sidex-bridge.js') ||
+            id.endsWith('/vs/scCodeBridge.ts') || id.endsWith('/vs/scCodeBridge.js') ||
             (id.includes('/vs/editor/') && !id.includes('/workbench/')) ||
             id.includes('/vs/platform/')
           ) {

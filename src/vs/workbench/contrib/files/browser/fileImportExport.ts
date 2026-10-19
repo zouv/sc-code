@@ -765,7 +765,7 @@ export class FileDownload {
 
 		const maxBlobDownloadSize = 32 * ByteSize.MB; // avoid to download via blob-trick >32MB to avoid memory pressure
 
-		// SideX: no browser File System Access API in Tauri. Fall through to the
+		// ScCode: no browser File System Access API in Tauri. Fall through to the
 		// traditional file download path for single files; directory downloads are
 		// unsupported here (folders are exported via File → Export Folder instead).
 		if (stat.isFile) {

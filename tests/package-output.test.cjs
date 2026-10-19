@@ -91,14 +91,15 @@ test('Debug build publishes only its unpack zip and keeps intermediate output in
   assert.deepEqual(events, ['preflight', 'runner']);
   const zip = path.join(paths.packages, 'ScCode_0.1.1_x64-unpack-debug.zip');
   assert.ok(fs.existsSync(zip));
-  assert.equal(readZipEntry(zip, 'ScCode_0.1.1_x64-unpack-debug/ScCode.exe').toString(), 'built desktop');
-  assert.deepEqual(fs.readdirSync(paths.packages), ['ScCode_0.1.1_x64-unpack-debug.zip']);
+  assert.equal(readZipEntry(zip, 'ScCode.exe').toString(), 'built desktop');
+  assert.deepEqual(fs.readdirSync(paths.packages).sort(), ['ScCode_0.1.1_x64-unpack-debug.zip', 'unpack']);
+  assert.ok(fs.existsSync(path.join(paths.packages, 'unpack', 'ScCode.exe')));
   assert.throws(() => buildDesktop(args, { base, preflight() {}, runCommand() {
     write(path.join(paths.bundle, 'nsis/ScCode_0.1.1_x64-setup.exe'), 'failed rebuild');
     write(path.join(paths.build, 'ScCode.exe'), 'failed executable');
     throw Error('build failed');
   }}), /build failed/);
-  assert.equal(readZipEntry(zip, 'ScCode_0.1.1_x64-unpack-debug/ScCode.exe').toString(), 'built desktop');
+  assert.equal(readZipEntry(zip, 'ScCode.exe').toString(), 'built desktop');
 });
 test('Release build publishes both the installer and the unpack zip', t => {
   const base = fixture(t), args = ['--target', 'x86_64-pc-windows-msvc'];
@@ -107,9 +108,10 @@ test('Release build publishes both the installer and the unpack zip', t => {
     write(path.join(paths.bundle, 'nsis/ScCode_0.1.1_x64-setup.exe'), 'release installer');
     runtimeFixture(base, paths, 'release exe');
   }});
-  assert.deepEqual(fs.readdirSync(paths.packages).sort(), ['ScCode_0.1.1_x64-setup.exe', 'ScCode_0.1.1_x64-unpack.zip']);
+  assert.deepEqual(fs.readdirSync(paths.packages).sort(), ['ScCode_0.1.1_x64-setup.exe', 'ScCode_0.1.1_x64-unpack.zip', 'unpack']);
+  assert.ok(fs.existsSync(path.join(paths.packages, 'unpack', 'ScCode.exe')));
   assert.equal(fs.readFileSync(path.join(paths.packages, 'ScCode_0.1.1_x64-setup.exe'), 'utf8'), 'release installer');
-  assert.equal(readZipEntry(path.join(paths.packages, 'ScCode_0.1.1_x64-unpack.zip'), 'ScCode_0.1.1_x64-unpack/ScCode.exe').toString(), 'release exe');
+  assert.equal(readZipEntry(path.join(paths.packages, 'ScCode_0.1.1_x64-unpack.zip'), 'ScCode.exe').toString(), 'release exe');
 });
 test('Release without a fresh installer fails, Debug without one still publishes its zip, and --no-bundle exports nothing', t => {
   const base = fixture(t), releaseArgs = ['--target', 'x86_64-pc-windows-msvc'];
@@ -119,7 +121,7 @@ test('Release without a fresh installer fails, Debug without one still publishes
 
   const debugArgs = ['--debug', '--target', 'x86_64-pc-windows-msvc'], debug = buildPaths(debugArgs, base);
   buildDesktop(debugArgs, { base, preflight() {}, runCommand() { runtimeFixture(base, debug, 'debug exe'); } });
-  assert.deepEqual(fs.readdirSync(debug.packages), ['ScCode_0.1.1_x64-unpack-debug.zip']);
+  assert.deepEqual(fs.readdirSync(debug.packages).sort(), ['ScCode_0.1.1_x64-unpack-debug.zip', 'unpack']);
 
   const noBundle = ['--no-bundle', '--target', 'x86_64-pc-windows-msvc'], paths = buildPaths(noBundle, base);
   fs.rmSync(paths.packages, { recursive: true, force: true });

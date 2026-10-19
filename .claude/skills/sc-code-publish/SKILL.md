@@ -55,7 +55,7 @@ git tag -l "v<version>"
 
 ### 2. 写 release notes
 
-路径：`docs/releases/v<version>.md`。内容从 `CHANGELOG.md` 对应版本小节汇总：
+路径：`.runtime/release-notes-v<version>.md`（临时文件，不提交）。内容从 `CHANGELOG.md` 对应版本小节汇总：
 
 ```markdown
 # v<version>
@@ -70,7 +70,7 @@ git tag -l "v<version>"
 
 ## 产物
 - `ScCode_<version>_x64-setup.exe`：NSIS 安装包
-- `ScCode_<version>_x64-unpack.zip`：免安装完整目录（解压后运行 ScCode.exe；需已安装 WebView2）
+- `ScCode_<version>_x64-unpack.zip`：免安装完整目录（zip 根目录即程序根目录，解压后运行 ScCode.exe；需已安装 WebView2）
 ```
 
 ### 3. 提交 + 打 tag + 推送
@@ -95,7 +95,7 @@ git push origin v<version>
 gh release create v<version> \
   --repo zouv/sc-code \
   --title "ScCode v<version>" \
-  --notes-file docs/releases/v<version>.md \
+  --notes-file .runtime/release-notes-v<version>.md \
   --prerelease \
   "packages/release/ScCode_<version>_x64-setup.exe" \
   "packages/release/ScCode_<version>_x64-unpack.zip"
@@ -116,7 +116,7 @@ gh release view v<version> --repo zouv/sc-code --json assets --jq '.assets[] | "
 
 1. 资产列表同时包含 `-setup.exe` 与 `-unpack.zip`；
 2. 两个文件 size 均非 0，且 zip 明显大于安装包（当前 Release zip 约 95MB，setup 约 69MB）；
-3. 正文来自 `docs/releases/v<version>.md`，不是模板。
+3. 正文来自 `CHANGELOG.md` 对应版本小节，不是模板。
 
 ## 重要约束
 

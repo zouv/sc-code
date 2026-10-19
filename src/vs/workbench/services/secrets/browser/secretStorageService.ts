@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------------------------
- *  SideX - Secret storage backed by the OS keyring.
+ *  ScCode - Secret storage backed by the OS keyring.
  *
- *  All secret reads and writes flow through the `sidex-auth` crate, which
+ *  All secret reads and writes flow through the `sc-code-auth` crate, which
  *  stores values in the platform keychain (macOS Keychain, Windows
  *  Credential Manager, libsecret on Linux) and keeps a SQLite index of
  *  known keys. OAuth tokens and extension secrets survive cache wipes and
@@ -59,7 +59,7 @@ export class BrowserSecretStorageService extends BaseSecretStorageService {
 		try {
 			return await invoke<T>(cmd, args);
 		} catch (error) {
-			this._logService.warn(`[sidex-auth] ${cmd} failed`, error);
+			this._logService.warn(`[sc-code-auth] ${cmd} failed`, error);
 			return undefined;
 		}
 	}
