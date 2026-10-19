@@ -3,6 +3,7 @@
 ## 总进度
 2026-10-18：starter 初始化和 3704 项完整源码导入完成；独立运行、安全基础、扩展状态与 Windows debug NSIS 链路已实现并做自动化回归。**完整无缝迁移尚未验收，未签名、未发布。**
 2026-10-19：完成真实 Node 扩展宿主 PoC（实验开关）、profile SQLite 存储迁移、Go/WASM 懒启动、依赖清理与性能基线；真实宿主已在隔离 profile 中启动并激活合成扩展，默认仍走旧宿主。
+2026-10-19：v0.1.1 已打包并上传 GitHub Release（prerelease）：Windows x64 NSIS 安装包 + unpack zip；版本号、About 回退值与打包文档同步。
 
 ## 开发大纲
 | 编号 | 优先级 | 任务 | 状态 |
@@ -31,6 +32,7 @@
 | S10c | P1 | ~~设置/UI 状态迁到 profile SQLite + IndexedDB 一次性迁移~~ | ✅ 2026-10-19 |
 | S10d | P1 | ~~Go agent 懒启动、WASM 运行时懒初始化、前端分包、性能基线脚本、IPC 桥修复、依赖清理~~ | ✅ 2026-10-19 |
 | S10e | P0 | ~~修复 Release 黑屏（分包循环 TDZ）：恢复 base/platform/editor 单一 core，仅拆 terminal；新增 `smoke:dist` 生产包 headless 冒烟并接入 CI~~ | ✅ 2026-10-19 |
+| S11 | P0 | ~~v0.1.1 发布链路：版本号同步、unpack zip、打包/发布 skill、GitHub Release 上传~~ | ✅ 2026-10-19；安装包 + unpack zip 均已上传 |
 
 ## 移植验收矩阵
 | 兼容场景 | 当前证据 | 尚待验收 |
@@ -64,7 +66,7 @@
 6. Tab补全、多Agent DAG/验证器/记忆和长期恢复另做能力矩阵，不承诺ACP可一键替代；安全/事务P0仍需要独立完成。
 
 ## 已交付里程碑
-以上 ✅ 为未发布实现里程碑；自动化测试通过不代表所有 GUI、用户数据或第三方扩展都兼容。
+以上 ✅ 为实现里程碑；v0.1.1 的 Windows x64 安装包与 unpack zip 已上传 GitHub prerelease。自动化测试通过不代表所有 GUI、用户数据或第三方扩展都兼容。
 
 ## 新发现的回归缺口（2026-10-18）
 - crates/sidex-agent/src/tools/shell.rs / timeout_terminates_long_running_child：1秒超时测试实耗88秒，未满足7秒上限；同步taskkill/pipe清理链路需单独诊断，不能靠放宽断言掩盖。未承诺Agent取消会可靠清理子进程。
