@@ -124,7 +124,7 @@
 
 ## 4. 接口契约与边界
 - buildPaths = {mode,targetRoot,build,bundle,dist}；unpack-manifest.json={format:1,product:ScCode,mode,platform,builtinCount,createdAt,files:[{path,size,sha256}]}，路径为包内相对路径。成品只支持准备好的Windows x64；免安装不改变SC_CODE_HOME/profile/WebView2前提。`dist/dev/`含`unpack/`未压缩目录与`ScCode_<version>_x64-unpack-debug.zip`；`dist/release/`含`unpack/`未压缩目录、setup exe与`ScCode_<version>_x64-unpack.zip`；zip条目直接位于根目录（无`ScCode_<version>_x64-unpack[-debug]/`外壳），包含unpack-manifest.json与全部运行资源，Release不含Cargo缓存/PDB/用户profile，Debug含PDB。打包顺序为先导出unpack目录、再以其为源生成zip，prepare/zip校验完成后才导出安装包；zip写入失败保留旧zip与安装包，不宣称跨文件事务。
-- 产品 0.1.1 与 VS Code API 1.110.0 分离；command/settings IDs 使用 sc-code 前缀。
+- 产品 0.1.2 与 VS Code API 1.110.0 分离；command/settings IDs 使用 sc-code 前缀。
 - ServerEndpoint = {url, port, running, token?}；token 仅运行中返回，前端只能向精确受监督 origin附凭据。
 - SC_CODE_HOME 指定隔离 profile。
 - workspaceIdentity 为 .code-workspace configuration URI；无 identity 时使用有序多根路径 hash。空工作区 storageUri undefined/workspaceState仅内存；globalState始终按扩展持久化。

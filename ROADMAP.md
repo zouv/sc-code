@@ -9,6 +9,7 @@
 2026-10-19：打包输出增加未压缩 `packages/<dev|release>/unpack/`，zip 以该目录为源且根目录不再包含版本外壳子目录。
 2026-10-20：Go Agent 使用内置 Go 1.26 + llvm-mingw 编译通过；`release.bat` 重新构建 0.1.1 成品成功（setup exe + unpack 目录 + zip），隔离 profile 冒烟通过；尚未重新上传 Release。
 2026-10-20：`build.bat` 改为只编译；打包统一为 `package.bat`（一次生成 Debug + Release）与 `manager.sh package`，产物目录从 `packages/` 迁到 `dist/`（`dev`/`release` + `unpack/`，zip 根目录无版本外壳）。
+2026-10-20：v0.1.2 已打包并上传 GitHub Release（prerelease）：`ScCode_0.1.2_x64-setup.exe` + `ScCode_0.1.2_x64-unpack.zip`；隔离 profile 冒烟通过。
 
 ## 开发大纲
 | 编号 | 优先级 | 任务 | 状态 |
@@ -41,6 +42,7 @@
 | S12 | P1 | ~~packages 目录精简：dev 仅 Debug unpack zip（含 PDB），release 为 setup + unpack zip，移除 packages/unpack~~ | ✅ 2026-10-19 |
 | S13 | P1 | ~~内部与外部标识统一为 ScCode：Rust crates/SDK/WASM 包、Go Agent 目录与产物、命令/设置 ID、协议、目录与清单；移除旧品牌兼容层与首次数据导入；清理历史 docs 并重排 README~~ | ✅ 2026-10-19；Go 编译已复验（2026-10-20） |
 | S14 | P1 | ~~打包输出未压缩 `packages/<dev\|release>/unpack/`，并生成根目录无版本外壳子目录的 zip~~ | ✅ 2026-10-19 |
+| S15 | P0 | ~~v0.1.2 发布链路：版本号同步、Debug/Release 打包、隔离 profile 冒烟、GitHub prerelease 上传~~ | ✅ 2026-10-20；setup + unpack zip 均已上传 |
 
 ## 移植验收矩阵
 | 兼容场景 | 当前证据 | 尚待验收 |
