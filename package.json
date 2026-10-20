@@ -1,6 +1,6 @@
 {
   "name": "sc-code",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "type": "module",
   "scripts": {
     "setup": "node scripts/generate-extension-meta.js",
@@ -31,6 +31,7 @@
     "runtime:check": "node scripts/desktop-runtime.cjs",
     "test:transport": "node --experimental-strip-types --test src/vs/workbench/contrib/scCodeChat/browser/test/localServer.test.ts",
     "test:server": "node scripts/smoke-local-server.cjs",
+    "desktop:package": "node scripts/daily.cjs package",
     "desktop:release": "node scripts/daily.cjs release",
     "ext-host:build": "node scripts/build-ext-host.cjs",
     "test:ext-host": "node --test tests/ext-host-smoke.cjs",

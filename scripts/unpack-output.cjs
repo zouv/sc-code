@@ -1,7 +1,7 @@
 'use strict';
 // Windows unpacked distribution: archive the built profile, never mix a stale EXE with source runtime.
-// Published layout: packages/<dev|release>/unpack is the uncompressed runtime; the sibling zip
-// packages that exact folder with entries rooted at the zip root (no version subdirectory).
+// Published layout: dist/<dev|release>/unpack is the uncompressed runtime; the sibling zip
+// archives that exact folder with entries rooted at the zip root (no version subdirectory).
 const fs = require('node:fs');
 const path = require('node:path');
 const { assertLocalPath } = require('./package-output.cjs');
@@ -110,7 +110,7 @@ function replaceBlockedError(destination, error) {
   return new Error(`Cannot replace ${destination}: close any running ScCode instance that uses this unpack folder, then retry. (${error?.code || error?.message || 'in use'})`);
 }
 function assertUnpackTargetReady(base, paths) {
-  const destination = assertLocalPath(base, path.join(paths.packages, 'unpack'));
+  const destination = assertLocalPath(base, path.join(paths.dist, 'unpack'));
   if (!fs.existsSync(destination)) return;
   const probe = assertLocalPath(base, destination + '.probe-' + process.pid);
   try {
@@ -125,7 +125,7 @@ function assertUnpackTargetReady(base, paths) {
   }
 }
 function cleanupStaleUnpackDirs(base, paths) {
-  const destination = assertLocalPath(base, path.join(paths.packages, 'unpack'));
+  const destination = assertLocalPath(base, path.join(paths.dist, 'unpack'));
   const parent = path.dirname(destination);
   if (!fs.existsSync(parent)) return;
   for (const name of fs.readdirSync(parent)) {
@@ -136,7 +136,7 @@ function cleanupStaleUnpackDirs(base, paths) {
 function exportUnpacked(base, paths, stage) {
   const source = assertLocalPath(base, stage);
   if (!fs.existsSync(source) || !fs.statSync(source).isDirectory()) throw new Error('Unpack staging directory is missing: ' + source);
-  const destination = assertLocalPath(base, path.join(paths.packages, 'unpack'));
+  const destination = assertLocalPath(base, path.join(paths.dist, 'unpack'));
   const partial = assertLocalPath(base, destination + '.partial-' + process.pid);
   const previous = assertLocalPath(base, destination + '.old-' + process.pid);
   fs.mkdirSync(path.dirname(destination), { recursive: true });
@@ -181,7 +181,7 @@ function archiveUnpack(base, paths, sourceDir) {
   const version = JSON.parse(fs.readFileSync(path.join(fs.realpathSync(base), 'package.json'), 'utf8')).version;
   if (typeof version !== 'string' || !/^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/.test(version)) throw new Error('Invalid product version for unpack archive: ' + version);
   const folder = 'ScCode_' + version + '_x64-unpack' + (paths.mode === 'Debug' ? '-debug' : '');
-  const destination = assertLocalPath(base, paths.packages);
+  const destination = assertLocalPath(base, paths.dist);
   const output = assertLocalPath(base, path.join(destination, folder + '.zip'));
   const files = inventory(base, source);
   if (files.length >= 0xffff) throw new Error('Too many unpack files for ZIP: ' + files.length);

@@ -11,8 +11,8 @@ case "${1:-help}" in
   build) require npm; npm run build ;;
   test) require npm; require cargo; npm run verify:import; npm test; npm run test:transport; npm run typecheck; cargo test -p sc-code-runtime -p sc-code-auth -p sc-code-workspace -p sc-code-agent -p sc-code-settings -p sc-code-extensions; cargo test -p sc-code --lib; bash check-docs.sh ;;
   check) require cargo; cargo check -p sc-code ;;
-  pack) require npm; npm run desktop:build ;;
+  package) require npm; npm run desktop:package ;;
   docs) bash check-docs.sh ;;
-  help|-h|--help) printf 'ScCode manager (Git Bash on Windows)\n  setup  install JS dependencies and verify provenance\n  dev    desktop development\n  web    browser workbench development\n  build  frontend production build\n  test   import/Node/TS/native core regression\n  check  native application compile check\n  pack   installer build (requires prepared Node/Go/extensions)\n  docs   starter documentation checks\n' ;;
+  help|-h|--help) printf 'ScCode manager (Git Bash on Windows)\n  setup  install JS dependencies and verify provenance\n  dev    desktop development\n  web    browser workbench development\n  build  frontend production build\n  test   import/Node/TS/native core regression\n  check  native application compile check\n  package  installer build (requires prepared Node/Go/extensions)\n  docs   starter documentation checks\n' ;;
   *) echo "Unknown command: $1" >&2; exit 2 ;;
 esac

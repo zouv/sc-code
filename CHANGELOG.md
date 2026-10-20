@@ -1,13 +1,14 @@
 # 变更记录 · ScCode
 
-## [未发布]
+## [0.1.2] - 2026-10-20
+- 变更：产品版本升至 0.1.2（`package.json`、`package-lock.json`、`tauri.conf.json`/WiX、`src-tauri/Cargo.toml`/`Cargo.lock`、About 回退值同步）。
 - 变更：全面移除旧品牌兼容层——命令/设置 ID、`sc-code://` 协议、`.sc-code` 配置目录、`sc-code.toml` 扩展清单、keyring 服务名与环境变量统一为 ScCode 自有标识，不再读取旧名称。
 - 变更：移除首次启动旧数据导入、旧数据目录探测与 `SC_CODE_MIGRATION_SOURCES`；应用只使用独立 ScCode profile。
 - 变更：移除旧 keyring 服务、旧环境变量、WASM 清单旧文件名、项目配置目录与信任文件等全部回退逻辑。
 - 变更：Rust workspace、WASM 包、Go Agent 目录（`agent/` 的 `server`/`core`/`cli`）与产物 `sc-code-agent.exe` 统一为 `sc-code-*` 命名。
 - 变更：工作台内部面板、服务、文件、CSS 变量与持久化键统一为 ScCode 命名。
-- 变更：`packages` 目录结构为 `dev`（`unpack/` 未压缩目录 + `ScCode_<version>_x64-unpack-debug.zip`）与 `release`（`unpack/` 未压缩目录 + `ScCode_<version>_x64-setup.exe` + `ScCode_<version>_x64-unpack.zip`）；不再生成旧的 `packages/unpack` 路径。
-- 变更：打包顺序改为先校验并导出 `packages/<dev|release>/unpack/`，再以该目录为源生成 `ScCode_<version>_x64-unpack[-debug].zip`；zip 根目录直接是程序文件，不再包含版本外壳目录。
+- 变更：`build.bat` 改为只编译，不再导出成品；打包入口统一为 `package.bat`（一次生成 Debug zip 与 Release setup/unpack/zip；`manager.sh package` / `npm run desktop:package`）；产物目录为 `dist/dev`（`unpack/` 未压缩目录 + `ScCode_<version>_x64-unpack-debug.zip`）与 `dist/release`（`unpack/` 未压缩目录 + `ScCode_<version>_x64-setup.exe` + `ScCode_<version>_x64-unpack.zip`）；不再生成旧的 `packages/` 路径，`clean` 会清理遗留的 `packages/`。
+- 变更：打包顺序改为先校验并导出 `dist/<dev|release>/unpack/`，再以该目录为源生成 `ScCode_<version>_x64-unpack[-debug].zip`；zip 根目录直接是程序文件，不再包含版本外壳目录。
 - 变更：`docs/` 清理为当前有效内容——删除 `docs/history/`、`docs/releases/` 与空模板 `00/01/02`，保留 `docs/import-manifest.json` 与新的 ScCode 截图；来源清单相应调整为 3664 项。
 - 变更：README 按 ScBrowser 风格重排，补充徽章、功能、下载安装、构建、目录结构与安全边界，并接入真实 ScCode 工作台截图。
 

@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "ScCode",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "identifier": "dev.sccode.app",
   "build": {
     "frontendDist": "../.runtime/dist",
@@ -67,7 +67,7 @@
         "type": "downloadBootstrapper"
       },
       "wix": {
-        "version": "0.1.1.0"
+        "version": "0.1.2.0"
       }
     },
     "linux": {

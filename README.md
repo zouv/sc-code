@@ -19,7 +19,7 @@ ScCode 是一个从 VS Code workbench 迁移、并独立演进的桌面编辑器
 工作台、编辑器、终端与扩展 UI；原生层用 **Rust + Tauri 2** 替代 Electron；内置 Agent
 由**受监督的 Go 进程**提供本地模型调用与工具执行；扩展可由 **Node 扩展宿主**运行。
 
-> 当前为 **0.1.1 开发验收版本**，Windows x64 产物可本地打包并上传 GitHub Release。
+> 当前为 **0.1.2 开发验收版本**，Windows x64 产物可本地打包并上传 GitHub Release。
 > 未签名；源码完整迁移不等于全部行为验收完成，第三方扩展矩阵仍在验收中。
 
 ## 特性
@@ -85,18 +85,18 @@ ScCode 是一个从 VS Code workbench 迁移、并独立演进的桌面编辑器
 | `setup.bat` | 安装依赖、准备固定 Node/Go/内置扩展并生成元数据 |
 | `run.bat [应用参数]` | 前台启动当前 Debug 桌面；缺失或源码变化时自动重建 |
 | `dev.bat` | Tauri 热更新开发，带完整 runtime 资源配置 |
-| `build.bat [Debug或Release]` | 构建成品包；Debug 生成 unpack 目录 + zip，Release 生成 setup + unpack 目录 + zip |
-| `release.bat` | 一键构建 Release setup、未压缩 unpack 目录与 unpack zip，不自动签名/发布 |
+| `build.bat [Debug或Release]` | 只编译桌面程序，不生成成品包；默认 Debug |
+| `package.bat` | 一次生成 Debug zip + Release setup、未压缩 unpack 目录与 unpack zip，不自动签名/发布 |
 | `test.bat` | Node/transport/TS + 选定原生模块和桌面 lib 回归 |
 | `verify.bat` | 测试 + 来源清单/runtime/真实本地服务/文档检查 |
-| `clean.bat` | 清理生成输出；保留 packages/、工具缓存、node_modules 与用户配置 |
+| `clean.bat` | 清理生成输出；保留 dist/、工具缓存、node_modules 与用户配置，并清理旧 packages/ |
 
 ```powershell
 Set-Location D:\Git\zgithub\sc-code
 .\setup.bat
 .\run.bat
 .\build.bat Debug
-.\release.bat
+.\package.bat
 ```
 
 也可以直接调用 npm 脚本：
@@ -105,28 +105,30 @@ Set-Location D:\Git\zgithub\sc-code
 npm run setup
 npm run runtime:prepare -- --test-go
 npm run desktop:dev
-npm run desktop:build -- --debug --target x86_64-pc-windows-msvc --bundles nsis
-npm run desktop:release
+npm run desktop:build -- --debug --target x86_64-pc-windows-msvc --no-bundle
+npm run desktop:package
 ```
 
 `npm run dev` 只是 web 工作台开发服务器，不包含原生服务，不代表完整编辑器运行。
 
 ### 打包产物
 
-- `packages/dev/unpack/`
+`build.bat` 只编译，不产出 `dist/`；以下产物由 `package.bat` 一次生成：
+
+- `dist/dev/unpack/`
   — Debug 未压缩运行目录，含 PDB 等调试信息，用于开发测试。
-- `packages/dev/ScCode_<version>_x64-unpack-debug.zip`
+- `dist/dev/ScCode_<version>_x64-unpack-debug.zip`
   — Debug 压缩包，zip 根目录即程序根目录，无版本子目录。
-- `packages/release/unpack/`
+- `dist/release/unpack/`
   — Release 未压缩运行目录，不含 Cargo 缓存、PDB 或用户配置。
-- `packages/release/ScCode_<version>_x64-setup.exe`
+- `dist/release/ScCode_<version>_x64-setup.exe`
   — Release NSIS 安装包。
-- `packages/release/ScCode_<version>_x64-unpack.zip`
+- `dist/release/ScCode_<version>_x64-unpack.zip`
   — Release 压缩包，zip 根目录即程序根目录，无版本子目录。
 
-打包顺序：先校验构建资源并导出 `packages/<mode>/unpack/`，再以该目录为源生成 zip；
-最后导出本次新生成的安装包。构建中间产物统一收拢至 `.runtime/`
-（`target/`、`dist/`、`desktop/` 等），不纳入版本管理。
+打包顺序：Debug 先编译再导出 `dist/dev/unpack/` 与 zip；Release 编译并生成 NSIS 后导出
+`dist/release/unpack/`、zip 与安装包；zip 以 unpack 目录为源生成。构建中间产物统一收拢至
+`.runtime/`（`target/`、`dist/`、`desktop/` 等），不纳入版本管理。
 
 ## 项目结构
 
@@ -141,7 +143,7 @@ crates/                   # Rust 工作区：sc-code-text / sc-code-syntax / sc-
 agent/                    # Go Agent 服务（server）、独立 Rust agent-core 与 CLI
 src-wasm/                 # WASM 模块（hash / scroll / tfidf）
 extensions-rust/          # Rust → WASM 内置扩展
-packages/                 # 本地打包产物（不纳入版本管理）
+dist/                     # 本地打包产物（不纳入版本管理）
 docs/                     # 来源清单与截图资源
 ```
 

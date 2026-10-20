@@ -121,7 +121,7 @@ MEMORY.md
 /playwright-report/
 /test-results/
 
-# Finished local installers and unpack resources exported by build.bat / release.bat
+# Legacy package output (pre-dist); new packages go to /dist/ (ignored above)
 /packages/
 
 # Local AI/editor session settings (shared skills and rules remain tracked)

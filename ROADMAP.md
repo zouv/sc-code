@@ -8,6 +8,7 @@
 2026-10-19：内部与外部标识统一为 ScCode：Rust crate/SDK/WASM 包、Go Agent 目录与产物、命令/设置 ID、协议、配置目录与扩展清单全部使用 ScCode 命名；移除旧品牌兼容层与首次数据导入。`docs/` 清理为当前有效内容，README 重排并补截图。
 2026-10-19：打包输出增加未压缩 `packages/<dev|release>/unpack/`，zip 以该目录为源且根目录不再包含版本外壳子目录。
 2026-10-20：Go Agent 使用内置 Go 1.26 + llvm-mingw 编译通过；`release.bat` 重新构建 0.1.1 成品成功（setup exe + unpack 目录 + zip），隔离 profile 冒烟通过；尚未重新上传 Release。
+2026-10-20：`build.bat` 改为只编译；打包统一为 `package.bat`（一次生成 Debug + Release）与 `manager.sh package`，产物目录从 `packages/` 迁到 `dist/`（`dev`/`release` + `unpack/`，zip 根目录无版本外壳）。
 
 ## 开发大纲
 | 编号 | 优先级 | 任务 | 状态 |

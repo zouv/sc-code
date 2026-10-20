@@ -1,7 +1,7 @@
 @echo off
 chcp 65001 >nul
 setlocal
-rem ScCode - release. Use --help for usage, --dry-run for a safe preview.
+rem ScCode - package. Use --help for usage, --dry-run for a safe preview.
 pushd "%~dp0"
 if errorlevel 1 exit /b 1
 where node >nul 2>&1
@@ -10,7 +10,7 @@ if errorlevel 1 (
     popd
     exit /b 1
 )
-node "scripts\daily.cjs" release %*
+node "scripts\daily.cjs" package %*
 set "CODE=%ERRORLEVEL%"
 popd
 exit /b %CODE%

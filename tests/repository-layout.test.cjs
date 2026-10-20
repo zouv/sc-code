@@ -62,12 +62,13 @@ test('source directories, checked-in runtime assets and reproducible locks are n
   ];
   assert.deepEqual(ignoredPaths(dir, files), []);
 });
-test('local runtime, packages, generated metadata, secrets and editor state stay ignored', t => {
+test('local runtime, dist packages, generated metadata, secrets and editor state stay ignored', t => {
   const dir = fixture(t);
   const files = [
     '.runtime/tools/node.exe', '.runtime/logs/smoke.json', '.runtime/tests/fixture.json',
-    'packages/dev/ScCode-setup.exe', 'packages/release/ScCode.msi',
-    'packages/dev/ScCode_0.1.1_x64-unpack-debug.zip', 'packages/release/ScCode_0.1.1_x64-unpack.zip',
+    'dist/dev/ScCode-setup.exe', 'dist/release/ScCode.msi',
+    'dist/dev/ScCode_0.1.1_x64-unpack-debug.zip', 'dist/release/ScCode_0.1.1_x64-unpack.zip',
+    'packages/dev/legacy-setup.exe', // legacy output stays ignored after the dist migration
     'node_modules/vite/package.json', 'src-tauri/target/debug/ScCode.exe',
     'src-tauri/gen/schemas/desktop-schema.json', 'dist/assets/main.js', 'out/cache.json',
     'build/output.js', 'logs/startup.txt', 'extensions/builtin/package.json',
@@ -95,5 +96,5 @@ test('Bash scripts use LF and Windows entry points use CRLF on checkout', t => {
   const dir = fixture(t);
   for (const file of ['check-docs.sh', 'manager.sh', 'scripts/bin/xattr'])
     assert.match(git(dir, ['check-attr', 'eol', '--', file]), /: eol: lf\s*$/);
-  assert.match(git(dir, ['check-attr', 'eol', '--', 'release.bat']), /: eol: crlf\s*$/);
+  assert.match(git(dir, ['check-attr', 'eol', '--', 'package.bat']), /: eol: crlf\s*$/);
 });

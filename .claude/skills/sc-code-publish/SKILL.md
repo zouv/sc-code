@@ -11,7 +11,7 @@ description: 把已打包的 ScCode 版本发布到 GitHub Releases（版本一�
 
 | Skill | 职责 | 起点 → 终点 |
 |---|---|---|
-| `sc-code-release` | 源码 → 本地成品 | `packages/release/` 下的 setup exe 与 unpack zip |
+| `sc-code-release` | 源码 → 本地成品 | `dist/release/` 下的 setup exe 与 unpack zip |
 | **`sc-code-publish`（本）** | 成品 → GitHub Release | 版本号 + notes + 产物 → Release 上线 |
 
 **本仓库无自动发布流水线**：发布 = 本地打包 + 手动上传。
@@ -34,8 +34,8 @@ gh repo set-default zouv/sc-code           # 不是就钉死，避免发错仓�
 **产物必须已存在**（否则先走 `sc-code-release`）：
 
 ```bash
-ls -la packages/release/ScCode_<version>_x64-setup.exe \
-       packages/release/ScCode_<version>_x64-unpack.zip
+ls -la dist/release/ScCode_<version>_x64-setup.exe \
+       dist/release/ScCode_<version>_x64-unpack.zip
 ```
 
 版本一致性核对：
@@ -97,12 +97,12 @@ gh release create v<version> \
   --title "ScCode v<version>" \
   --notes-file .runtime/release-notes-v<version>.md \
   --prerelease \
-  "packages/release/ScCode_<version>_x64-setup.exe" \
-  "packages/release/ScCode_<version>_x64-unpack.zip"
+  "dist/release/ScCode_<version>_x64-setup.exe" \
+  "dist/release/ScCode_<version>_x64-unpack.zip"
 ```
 
 - 当前版本未签名、为开发验收版，默认 `--prerelease`。
-- 只上传当前平台能产出的产物；不要上传 `packages/dev/` 的 Debug 包、解压目录本体、`.runtime/` 或源码。
+- 只上传当前平台能产出的产物；不要上传 `dist/dev/` 的 Debug 包、解压目录本体、`.runtime/` 或源码。
 - 漏传资产可用 `gh release upload v<version> <file> --repo zouv/sc-code` 补齐；重传同名文件加 `--clobber`。
 
 ### 5. 核验

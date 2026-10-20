@@ -30,7 +30,7 @@ function buildPaths(args, base) {
   const profile = mode.toLowerCase();
   const targetRoot = path.join(root, '.runtime/target');
   const build = path.join(targetRoot, ...(target ? [target] : []), profile);
-  return { mode, targetRoot, build, bundle: path.join(build, 'bundle'), packages: path.join(root, 'packages', mode === 'Debug' ? 'dev' : 'release') };
+  return { mode, targetRoot, build, bundle: path.join(build, 'bundle'), dist: path.join(root, 'dist', mode === 'Debug' ? 'dev' : 'release') };
 }
 function installerSnapshot(base, bundle) {
   assertLocalPath(base, bundle);
@@ -54,7 +54,7 @@ function freshInstallers(base, paths, before) {
 }
 function exportPackages(base, paths, before) {
   const fresh = freshInstallers(base, paths, before);
-  const destination = assertLocalPath(base, paths.packages);
+  const destination = assertLocalPath(base, paths.dist);
   const outputs = fresh.map(source => ({ source, output: assertLocalPath(base, path.join(destination, path.basename(source))) }));
   if (new Set(outputs.map(({ output }) => output.toLowerCase())).size !== outputs.length) throw new Error('Installer filenames collide');
   // Validate every destination and its temporary sibling before touching any output.

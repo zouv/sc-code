@@ -11,7 +11,7 @@ description: 构建 ScCode 的 Windows x64 成品（版本号同步、预检、D
 
 | Skill | 职责 | 起点 → 终点 |
 |---|---|---|
-| **`sc-code-release`（本）** | 源码 → 本地成品 | 干净工作区 → `packages/release/` |
+| **`sc-code-release`（本）** | 源码 → 本地成品 | 干净工作区 → `dist/release/` |
 | `sc-code-publish` | 本地成品 → GitHub Release | 版本号 + notes + 产物 → Release 上线 |
 
 本仓库没有自动发布流水线；Release = 本地打包 + 手动上传。**上传前必须确认 unpack zip 已生成**。
@@ -31,7 +31,7 @@ description: 构建 ScCode 的 Windows x64 成品（版本号同步、预检、D
 git branch --show-current       # 通常为 main
 git status --porcelain          # 建议干净；发布前所有改动先提交
 node -p "require('./package.json').version"
-npm run desktop:release -- --dry-run   # 只打印路径，不构建
+npm run desktop:package -- --dry-run   # 只打印路径，不构建
 ```
 
 ## 版本号落点（必须一致）
@@ -55,19 +55,19 @@ npm run desktop:release -- --dry-run   # 只打印路径，不构建
 ```bash
 npm run typecheck
 npm test                       # 至少跑完；失败必须如实报告
-npm run desktop:release        # prepare → Tauri Release → unpack 目录 + setup exe + zip
+npm run desktop:package        # Debug + Release 两个通道；只要 Release 用 npm run desktop:release
 ```
 
-等价入口：`release.bat`。需要先能准备固定 Node/Go/内置扩展；构建中间产物都在 `.runtime/`。
+等价入口：`package.bat`（Debug + Release；只编译用 `build.bat`）。需要先能准备固定 Node/Go/内置扩展；构建中间产物都在 `.runtime/`。
 
 ## 产物（按通道）
 
 ```
-packages/dev/
+dist/dev/
 ├── unpack/                                  # Debug 未压缩目录（含 PDB），仅用于开发测试
 └── ScCode_<version>_x64-unpack-debug.zip   # Debug zip
 
-packages/release/
+dist/release/
 ├── unpack/                                  # Release 未压缩目录
 ├── ScCode_<version>_x64-setup.exe          # NSIS 安装包
 └── ScCode_<version>_x64-unpack.zip         # Release 免安装 zip（发布必须上传）
@@ -87,18 +87,18 @@ unpack-manifest.json                 # SHA256 文件清单
 README.txt
 ```
 
-**不再生成旧的 `packages/unpack` 路径**；`packages/<dev|release>/unpack/` 会保留，`.runtime/package-staging` 暂存目录在校验与 zip 写入后删除。
+**不再生成旧的 `dist/unpack` 路径**；`dist/<dev|release>/unpack/` 会保留，`.runtime/package-staging` 暂存目录在校验与 zip 写入后删除。
 
-构建脚本在 `scripts/build-desktop.cjs`：先 `prepareUnpack` 校验，再 `exportUnpacked` 发布未压缩目录，随后以该目录为源 `archiveUnpack` 生成 zip；Release 只有本次新生成的安装包才会导出，Debug 不导出 setup。zip 由 `scripts/zip-writer.cjs` 生成（纯 Node，跨平台、不依赖系统 zip/tar）。
+构建脚本在 `scripts/build-desktop.cjs`：`exportPackages=false` 时只编译（`build.bat`）；为 `true` 时先 `prepareUnpack` 校验，再 `exportUnpacked` 发布未压缩目录，随后以该目录为源 `archiveUnpack` 生成 zip；Release 只有本次新生成的安装包才会导出，Debug 不导出 setup。zip 由 `scripts/zip-writer.cjs` 生成（纯 Node，跨平台、不依赖系统 zip/tar）。
 
 ## 构建后验收
 
 ```bash
-ls -la packages/dev/ packages/release/
+ls -la dist/dev/ dist/release/
 # zip 必须存在且关键条目可检索（压缩数据中文件名可读）
-grep -a -o 'ScCode.exe' packages/release/ScCode_<version>_x64-unpack.zip
-grep -a -o 'unpack-manifest.json' packages/release/ScCode_<version>_x64-unpack.zip
-grep -a -o 'ScCode.pdb' packages/dev/ScCode_<version>_x64-unpack-debug.zip
+grep -a -o 'ScCode.exe' dist/release/ScCode_<version>_x64-unpack.zip
+grep -a -o 'unpack-manifest.json' dist/release/ScCode_<version>_x64-unpack.zip
+grep -a -o 'ScCode.pdb' dist/dev/ScCode_<version>_x64-unpack-debug.zip
 ```
 
 - 冒烟：把 Release zip 解压到临时目录，用隔离 profile 启动其中的 `ScCode.exe`（`SC_CODE_HOME=D:\Temp\sc-code-smoke`）；GUI 不可用时至少报告未做 GUI 验收。

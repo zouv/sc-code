@@ -15,8 +15,8 @@
 | 扩展 secrets 桥 | src-tauri/src/commands/secrets.rs、crates/sc-code-auth/、src-tauri/extension-host/{storage,host}.cjs、src/vs/workbench/contrib/extensions/browser/tauriExtensionHost.contribution.ts | provider 请求逻辑 |
 | 聊天与本地鉴权 | src/vs/workbench/contrib/scCodeChat/browser/{scCodeChatService,localServer}.ts、src-tauri/src/server.rs、agent/server/internal/auth/local_transport.go | 扩展视图 |
 | 文件与回滚 | crates/sc-code-runtime/src/、crates/sc-code-workspace/src/file_ops.rs、agent/server/internal/tools/ | UI themes |
-| 日常脚本/运行输出 | *.bat、scripts/{daily,build-desktop,package-output,unpack-output}.cjs、.cargo/config.toml、vite.config.ts | 真实用户 profile 与 packages/ 成品包不清理 |
-| 仓库布局/忽略规则 | .gitignore、.gitattributes、嵌套.gitignore、tests/repository-layout.test.cjs、docs/import-manifest.json | .runtime/packages/与用户状态不可入库；生产DLL/WASM/图标不可整类忽略 |
+| 日常脚本/运行输出 | *.bat、scripts/{daily,build-desktop,package-output,unpack-output}.cjs、.cargo/config.toml、vite.config.ts | 真实用户 profile 与 dist/ 成品包不清理；旧 packages/ 由 clean 清理 |
+| 仓库布局/忽略规则 | .gitignore、.gitattributes、嵌套.gitignore、tests/repository-layout.test.cjs、docs/import-manifest.json | .runtime/ 与 dist/ 成品包、用户状态不可入库；生产DLL/WASM/图标不可整类忽略 |
 | 打包验证 | scripts/desktop-runtime.cjs、scripts/prepare-desktop-runtime.cjs、scripts/build-desktop.cjs、scripts/smoke-local-server.cjs、tests/、.github/workflows/ | 历史 workflow |
 | 真实扩展宿主 | src/vs/workbench/api/node/{scCodeExtHostMain,extHost.sc-code.services}.ts、src/vs/workbench/services/extensions/browser/tauriProcessExtensionHost.ts、src-tauri/src/commands/real_ext_host.rs、scripts/{build-ext-host,vendor-ext-host-node}.cjs | 旧 host.cjs 逻辑 |
 | 工作台存储 | src/vs/workbench/services/storage/browser/{storageService,tauriStorageDatabase}.ts | 用户 profile 数据 |
@@ -35,9 +35,9 @@
 - src-tauri/extension-host/host-behavior.test.cjs：实际 fork 生产宿主，合成扩展验证配置门、TreeView、重启/工作区状态、dialog URI 回包、CJS 入口更新、ESM 和 secret 成败；不接触真实用户 keyring。
 - src-tauri/src/commands/secrets.rs + Workbench 扩展桥：extension_secret 命令与请求/结果转发；不把秘密写入 Memento。
 - agent/server/：Go agent 和受认证本地 HTTP/WS。
-- scripts/daily.cjs + 8 个 BAT：setup/run/dev/build/release/test/verify/clean；foreground+exitCode，sourceFingerprint 拒绝旧源码包；cleanTargets 先验证全部绝对路径/链接，仅删允许生成物，不强杀、不碰用户 profile。
-- scripts/build-desktop.cjs / package-output.cjs：buildDesktop成功后先prepareUnpack校验；再用exportUnpacked把未压缩运行目录发布到`packages/<dev|release>/unpack`，随后archiveUnpack以该目录为源生成zip（zip根目录无版本子目录）；Release再按构建前快照只选新NSIS/MSI及签名并exportPackages至packages/release；失败/--no-bundle不导出旧包。buildPaths解析Debug/target并固定.runtime输出。tests/package-output.test.cjs隔离验证分类、旧包、失败、清理保留与链接拒绝。
-- scripts/unpack-output.cjs：validateUnpack校验已构建profile内Node/Go/5CJS逐文件hash、扩展treeHash/94项清单；prepareUnpack复制EXE+运行资源+同级DLL+许可证至.runtime/package-staging（Debug另含PDB），exportUnpacked用partial目录校验后替换`packages/<mode>/unpack`，archiveUnpack用scripts/zip-writer.cjs（纯Node deflate/读取校验，无系统zip/tar依赖）以unpack目录为源生成根目录无版本子目录的zip，随后删除暂存目录。Release zip不含Cargo缓存/PDB/用户文件；拒绝链接与测试模块。tests/unpack-output.test.cjs与unpack-fixture.cjs验证资源契约、源码搬离、dev/release命名与内容、zip根条目、失败保护。
+- scripts/daily.cjs + 8 个 BAT：setup/run/dev/build/package/test/verify/clean；foreground+exitCode，sourceFingerprint 拒绝旧源码包；cleanTargets 先验证全部绝对路径/链接，仅删允许生成物，不强杀、不碰用户 profile。
+- scripts/build-desktop.cjs / package-output.cjs：buildDesktop(args,{exportPackages}) 在 exportPackages=false 时只编译（build.bat）；为 true 时（package.bat / release）先prepareUnpack校验，再用exportUnpacked把未压缩运行目录发布到`dist/<dev|release>/unpack`，随后archiveUnpack以该目录为源生成zip（zip根目录无版本子目录）；Release再按构建前快照只选新NSIS/MSI及签名并exportPackages至dist/release；失败不导出旧包。buildPaths解析Debug/target并固定.runtime输出；package.bat 依次跑 Debug 与 Release 两个通道。tests/package-output.test.cjs隔离验证分类、旧包、失败、清理保留与链接拒绝。
+- scripts/unpack-output.cjs：validateUnpack校验已构建profile内Node/Go/5CJS逐文件hash、扩展treeHash/94项清单；prepareUnpack复制EXE+运行资源+同级DLL+许可证至.runtime/package-staging（Debug另含PDB），exportUnpacked用partial目录校验后替换`dist/<mode>/unpack`，archiveUnpack用scripts/zip-writer.cjs（纯Node deflate/读取校验，无系统zip/tar依赖）以unpack目录为源生成根目录无版本子目录的zip，随后删除暂存目录。Release zip不含Cargo缓存/PDB/用户文件；拒绝链接与测试模块。tests/unpack-output.test.cjs与unpack-fixture.cjs验证资源契约、源码搬离、dev/release命名与内容、zip根条目、失败保护。
 - .cargo/config.toml / vite.config.ts / scripts/dev-desktop.cjs：Cargo 输出 .runtime/target，前端 .runtime/dist、public，开发扩展 URL 指向 .runtime/desktop/extensions；runtime overlay .runtime/tauri.runtime.conf.json。
 - scripts/runtime-lock.json：固定 Windows Node/内置扩展下载与 SHA256；生成资源不纳入版本管理。
 - docs/import-manifest.json + scripts/verify-import.cjs：3664 项保留来源校验，允许独立修改但不许遗漏；7 个重复 shell-integration 以 consolidated-source 指向已有同 hash 终端源，只有一个 canonical 条目且 hash 相同才允许目标复用。
@@ -77,7 +77,7 @@
 1. 启动：独立 app_data_dir → 原生服务 → 受监督 Go/Node；自动更新和遥测默认关闭。原生/WebView/扩展/agent 共用 SC_CODE_HOME 根；不要拿真实 profile 做自动测试。
 3. 聊天：预留 pending 轮次 → 单次重连发送 → generation 防止取消后迟发；断连必须失效旧 endpoint/token。
 4. 本地 API：仅 loopback + Host/Origin 校验 + 随机每进程 token；health 无 token，其余 REST Bearer；query token 仅 WS upgrade。
-5. 打包：固定下载 hash → 94 个真实内置扩展 + Node + Go + 5 CJS host → preflight → frontend/native → NSIS + unpack 目录 + zip；unpack只从同次已构建profile资源导出，不拼接当前源码runtime；逐文件hash与extensionsHash验证，hostSourceHash为源码含开发shim指纹，不等于发布host目录hash；不得把空宿主目录当成功。Debug输出`packages/dev/unpack`未压缩目录与`-debug` zip（含PDB），Release输出`packages/release/unpack`未压缩目录、setup exe与zip；zip根目录直接是程序文件，不含版本外壳目录。修改 host 后必须重做 runtime:prepare 与包；测试 CJS 不打入生产目录。
+5. 打包：固定下载 hash → 94 个真实内置扩展 + Node + Go + 5 CJS host → preflight → frontend/native → NSIS + unpack 目录 + zip；unpack只从同次已构建profile资源导出，不拼接当前源码runtime；逐文件hash与extensionsHash验证，hostSourceHash为源码含开发shim指纹，不等于发布host目录hash；不得把空宿主目录当成功。`build.bat` 只编译不导出；`package.bat` 一次跑 Debug（`dist/dev/unpack` + `-debug` zip，含PDB）与 Release（`dist/release/unpack`、setup exe、zip），zip根目录直接是程序文件，不含版本外壳目录。修改 host 后必须重做 runtime:prepare 与包；测试 CJS 不打入生产目录。
 6. 配置更新按 mutation锁 → JSONC读取/验证 → 单文件原子写并保permissions → 内存层更新；落盘失败返回错误；删除文件清旧层，merged保留扩展键。
 7. 扩展状态：profile/global 或 workspace hash → 缺失旧文件只复制 → JSON snapshot → 本对象 Promise 队列 + 跨对象/进程 wx锁 → 重读合并 → fsync临时文件/rename → 更新缓存；失败不可假成功。锁超时保留文件，不自动抢占崩溃残留锁。
 8. 工作区变化：Workbench 先关闭配置门 → initialize变更 identity/folders → detach旧 context → 配置快照 → release → 新 context激活。CJS更新撤销旧命令/订阅/require缓存并刷新 manifest入口；ESM缓存不能真正热重载，尚需宿主重启策略。
@@ -86,7 +86,7 @@
 11. ESM shim 写 profile/runtime 而非安装目录；file URL 用 pathToFileURL，顶层 await 触发 ERR_REQUIRE_ASYNC_MODULE 时转 import。
 12. 数据损坏/锁占用必须可见报错并保留文件，禁止删除 DB 后假恢复。
 
-13. Git边界：logs/dist/out/build规则限定根目录，不按“扩展未完成”忽略源码；.runtime/与packages/始终排除。来源清单物理文件校验与Gitignore回归必须同时通过；首次提交还需从index干净导出核验完整性。Bash入口固定LF并保留可执行位，BAT保持CRLF。
+13. Git边界：logs/dist/out/build规则限定根目录，不按“扩展未完成”忽略源码；.runtime/与dist/始终排除。来源清单物理文件校验与Gitignore回归必须同时通过；首次提交还需从index干净导出核验完整性。Bash入口固定LF并保留可执行位，BAT保持CRLF。
 
 ## 3.5 品牌与 Agent 替换边界
 - 显示品牌统一 ScCode（含 native菜单/窗口、extension env、终端 TERM_PROGRAM、Go模型请求标题与prompt）；Cargo bin 为 ScCode。PROFILE_DIR_NAME 为 ScCode，identifier dev.sccode.app、sc-code 协议/命令/设置统一使用 ScCode 标识。
@@ -123,7 +123,7 @@
 前端分包约束：**不要把 `vs/base`、`vs/platform`、`vs/editor` 拆成不同 chunk**。三者存在运行时循环（platform ↔ editor），拆开会在生产包触发 `Cannot access '…' before initialization`（TDZ）并黑屏；只允许把 `terminal/xterm` 这类 core 不反向依赖的模块单独拆出，且必须用生产构建做 headless 启动验证。
 
 ## 4. 接口契约与边界
-- buildPaths = {mode,targetRoot,build,bundle,packages}；unpack-manifest.json={format:1,product:ScCode,mode,platform,builtinCount,createdAt,files:[{path,size,sha256}]}，路径为包内相对路径。成品只支持准备好的Windows x64；免安装不改变SC_CODE_HOME/profile/WebView2前提。`packages/dev/`含`unpack/`未压缩目录与`ScCode_<version>_x64-unpack-debug.zip`；`packages/release/`含`unpack/`未压缩目录、setup exe与`ScCode_<version>_x64-unpack.zip`；zip条目直接位于根目录（无`ScCode_<version>_x64-unpack[-debug]/`外壳），包含unpack-manifest.json与全部运行资源，Release不含Cargo缓存/PDB/用户profile，Debug含PDB。打包顺序为先导出unpack目录、再以其为源生成zip，prepare/zip校验完成后才导出安装包；zip写入失败保留旧zip与安装包，不宣称跨文件事务。
+- buildPaths = {mode,targetRoot,build,bundle,dist}；unpack-manifest.json={format:1,product:ScCode,mode,platform,builtinCount,createdAt,files:[{path,size,sha256}]}，路径为包内相对路径。成品只支持准备好的Windows x64；免安装不改变SC_CODE_HOME/profile/WebView2前提。`dist/dev/`含`unpack/`未压缩目录与`ScCode_<version>_x64-unpack-debug.zip`；`dist/release/`含`unpack/`未压缩目录、setup exe与`ScCode_<version>_x64-unpack.zip`；zip条目直接位于根目录（无`ScCode_<version>_x64-unpack[-debug]/`外壳），包含unpack-manifest.json与全部运行资源，Release不含Cargo缓存/PDB/用户profile，Debug含PDB。打包顺序为先导出unpack目录、再以其为源生成zip，prepare/zip校验完成后才导出安装包；zip写入失败保留旧zip与安装包，不宣称跨文件事务。
 - 产品 0.1.1 与 VS Code API 1.110.0 分离；command/settings IDs 使用 sc-code 前缀。
 - ServerEndpoint = {url, port, running, token?}；token 仅运行中返回，前端只能向精确受监督 origin附凭据。
 - SC_CODE_HOME 指定隔离 profile。
