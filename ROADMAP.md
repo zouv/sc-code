@@ -12,6 +12,7 @@
 2026-10-20：v0.1.2 已打包并上传 GitHub Release（prerelease）：`ScCode_0.1.2_x64-setup.exe` + `ScCode_0.1.2_x64-unpack.zip`；隔离 profile 冒烟通过。
 2026-10-21：桌面壳体验补齐：关于对话框产品图标、标题栏应用图标置左、Windows 任务栏最近文件夹/工作空间跳转列表；新增按 profile 隔离的单实例参数转发。
 2026-10-22：应用 D 版 ScCode 图标并替换标题栏/About/桌面图标；版本号升至 0.2.0；清理仓库内本机路径并修复截图来源清单。
+2026-10-22：v0.2.0 已打包并上传 GitHub Release（prerelease）：`ScCode_0.2.0_x64-setup.exe` + `ScCode_0.2.0_x64-unpack.zip`；Release unpack 隔离 profile 冒烟通过。
 
 ## 开发大纲
 | 编号 | 优先级 | 任务 | 状态 |
@@ -46,7 +47,7 @@
 | S14 | P1 | ~~打包输出未压缩 `packages/<dev\|release>/unpack/`，并生成根目录无版本外壳子目录的 zip~~ | ✅ 2026-10-19 |
 | S15 | P0 | ~~v0.1.2 发布链路：版本号同步、Debug/Release 打包、隔离 profile 冒烟、GitHub prerelease 上传~~ | ✅ 2026-10-20；setup + unpack zip 均已上传 |
 | S16 | P1 | ~~桌面壳体验：关于对话框图标、标题栏应用图标置左、Windows 任务栏最近文件夹/工作空间跳转列表与单实例转发~~ | ✅ 2026-10-21；Rust 单测与静态回归通过，GUI 实跑待验收 |
-| S17 | P1 | ~~D 版图标接入、版本号 0.2.0、仓库本机路径清理与截图来源清单修复~~ | ✅ 2026-10-22；图标规格/尺寸回归通过，0.2.0 尚未打包发布 |
+| S17 | P1 | ~~D 版图标接入、版本号 0.2.0、仓库本机路径清理与截图来源清单修复~~ | ✅ 2026-10-22；setup + unpack zip 已上传 GitHub prerelease |
 
 ## 移植验收矩阵
 | 兼容场景 | 当前证据 | 尚待验收 |
@@ -80,8 +81,8 @@
 6. Tab补全、多Agent DAG/验证器/记忆和长期恢复另做能力矩阵，不承诺ACP可一键替代；安全/事务P0仍需要独立完成。
 
 ## 已交付里程碑
-- ✅ 2026-10-22：~~D 版图标接入与 0.2.0 版本号~~ — `docs/icons/` 资源已替换 `public/sc-code.svg` 与 `src-tauri/icons/`；0.2.0 尚未打包/发布。
-以上 ✅ 为实现里程碑；v0.1.2 的 Windows x64 安装包与 unpack zip 已上传 GitHub prerelease，v0.2.0 目前仅为本地版本号。自动化测试通过不代表所有 GUI、用户数据或第三方扩展都兼容。
+- ✅ 2026-10-22：~~D 版图标接入与 0.2.0 发布~~ — `docs/icons/` 资源已替换应用图标；`v0.2.0` setup + unpack zip 已上传 GitHub prerelease，Release unpack 隔离 profile 冒烟通过。
+以上 ✅ 为实现里程碑；v0.2.0 的 Windows x64 安装包与 unpack zip 已上传 GitHub prerelease。自动化测试通过不代表所有 GUI、用户数据或第三方扩展都兼容。
 
 ## 新发现的回归缺口（2026-10-18）
 - crates/sc-code-agent/src/tools/shell.rs / timeout_terminates_long_running_child：1秒超时测试实耗88秒，未满足7秒上限；同步taskkill/pipe清理链路需单独诊断，不能靠放宽断言掩盖。未承诺Agent取消会可靠清理子进程。

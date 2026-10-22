@@ -1,32 +1,32 @@
 # 会话接力 · ScCode
 
 - 快照：2026-10-22；分支 `main`；**无进行中任务**。
-- 本地版本：**0.2.0**（尚未打包/发布）。
-- 最新发布：[v0.1.2](https://github.com/zouv/sc-code/releases/tag/v0.1.2)（GitHub prerelease）：
-  - `ScCode_0.1.2_x64-setup.exe`（68,692,521 B）
-  - `ScCode_0.1.2_x64-unpack.zip`（94,430,194 B）
+- 当前版本：**0.2.0**（已打包并发布为 GitHub prerelease）。
+- 最新发布：[v0.2.0](https://github.com/zouv/sc-code/releases/tag/v0.2.0)（GitHub prerelease）：
+  - `ScCode_0.2.0_x64-setup.exe`（68,699,528 B）
+  - `ScCode_0.2.0_x64-unpack.zip`（94,455,573 B）
 - 仓库边界不变：源码/文档/脚本/锁文件入库；`.runtime/`、`dist/`、`node_modules/`、Tauri 生成物、用户 profile 不入库。上游来源仓库只读。
 
 ## 下一步（未排期）
 
-1. 0.2.0 打包与发布：运行 `npm run desktop:package`，按需上传 GitHub Release；当前只有版本号与源码改动，未生成 0.2.0 成品。
-2. 手工验收 S16 桌面壳体验：关于对话框图标；Windows 任务栏右键“Recent Folders / Recent Workspaces”；运行中点击跳转列表应转发到已运行实例并新开窗口；冷启动点击应直接以目标文件夹/工作区启动。
-3. 真实宿主全量验收（S10b）：VAC、Claude Code、VSIX 安装、树视图、webview、对话框、配置读取。
-4. 真实宿主 `MainThread*` 覆盖补齐：comments/timeline/browserView/externalUriOpener 尚未移植。
-5. 多窗口宿主隔离：`real_ext_host_start` 目前是应用级单进程。
-6. ESM 扩展热重载不完整；宿主随窗口 reload 重建后需验证。
-7. 其他协作者/克隆需重新拉取或 `git reset --hard origin/main`；旧历史 SHA 已失效。
+1. 手工验收 S16 桌面壳体验：关于对话框图标；Windows 任务栏右键“Recent Folders / Recent Workspaces”；运行中点击跳转列表应转发到已运行实例并新开窗口；冷启动点击应直接以目标文件夹/工作区启动。
+2. 真实宿主全量验收（S10b）：VAC、Claude Code、VSIX 安装、树视图、webview、对话框、配置读取。
+3. 真实宿主 `MainThread*` 覆盖补齐：comments/timeline/browserView/externalUriOpener 尚未移植。
+4. 多窗口宿主隔离：`real_ext_host_start` 目前是应用级单进程。
+5. ESM 扩展热重载不完整；宿主随窗口 reload 重建后需验证。
+6. 其他协作者/克隆需重新拉取或 `git reset --hard origin/main`；旧历史 SHA 已失效。
 
 ## 最近验证（2026-10-22）
 
-- 通过：D 版图标已接入 `public/sc-code.svg` 与 `src-tauri/icons/`；PNG 尺寸、七帧 ICO、ICNS 头与 RGBA 透明圆角检查通过。
+- 发布：`v0.2.0` 已创建 tag，GitHub Release 为 prerelease；安装包与 unpack zip 两个资产均已上传。
+- 打包：`npm run desktop:package` exit 0；Debug zip 与 Release setup/unpack zip 均生成。
+- 冒烟：Release unpack 解压到隔离目录，`SC_CODE_HOME` 隔离启动 25 秒正常，profile 生成 SQLite 数据。
 - 通过：`npm test`（77/77）、`npm run typecheck`、`node scripts/verify-import.cjs`（0 errors）、`sh check-docs.sh`。
-- 通过：`cargo check --offline -p sc-code --bin ScCode`（0.2.0 已写入根 Cargo.lock）。
-- 通过：README 截图迁移至 `docs/images/preview.jpg`，来源清单目标路径/哈希同步。
-- 已清理仓库正文本机路径：README 示例路径、`vendor-ext-host-node.cjs` 默认作者本机路径。
-- Git 历史已重写：10 个提交的作者/提交者统一为 `zouv <zouv@163.com>`，9 处 `Co-Authored-By` 已移除；`origin/main` 与 `v0.1.1`/`v0.1.2` 标签已 force-push，本地 `user.name/user.email` 同步更新。
+- 通过：D 版图标的 PNG 尺寸、七帧 ICO、ICNS 头与 RGBA 透明圆角检查；Release `ScCode.exe` ProductVersion/FileVersion 为 `0.2.0`。
+- 通过：`cargo check --offline -p sc-code --bin ScCode`。
+- 已清理仓库正文本机路径：README 示例路径、`vendor-ext-host-node.cjs` 默认作者本机路径；README 截图迁移至 `docs/images/preview.jpg` 并同步来源清单。
+- Git 历史已重写：10 个历史提交的作者/提交者统一为 `zouv <zouv@163.com>`，9 处 `Co-Authored-By` 已移除；`origin/main` 与 `v0.1.1`/`v0.1.2` 标签已 force-push，本地 `user.name/user.email` 同步更新。
 - 已复查工作树与全部 Git 引用：无真实姓名、邮箱、本机路径、设备标识残留；`AGENTS.md` 新增 §3.1「个人信息与仓库卫生」铁律与提交前自检流程。
-- 已同步版本号 0.2.0：`package.json`、`package-lock.json`、`src-tauri/Cargo.toml`、`src-tauri/tauri.conf.json`/WiX、根 `Cargo.lock`、About 回退值、README/ARCHITECTURE。
 - `src-tauri/Cargo.lock` 是导入来源锁文件，不参与当前 workspace 构建，仍保留原始导入版本 0.1.2。
 
 ## 前次验证（2026-10-21）
