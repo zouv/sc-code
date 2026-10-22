@@ -7,7 +7,9 @@
 | 任务 | 读取入口 | 忽略 |
 |---|---|---|
 | 自有功能与移植 | src/main.ts、src/sc-code/、docs/import-manifest.json | agent 内部 |
-| 品牌与图标 | public/sc-code.svg、index.html、src/bootstrap-globals.ts、src-tauri/tauri.conf.json、src-tauri/icons/、tests/branding.test.cjs | SVG紫灰/淡紫，平台图标同步；ScBrowser只读，profile/协议 ID 不可盲改 |
+| 品牌与图标 | public/sc-code.svg、docs/icons/README.md、index.html、src/bootstrap-globals.ts、src-tauri/tauri.conf.json、src-tauri/icons/、tests/branding.test.cjs | SVG紫灰/淡紫，平台图标同步；ScBrowser只读，profile/协议 ID 不可盲改 |
+| 关于/标题栏布局 | src/vs/workbench/browser/parts/dialogs/dialogHandler.ts、src/vs/base/browser/ui/dialog/{dialog.ts,dialog.css}、src/vs/workbench/browser/parts/titlebar/{titlebarPart.ts,media/titlebarpart.css} | 对话框通用按钮/输入逻辑、窗口状态恢复 |
+| 任务栏跳转列表 | src-tauri/src/taskbar.rs、src/sc-code/taskbar/recentJumpList.contribution.ts、src-tauri/src/lib.rs、src-tauri/capabilities/default.json、src-tauri/src/commands/window.rs | Jump List 之外的 shell 集成、真实宿主 |
 | Agent/ACP替换评估 | agent/server/{cmd/server,internal/{agent,tools,prompt,api}}、src-tauri/src/{server,commands/orchestrate}.rs、scCodeChat/、scCodeComplete/ | Node扩展宿主/编辑器共享工具不可整删 |
 | 启动与 profile | src-tauri/src/app_dirs.rs、src-tauri/src/lib.rs | 全量工作台 |
 | 配置保存 | src-tauri/src/commands/settings.rs、crates/sc-code-settings/src/settings.rs、crates/sc-code-workspace/src/file_ops.rs | AI/UI |
@@ -24,6 +26,9 @@
 
 ## 1. 文件职责
 - public/sc-code.svg：无字体依赖的 SC/编辑器矢量品牌源；Tauri icon 派生 src-tauri/icons/ 的 PNG/ICO/ICNS；index.html favicon 与 titlebarpart.css 共用矢量。tests/branding.test.cjs 验证显示名、资产接入与尺寸。
+- docs/icons/：用户选定 D 版图标资源包，也是应用图标导出源（sc-code.svg、16–1024px PNG、七帧 ICO 与 README）；public/sc-code.svg 与 src-tauri/icons/ 已由该包替换。
+- src-tauri/src/taskbar.rs：Windows 任务栏 Jump List（最近文件夹/工作区）与单实例转发；仅接受 file: URI，参数用 base64 URL-safe 编码；Win32 COM/窗口代码集中在 windows_impl / windows_single_instance。
+- src/sc-code/taskbar/recentJumpList.contribution.ts：监听 IWorkspacesService 最近列表，去抖后调用 taskbar_update_jump_list；仅 Tauri 环境注册，非 Windows 后端 no-op。
 - src/sc-code/：VSIX 安装/拖拽、accessibility 服务、profile 扩展同步；普通功能模块，不走 Custom overlay。
 - src/vs/：保留定制 workbench；内部命令/设置 ID 统一使用 sc-code 前缀，不代表上游关联。
 - src-tauri/src/lib.rs：原生装配、独立资源、数据库失败保留原文件、退出清理。
@@ -53,6 +58,10 @@
 | 免安装完整性/发布 | scripts/unpack-output.cjs / validateUnpack、prepareUnpack、exportUnpacked、archiveUnpack、exportUnpack、removeStage；scripts/zip-writer.cjs / writeZip、readZipEntries、readZipEntry |
 | 稳定凭据身份 | src-tauri/src/commands/secrets.rs / SecretsStore::new、select_extension_profile_id、profile_hash |
 | Agent默认收起 | src/vs/workbench/browser/layout.ts / WorkbenchLayoutStateModel.load、LayoutStateKeys.SC_CODE_HIDDEN |
+| 关于对话框图标 | dialogHandler.ts / BrowserDialogHandler.about；base ui/dialog/dialog.ts / Dialog 构造（imageIcon → dialog-image-icon） |
+| 标题栏应用图标顺序 | titlebarPart.css / .window-appicon、.menubar、.sc-code-project-name 的 order（0/1/2） |
+| 任务栏最近记录 | recentJumpList.contribution.ts / update、toEntries；taskbar.rs / taskbar_update_jump_list、parse_open_target、prepare_entries、windows_impl::update |
+| 单实例转发 | taskbar.rs / ensure_single_instance、install_single_instance、windows_single_instance::{send_arguments,window_proc}；commands/window.rs / open_target_window |
 | 配置读写 | src-tauri/src/commands/settings.rs / SettingsStore、settings_get、settings_update |
 | 完整合并与删文件刷新 | crates/sc-code-settings/src/settings.rs / merged、replace_user_layer |
 | 单文件原子写 | crates/sc-code-workspace/src/file_ops.rs / write_file_bytes_with_options |
@@ -87,6 +96,9 @@
 12. 数据损坏/锁占用必须可见报错并保留文件，禁止删除 DB 后假恢复。
 
 13. Git边界：logs/dist/out/build规则限定根目录，不按“扩展未完成”忽略源码；.runtime/与dist/始终排除。来源清单物理文件校验与Gitignore回归必须同时通过；首次提交还需从index干净导出核验完整性。Bash入口固定LF并保留可执行位，BAT保持CRLF。
+
+14. 任务栏最近记录：WorkspacesService 持久化最近文件夹/工作区 → 贡献点监听 onDidChangeRecentlyOpened 去抖 → invoke taskbar_update_jump_list(entries) → Rust 过滤非 file: URI/去重/限 10 条 → Windows ICustomDestinationList 写“Recent Folders / Recent Workspaces”分类。条目命令为 `ScCode.exe --open-folder=<base64>` 或 `--open-workspace=<base64>`。
+15. 单实例：进程启动先按 profile 数据目录 hash 创建命名 mutex；已有实例则通过隐藏窗口 WM_COPYDATA 转发 argv 后退出。首个实例在 setup 创建隐藏窗口，收到参数后 `run_on_main_thread` 打开带 `?folder=`/`?workspace=` 的新窗口；无目标参数时聚焦 main。禁止两个进程同时打开同一 profile 的 SQLite。
 
 ## 3.5 品牌与 Agent 替换边界
 - 显示品牌统一 ScCode（含 native菜单/窗口、extension env、终端 TERM_PROGRAM、Go模型请求标题与prompt）；Cargo bin 为 ScCode。PROFILE_DIR_NAME 为 ScCode，identifier dev.sccode.app、sc-code 协议/命令/设置统一使用 ScCode 标识。
@@ -124,7 +136,10 @@
 
 ## 4. 接口契约与边界
 - buildPaths = {mode,targetRoot,build,bundle,dist}；unpack-manifest.json={format:1,product:ScCode,mode,platform,builtinCount,createdAt,files:[{path,size,sha256}]}，路径为包内相对路径。成品只支持准备好的Windows x64；免安装不改变SC_CODE_HOME/profile/WebView2前提。`dist/dev/`含`unpack/`未压缩目录与`ScCode_<version>_x64-unpack-debug.zip`；`dist/release/`含`unpack/`未压缩目录、setup exe与`ScCode_<version>_x64-unpack.zip`；zip条目直接位于根目录（无`ScCode_<version>_x64-unpack[-debug]/`外壳），包含unpack-manifest.json与全部运行资源，Release不含Cargo缓存/PDB/用户profile，Debug含PDB。打包顺序为先导出unpack目录、再以其为源生成zip，prepare/zip校验完成后才导出安装包；zip写入失败保留旧zip与安装包，不宣称跨文件事务。
-- 产品 0.1.2 与 VS Code API 1.110.0 分离；command/settings IDs 使用 sc-code 前缀。
+- 产品 0.2.0 与 VS Code API 1.110.0 分离；command/settings IDs 使用 sc-code 前缀。
+- taskbar_update_jump_list 入参 `entries=[{kind:'folder'|'workspace', uri:'file:...', label}]`；仅 Windows 写入 Jump List，其他平台 no-op；空列表清除自定义分类。
+- Jump List 启动参数 `--open-folder=<base64url(file URI)>` / `--open-workspace=<base64url(file URI)>`；单实例转发只接受这两个前缀且只打开 file: URI。新窗口 label 为 `workspace-<n>`，capabilities 用 `workspace-*` 覆盖。
+- About 对话框通过 `ICustomDialogOptions.imageIcon/imageIconAlt` 渲染 `/sc-code.svg`；`imageIcon` 存在时自动使用垂直布局，图标与标题居中、说明文字左对齐。
 - ServerEndpoint = {url, port, running, token?}；token 仅运行中返回，前端只能向精确受监督 origin附凭据。
 - SC_CODE_HOME 指定隔离 profile。
 - workspaceIdentity 为 .code-workspace configuration URI；无 identity 时使用有序多根路径 hash。空工作区 storageUri undefined/workspaceState仅内存；globalState始终按扩展持久化。

@@ -1850,8 +1850,8 @@
     },
     {
       "source": "docs/assets/preview.jpg",
-      "destination": "docs/assets/preview.jpg",
-      "sha256": "8e9759865241111573a3b68b9fda44c42a17a95f9c11e38dc92c4298175b4a9c",
+      "destination": "docs/images/preview.jpg",
+      "sha256": "63b52195dbb9943759c6d09ff28e0dd1ea9c1e4bccfde3bdcbabf69b03b18f2a",
       "kind": "source"
     },
     {

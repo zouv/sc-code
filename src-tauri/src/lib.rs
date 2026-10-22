@@ -1,6 +1,7 @@
 mod app_dirs;
 mod commands;
 mod server;
+mod taskbar;
 
 use commands::auth::AuthState;
 use commands::db_state::ScCodeDbState;
@@ -448,7 +449,25 @@ pub fn run() {
         dotenvy::from_path(&env_path).ok();
     }
 
+    // A second launch (for example from a taskbar jump-list entry) must either
+    // hand its arguments to the running instance or exit. Never open the same
+    // profile's SQLite databases from two processes.
+    if !taskbar::ensure_single_instance() {
+        return;
+    }
+
     let mut context = tauri::generate_context!();
+    // Jump list entries launch a fresh process with an encoded folder/workspace
+    // target. Feed it to the workbench through the same query parameters used
+    // by normal folder/workspace navigation.
+    let launch_args: Vec<String> = std::env::args_os()
+        .map(|arg| arg.to_string_lossy().into_owned())
+        .collect();
+    if let Some(target) = taskbar::parse_open_target(&launch_args) {
+        if let Some(window) = context.config_mut().app.windows.first_mut() {
+            window.url = tauri::WebviewUrl::App(target.app_url().into());
+        }
+    }
     // Keep browser state in the same isolated profile as settings and agent data.
     // SC_CODE_HOME tests must never open a real user's WebView database.
     for window in &mut context.config_mut().app.windows {
@@ -485,6 +504,9 @@ pub fn run() {
             WasmExtensionRuntime::new().expect("failed to initialize WASM runtime"),
         ))
         .setup(|app| {
+            if let Err(error) = taskbar::install_single_instance(app.handle()) {
+                log::warn!("single-instance forwarding disabled: {error}");
+            }
             let app_data = crate::app_dirs::resolve_app_data_dir();
             std::fs::create_dir_all(&app_data).ok();
             // Only extension resources are globally eligible for the browser asset protocol.
@@ -700,6 +722,7 @@ pub fn run() {
             commands::set_window_title,
             commands::get_monitors,
             commands::save_window_state,
+            taskbar::taskbar_update_jump_list,
             commands::update_check,
             commands::update_download,
             commands::update_apply,
@@ -992,6 +1015,7 @@ pub fn run() {
                 if let Some(server) = app_handle.try_state::<Arc<server::LocalServer>>() {
                     server.shutdown();
                 }
+                taskbar::destroy_single_instance();
             }
         });
 }

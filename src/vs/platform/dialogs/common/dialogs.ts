@@ -278,6 +278,10 @@ export interface ICustomDialogOptions {
 	readonly markdownDetails?: ICustomDialogMarkdown[];
 	readonly classes?: string[];
 	readonly icon?: ThemeIcon;
+	/** Raster/vector image rendered instead of a codicon (for example the product icon in About). */
+	readonly imageIcon?: string;
+	/** Accessible label for {@link imageIcon}; falls back to the dialog type label when omitted. */
+	readonly imageIconAlt?: string;
 	readonly disableCloseAction?: boolean;
 }
 

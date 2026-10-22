@@ -5944,7 +5944,7 @@ dependencies = [
 
 [[package]]
 name = "sc-code"
-version = "0.1.2"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "arboard",
@@ -6018,6 +6018,7 @@ dependencies = [
  "wasmtime",
  "wasmtime-wasi",
  "which 6.0.3",
+ "windows 0.61.3",
  "zip",
 ]
 

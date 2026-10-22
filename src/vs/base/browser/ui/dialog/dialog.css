@@ -86,6 +86,42 @@
 	align-self: baseline;
 }
 
+/** Dialog: custom product image icon (e.g. About) */
+.monaco-dialog-box .dialog-message-row > .dialog-icon.dialog-image-icon {
+	flex: 0 0 64px;
+	width: 64px;
+	height: 64px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.monaco-dialog-box.align-vertical .dialog-message-row > .dialog-icon.dialog-image-icon {
+	margin-bottom: 12px;
+}
+
+.monaco-dialog-box .dialog-message-row > .dialog-icon.dialog-image-icon > .dialog-image-icon-image {
+	width: 100%;
+	height: 100%;
+	object-fit: contain;
+	border-radius: 14px;
+	user-select: none;
+	-webkit-user-select: none;
+}
+
+/* Keep the product icon and title centered, but align About details to the
+   left so version/build/browser lines are easy to scan. */
+.monaco-dialog-box.has-image-icon.align-vertical .dialog-message-row .dialog-message-container {
+	align-items: stretch;
+	text-align: left;
+	width: 100%;
+}
+
+.monaco-dialog-box.has-image-icon.align-vertical .dialog-message-row .dialog-message-container .dialog-message {
+	justify-content: center;
+	text-align: center;
+}
+
 .monaco-dialog-box:not(.align-vertical) .dialog-message-row .dialog-message-container {
 	align-self: stretch;
 }

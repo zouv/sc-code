@@ -35,10 +35,10 @@ test('canonical profile and protocol are ScCode-owned',()=>{
 });
 test('font-independent SC editor SVG is connected to favicon and titlebar',()=>{
   const svg=read('public/sc-code.svg');assert.match(svg,/viewBox="0 0 512 512"/);
-  assert.match(svg,/<title[^>]*>ScCode<\/title>/);assert.match(svg,/SC letters in a code editor/);
+  assert.match(svg,/<title[^>]*>ScCode<\/title>/);assert.match(svg,/SC monogram in a plum-charcoal editor window/);
   assert.doesNotMatch(svg,/<(?:script|text|image|foreignObject)\b|(?:href|font-family)=/i);
   // ScBrowser keeps its blue/cyan identity; ScCode uses plum-charcoal/lavender.
-  for(const color of ['#191621','#272132','#716083','#ad9bc4','#f7f2fc','#c19aff'])assert.ok(svg.includes(color),color);
+  for(const color of ['#191621','#272132','#675477','#b59bcf','#f0e5ff','#f7f2fc','#c19aff','#e8d9ff'])assert.ok(svg.includes(color),color);
   assert.doesNotMatch(svg,/#111827|#182438|#526782|#8ca0b8|#f4f8ff|#55e2c0/i);
   assert.match(read('index.html'),/href="\/sc-code\.svg"/);
   assert.match(read('src/vs/workbench/browser/parts/titlebar/media/titlebarpart.css'),/url\("\/sc-code\.svg"\)/);
@@ -48,6 +48,36 @@ test('desktop icon formats and requested PNG dimensions are valid',()=>{
     const bytes=fs.readFileSync(path.join(root,'src-tauri/icons',name));assert.equal(bytes.subarray(0,8).toString('hex'),'89504e470d0a1a0a');
     assert.equal(bytes.readUInt32BE(16),size);assert.equal(bytes.readUInt32BE(20),size);
   }
-  const ico=fs.readFileSync(path.join(root,'src-tauri/icons/icon.ico'));assert.equal(ico.readUInt16LE(0),0);assert.equal(ico.readUInt16LE(2),1);assert.ok(ico.readUInt16LE(4)>0);
+  for(const size of [16,32,48,64,128,256,512,1024]){
+    const bytes=fs.readFileSync(path.join(root,'docs/icons',`sc-code-${size}.png`));
+    assert.equal(bytes.subarray(0,8).toString('hex'),'89504e470d0a1a0a');
+    assert.equal(bytes.readUInt32BE(16),size);assert.equal(bytes.readUInt32BE(20),size);
+  }
+  const ico=fs.readFileSync(path.join(root,'src-tauri/icons/icon.ico'));assert.equal(ico.readUInt16LE(0),0);assert.equal(ico.readUInt16LE(2),1);
+  assert.equal(ico.readUInt16LE(4),7);
   assert.equal(fs.readFileSync(path.join(root,'src-tauri/icons/icon.icns')).subarray(0,4).toString(),'icns');
+});
+test('About dialog displays the product icon',()=>{
+  const handler=read('src/vs/workbench/browser/parts/dialogs/dialogHandler.ts');
+  assert.match(handler,/imageIcon:\s*'\/sc-code\.svg'/);
+  assert.match(handler,/imageIconAlt:\s*'ScCode'/);
+  assert.match(read('src/vs/base/browser/ui/dialog/dialog.ts'),/dialog-image-icon/);
+  assert.match(read('src/vs/base/browser/ui/dialog/dialog.css'),/\.dialog-image-icon-image/);
+});
+test('titlebar app icon precedes the menu and project label',()=>{
+  const css=read('src/vs/workbench/browser/parts/titlebar/media/titlebarpart.css');
+  const block=selector=>{
+    const match=css.match(new RegExp(selector.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'\\s*\\{([^}]*)\\}'));
+    assert.ok(match,selector);return match[1];
+  };
+  assert.match(block('.monaco-workbench .part.titlebar > .titlebar-container > .titlebar-left > .window-appicon'),/order:\s*0/);
+  assert.match(block('.monaco-workbench .part.titlebar > .titlebar-container > .titlebar-left > .menubar'),/order:\s*1/);
+  assert.match(block('.monaco-workbench .part.titlebar .sc-code-project-name'),/order:\s*2/);
+});
+test('recent folders and workspaces are wired to a Windows jump list',()=>{
+  assert.match(read('src/main.ts'),/recentJumpList\.contribution\.js/);
+  assert.match(read('src/sc-code/taskbar/recentJumpList.contribution.ts'),/taskbar_update_jump_list/);
+  assert.match(read('src-tauri/src/lib.rs'),/taskbar::taskbar_update_jump_list/);
+  assert.match(read('src-tauri/src/taskbar.rs'),/ICustomDestinationList/);
+  assert.match(read('src-tauri/Cargo.toml'),/Win32_UI_Shell/);
 });

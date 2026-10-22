@@ -1,8 +1,38 @@
 use serde::{Deserialize, Serialize};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use tauri::{AppHandle, Manager, WebviewUrl, WebviewWindowBuilder};
 
 use super::storage::StorageDb;
+use crate::taskbar::OpenTarget;
+
+static WORKSPACE_WINDOW_COUNTER: AtomicU64 = AtomicU64::new(1);
+
+/// Open a new workbench window for a jump-list target. Reusing the main window
+/// would discard the user's current workspace, so recent entries always get
+/// their own window.
+pub fn open_target_window(app: &AppHandle, target: &OpenTarget) -> Result<(), String> {
+    let mut config = app
+        .config()
+        .app
+        .windows
+        .first()
+        .cloned()
+        .ok_or_else(|| "main window config is missing".to_string())?;
+
+    let id = WORKSPACE_WINDOW_COUNTER.fetch_add(1, Ordering::Relaxed);
+    config.label = format!("workspace-{id}");
+    config.url = WebviewUrl::App(target.app_url().into());
+    config.visible = true;
+    config.focus = true;
+
+    WebviewWindowBuilder::from_config(app, &config)
+        .map_err(|e| format!("failed to create workspace window: {e}"))?
+        .build()
+        .map_err(|e| format!("failed to build workspace window: {e}"))?;
+
+    Ok(())
+}
 
 #[derive(Debug, Serialize)]
 pub struct MonitorInfo {

@@ -1,5 +1,21 @@
 # 变更记录 · ScCode
 
+## [0.2.0] - 2026-10-22
+
+### 新增
+- `docs/icons/` 新增用户选定 D 版 ScCode 图标资源包：SVG、16–1024px 八种 PNG、七尺寸 Windows ICO 与说明。
+- 关于对话框显示 ScCode 应用图标（`/sc-code.svg`，64px 垂直布局）。
+- Windows 任务栏跳转列表：右键任务栏图标可打开最近使用的文件夹与工作空间；记录随工作台最近列表自动更新。
+- 桌面单实例：再次启动 ScCode 时转发文件夹/工作空间目标到已运行实例，避免同一 profile 被两个进程同时打开。
+
+### 变更
+- 产品版本升至 0.2.0（`package.json`、`package-lock.json`、`tauri.conf.json`/WiX、`src-tauri/Cargo.toml`/`Cargo.lock`、About 回退值同步）。
+- 应用图标替换为 D 版：更新 `public/sc-code.svg`、标题栏/About/favicon 与 `src-tauri/icons/` 的 PNG/ICO/ICNS。
+- 标题栏应用图标固定排在最左侧，位于菜单、项目名和分支之前。
+- 关于对话框保留居中图标与标题，版本/构建/浏览器等说明文字改为左对齐，便于阅读。
+- 清理仓库正文中的本机路径示例：README 使用通用路径，`vendor-ext-host-node.cjs` 不再内置作者本机 VSCode 路径。
+- README 截图迁移到 `docs/images/preview.jpg`，来源清单同步目标路径与哈希。
+
 ## [0.1.2] - 2026-10-20
 - 变更：产品版本升至 0.1.2（`package.json`、`package-lock.json`、`tauri.conf.json`/WiX、`src-tauri/Cargo.toml`/`Cargo.lock`、About 回退值同步）。
 - 变更：全面移除旧品牌兼容层——命令/设置 ID、`sc-code://` 协议、`.sc-code` 配置目录、`sc-code.toml` 扩展清单、keyring 服务名与环境变量统一为 ScCode 自有标识，不再读取旧名称。

@@ -8,7 +8,7 @@
  * pinned VSCode tag, without overwriting anything already present.
  *
  * Usage:
- *   node scripts/vendor-ext-host-node.cjs --vscode D:\Git\zoss\vscode --ref 1.110.1
+ *   node scripts/vendor-ext-host-node.cjs --vscode <path-to-vscode-checkout> --ref 1.110.1
  *
  * The script is idempotent: run it again after bumping the VSCode baseline.
  */
@@ -21,7 +21,12 @@ const arg = (name, fallback) => {
 	const index = process.argv.indexOf(`--${name}`);
 	return index >= 0 && process.argv[index + 1] ? process.argv[index + 1] : fallback;
 };
-const vscodeRepo = path.resolve(arg('vscode', 'D:/Git/zoss/vscode'));
+const vscodeArg = arg('vscode', null);
+if (!vscodeArg) {
+	console.error('Usage: node scripts/vendor-ext-host-node.cjs --vscode <path-to-vscode-checkout> [--ref 1.110.1]');
+	process.exit(1);
+}
+const vscodeRepo = path.resolve(vscodeArg);
 const ref = arg('ref', '1.110.1');
 const entryDir = path.join(root, 'src/vs/workbench/api/node');
 

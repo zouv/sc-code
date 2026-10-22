@@ -577,6 +577,8 @@ export class BrowserTitlebarPart extends Part implements ITitlebarPart {
 		// App Icon (Windows, Linux)
 		if ((isWindows || isLinux) && !hasNativeTitlebar(this.configurationService, this.titleBarStyle)) {
 			this.appIcon = prepend(this.leftContent, $('a.window-appicon'));
+			this.appIcon.setAttribute('aria-label', 'ScCode');
+			this.appIcon.setAttribute('title', 'ScCode');
 		}
 
 		// Draggable region that we can manipulate for #52522

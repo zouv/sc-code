@@ -21,6 +21,10 @@ import './sc-code/accessibility/accessibleViewInformationService.contribution.js
 import './sc-code/extension-sync/extensionSync.contribution.js';
 // [CUSTOM-END] CUSTOM-20261015-003
 
+// [CUSTOM-BEGIN] CUSTOM-20261021-001 - 最近文件夹/工作区同步到 Windows 任务栏跳转列表
+import './sc-code/taskbar/recentJumpList.contribution.js';
+// [CUSTOM-END] CUSTOM-20261021-001
+
 async function scCodeOpenFolder() {
 	try {
 		const { open } = await import('@tauri-apps/plugin-dialog');
@@ -153,7 +157,7 @@ async function boot() {
 	//（webExtensionsScannerService → validateExtensionManifest），改成 0.1.3-custom.4 会让
 	// VAC(^1.85.0)/Claude Code(^1.94.0) 被判 DisabledByInvalidExtension，扩展视图全部失效。
 	// 真正的 ScCode 版本号放到全局 __SC_CODE_VERSION__，由 About 对话框读取。
-	let scCodeVersion = '0.1.2';
+	let scCodeVersion = '0.2.0';
 	if ((globalThis as any).__SC_CODE_TAURI__) {
 		try {
 			const { getVersion } = await import('@tauri-apps/api/app');

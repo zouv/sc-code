@@ -12,37 +12,41 @@
 [![Release](https://img.shields.io/github/v/release/zouv/sc-code?style=flat-square&color=success&label=release)](../../releases/latest)
 [![License](https://img.shields.io/badge/license-MIT-green?style=flat-square)](LICENSE)
 
-  <img src="docs/assets/preview.jpg" width="880" alt="ScCode 工作台" />
+<img src="docs/images/preview.jpg" width="880" alt="ScCode 工作台" />
 </div>
 
 ScCode 是一个从 VS Code workbench 迁移、并独立演进的桌面编辑器：前端保留熟悉的
 工作台、编辑器、终端与扩展 UI；原生层用 **Rust + Tauri 2** 替代 Electron；内置 Agent
 由**受监督的 Go 进程**提供本地模型调用与工具执行；扩展可由 **Node 扩展宿主**运行。
 
-> 当前为 **0.1.2 开发验收版本**，Windows x64 产物可本地打包并上传 GitHub Release。
+> 当前为 **0.2.0 开发验收版本**，Windows x64 产物可本地打包并上传 GitHub Release。
 > 未签名；源码完整迁移不等于全部行为验收完成，第三方扩展矩阵仍在验收中。
 
 ## 特性
 
 **编辑器与工作台**
+
 - VS Code 1.110 workbench 基线：命令面板、多标签、分屏、资源管理器、搜索、SCM、任务、调试
 - Monaco 编辑器、TextMate 语法高亮、原生 Rust 文本/语法/搜索/主题服务
 - 集成终端（xterm）、shell integration、多根工作区与 `.code-workspace`
 - 设置、快捷键、主题与 UI 状态持久化；桌面版存储在 profile 内 SQLite
 
 **扩展**
+
 - 安装 VSIX、拖拽安装、扩展市场代理、扩展同步
 - Node 扩展宿主：默认 CJS 仿制宿主；可通过实验开关启用 VS Code 真实扩展宿主
 - WASM 扩展：Rust + WASI Component Model，`sc-code.toml` 清单
 - 扩展 secrets 走 OS keyring；Memento 串行、加锁、原子落盘
 
 **AI 工作台**
+
 - 本地 Go Agent 服务：聊天、工具调用、MCP、记忆、会话、上下文压缩
 - Workbench 聊天/内联编辑/补全入口；Agent 面板默认收起
 - 本地服务仅监听 loopback，每进程随机 token，Host/Origin 校验
 - 模型供应商凭据由 Rust 解析后经进程环境传入 Go 服务，不写配置文件
 
 **数据与配置**
+
 - 独立 profile：Windows 默认 `%APPDATA%\ScCode`，可用 `SC_CODE_HOME` 隔离
 - 设置、工作台状态与扩展 secrets 分别持久化到 profile SQLite 与 OS keyring
 - 数据库损坏或锁占用会报错并保留文件，不删除数据库假恢复
@@ -51,9 +55,9 @@ ScCode 是一个从 VS Code workbench 迁移、并独立演进的桌面编辑器
 
 前往 [Releases](../../releases/latest) 下载 Windows x64 产物：
 
-| 产物 | 用途 |
-|---|---|
-| `ScCode_<version>_x64-setup.exe` | NSIS 安装包 |
+| 产物                              | 用途                                         |
+| --------------------------------- | -------------------------------------------- |
+| `ScCode_<version>_x64-setup.exe`  | NSIS 安装包                                  |
 | `ScCode_<version>_x64-unpack.zip` | 免安装目录包，解压即用（zip 内无版本子目录） |
 
 **免安装包使用方式：** 解压 `ScCode_<version>_x64-unpack.zip` 到任意空目录，直接双击
@@ -80,19 +84,19 @@ ScCode 是一个从 VS Code workbench 迁移、并独立演进的桌面编辑器
 
 日常入口（可从任意目录调用，均支持 `--help` / `--dry-run`）：
 
-| 脚本 | 用途 |
-|---|---|
-| `setup.bat` | 安装依赖、准备固定 Node/Go/内置扩展并生成元数据 |
-| `run.bat [应用参数]` | 前台启动当前 Debug 桌面；缺失或源码变化时自动重建 |
-| `dev.bat` | Tauri 热更新开发，带完整 runtime 资源配置 |
-| `build.bat [Debug或Release]` | 只编译桌面程序，不生成成品包；默认 Debug |
-| `package.bat` | 一次生成 Debug zip + Release setup、未压缩 unpack 目录与 unpack zip，不自动签名/发布 |
-| `test.bat` | Node/transport/TS + 选定原生模块和桌面 lib 回归 |
-| `verify.bat` | 测试 + 来源清单/runtime/真实本地服务/文档检查 |
-| `clean.bat` | 清理生成输出；保留 dist/、工具缓存、node_modules 与用户配置，并清理旧 packages/ |
+| 脚本                         | 用途                                                                                 |
+| ---------------------------- | ------------------------------------------------------------------------------------ |
+| `setup.bat`                  | 安装依赖、准备固定 Node/Go/内置扩展并生成元数据                                      |
+| `run.bat [应用参数]`         | 前台启动当前 Debug 桌面；缺失或源码变化时自动重建                                    |
+| `dev.bat`                    | Tauri 热更新开发，带完整 runtime 资源配置                                            |
+| `build.bat [Debug或Release]` | 只编译桌面程序，不生成成品包；默认 Debug                                             |
+| `package.bat`                | 一次生成 Debug zip + Release setup、未压缩 unpack 目录与 unpack zip，不自动签名/发布 |
+| `test.bat`                   | Node/transport/TS + 选定原生模块和桌面 lib 回归                                      |
+| `verify.bat`                 | 测试 + 来源清单/runtime/真实本地服务/文档检查                                        |
+| `clean.bat`                  | 清理生成输出；保留 dist/、工具缓存、node_modules 与用户配置，并清理旧 packages/      |
 
 ```powershell
-Set-Location D:\Git\zgithub\sc-code
+Set-Location C:\path\to\sc-code
 .\setup.bat
 .\run.bat
 .\build.bat Debug
@@ -231,14 +235,14 @@ npm run desktop:dev
 
 ## 文档
 
-| 文档 | 内容 |
-|---|---|
-| [`AGENTS.md`](AGENTS.md) | AI 代理工作规则（改代码前先读） |
-| [`ARCHITECTURE.md`](ARCHITECTURE.md) | 代码地图：文件职责、任务→位置、重点链路、易踩坑 |
-| [`ROADMAP.md`](ROADMAP.md) | 要做什么、做到哪了 |
-| [`CHANGELOG.md`](CHANGELOG.md) | 每个版本的变化 |
-| [`HANDOFF.md`](HANDOFF.md) | 当前会话接力与待办 |
-| [`docs/import-manifest.json`](docs/import-manifest.json) | 来源文件清单与哈希校验 |
+| 文档                                                     | 内容                                            |
+| -------------------------------------------------------- | ----------------------------------------------- |
+| [`AGENTS.md`](AGENTS.md)                                 | AI 代理工作规则（改代码前先读）                 |
+| [`ARCHITECTURE.md`](ARCHITECTURE.md)                     | 代码地图：文件职责、任务→位置、重点链路、易踩坑 |
+| [`ROADMAP.md`](ROADMAP.md)                               | 要做什么、做到哪了                              |
+| [`CHANGELOG.md`](CHANGELOG.md)                           | 每个版本的变化                                  |
+| [`HANDOFF.md`](HANDOFF.md)                               | 当前会话接力与待办                              |
+| [`docs/import-manifest.json`](docs/import-manifest.json) | 来源文件清单与哈希校验                          |
 
 ## 许可
 

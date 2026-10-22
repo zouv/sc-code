@@ -1,6 +1,6 @@
 {
   "name": "sc-code",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "type": "module",
   "scripts": {
     "setup": "node scripts/generate-extension-meta.js",

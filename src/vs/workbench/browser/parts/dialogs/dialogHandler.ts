@@ -123,7 +123,13 @@ export class BrowserDialogHandler extends AbstractDialogHandler {
 			title,
 			[localize({ key: 'copy', comment: ['&& denotes a mnemonic'] }, '&&Copy'), localize('ok', 'OK')],
 			details,
-			1
+			1,
+			undefined,
+			undefined,
+			{
+				imageIcon: '/sc-code.svg',
+				imageIconAlt: 'ScCode'
+			}
 		);
 
 		if (button === 0) {
@@ -179,6 +185,8 @@ export class BrowserDialogHandler extends AbstractDialogHandler {
 					type: this.getDialogType(type),
 					renderBody,
 					icon: customOptions?.icon,
+					imageIcon: customOptions?.imageIcon,
+					imageIconAlt: customOptions?.imageIconAlt,
 					disableCloseAction: customOptions?.disableCloseAction,
 					buttonOptions: customOptions?.buttonDetails?.map(detail => ({ sublabel: detail })),
 					checkboxLabel: checkbox?.label,

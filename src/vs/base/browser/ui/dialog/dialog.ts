@@ -73,6 +73,8 @@ export interface IDialogOptions {
 	readonly renderBody?: (container: HTMLElement) => void;
 	readonly renderFooter?: (container: HTMLElement) => void;
 	readonly icon?: ThemeIcon;
+	readonly imageIcon?: string;
+	readonly imageIconAlt?: string;
 	readonly buttonOptions?: Array<undefined | { sublabel?: string; styleButton?: (button: IButton) => void }>;
 	readonly primaryButtonDropdown?: IButtonWithDropdownOptions;
 	readonly disableCloseAction?: boolean;
@@ -146,8 +148,11 @@ export class Dialog extends Disposable {
 		// Dialog Box
 		this.shadowElement = this.modalElement.appendChild($('.dialog-shadow'));
 		this.element = this.shadowElement.appendChild($('.monaco-dialog-box'));
-		if (options.alignment === DialogContentsAlignment.Vertical) {
+		if (options.alignment === DialogContentsAlignment.Vertical || options.imageIcon) {
 			this.element.classList.add('align-vertical');
+		}
+		if (options.imageIcon) {
+			this.element.classList.add('has-image-icon');
 		}
 		if (options.extraClasses) {
 			this.element.classList.add(...options.extraClasses);
@@ -184,7 +189,16 @@ export class Dialog extends Disposable {
 		// Message
 		const messageRowElement = this.element.appendChild($('.dialog-message-row'));
 		this.iconElement = messageRowElement.appendChild($('#monaco-dialog-icon.dialog-icon'));
-		this.iconElement.setAttribute('aria-label', this.getIconAriaLabel());
+		if (this.options.imageIcon) {
+			this.iconElement.classList.add('dialog-image-icon');
+			const image = this.iconElement.appendChild($('img.dialog-image-icon-image')) as HTMLImageElement;
+			image.src = this.options.imageIcon;
+			image.alt = this.options.imageIconAlt || '';
+			image.draggable = false;
+			this.iconElement.setAttribute('aria-label', this.options.imageIconAlt || this.getIconAriaLabel());
+		} else {
+			this.iconElement.setAttribute('aria-label', this.getIconAriaLabel());
+		}
 		this.messageContainer = messageRowElement.appendChild($('.dialog-message-container'));
 
 		if (this.options.detail || this.options.renderBody) {
@@ -571,7 +585,10 @@ export class Dialog extends Disposable {
 				spinModifierClassName
 			);
 
-			if (this.options.icon) {
+			if (this.options.imageIcon) {
+				// A custom product image already occupies the icon slot; do not add a codicon.
+				this.iconElement.classList.add('dialog-image-icon');
+			} else if (this.options.icon) {
 				this.iconElement.classList.add(...ThemeIcon.asClassNameArray(this.options.icon));
 			} else {
 				switch (this.options.type) {
