@@ -16,6 +16,9 @@
 - 清理仓库正文中的本机路径示例：README 使用通用路径，`vendor-ext-host-node.cjs` 不再内置作者本机 VSCode 路径。
 - README 截图迁移到 `docs/images/preview.jpg`，来源清单同步目标路径与哈希。
 
+### 安全
+- `AGENTS.md` 新增个人信息与仓库卫生铁律：禁止入库本机路径、设备标识、真实姓名/邮箱、凭据与截图元数据；提交前必须扫描工作树与 Git 身份，发现历史泄露需授权后重写。
+
 ## [0.1.2] - 2026-10-20
 - 变更：产品版本升至 0.1.2（`package.json`、`package-lock.json`、`tauri.conf.json`/WiX、`src-tauri/Cargo.toml`/`Cargo.lock`、About 回退值同步）。
 - 变更：全面移除旧品牌兼容层——命令/设置 ID、`sc-code://` 协议、`.sc-code` 配置目录、`sc-code.toml` 扩展清单、keyring 服务名与环境变量统一为 ScCode 自有标识，不再读取旧名称。

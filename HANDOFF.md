@@ -25,6 +25,7 @@
 - 通过：README 截图迁移至 `docs/images/preview.jpg`，来源清单目标路径/哈希同步。
 - 已清理仓库正文本机路径：README 示例路径、`vendor-ext-host-node.cjs` 默认作者本机路径。
 - Git 历史已重写：10 个提交的作者/提交者统一为 `zouv <zouv@163.com>`，9 处 `Co-Authored-By` 已移除；`origin/main` 与 `v0.1.1`/`v0.1.2` 标签已 force-push，本地 `user.name/user.email` 同步更新。
+- 已复查工作树与全部 Git 引用：无真实姓名、邮箱、本机路径、设备标识残留；`AGENTS.md` 新增 §3.1「个人信息与仓库卫生」铁律与提交前自检流程。
 - 已同步版本号 0.2.0：`package.json`、`package-lock.json`、`src-tauri/Cargo.toml`、`src-tauri/tauri.conf.json`/WiX、根 `Cargo.lock`、About 回退值、README/ARCHITECTURE。
 - `src-tauri/Cargo.lock` 是导入来源锁文件，不参与当前 workspace 构建，仍保留原始导入版本 0.1.2。
 
