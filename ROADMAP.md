@@ -13,6 +13,7 @@
 2026-10-21：桌面壳体验补齐：关于对话框产品图标、标题栏应用图标置左、Windows 任务栏最近文件夹/工作空间跳转列表；新增按 profile 隔离的单实例参数转发。
 2026-10-22：应用 D 版 ScCode 图标并替换标题栏/About/桌面图标；版本号升至 0.2.0；清理仓库内本机路径并修复截图来源清单。
 2026-10-22：v0.2.0 已打包并上传 GitHub Release（prerelease）：`ScCode_0.2.0_x64-setup.exe` + `ScCode_0.2.0_x64-unpack.zip`；Release unpack 隔离 profile 冒烟通过。
+2026-10-25：完成 S18–S22（安全加固、性能与正确性、真实宿主前置、体验补齐、收敛）；v0.3.0 已打包并上传 GitHub Release（prerelease）：`ScCode_0.3.0_x64-setup.exe` + `ScCode_0.3.0_x64-unpack.zip`；Release 包内验证搜索/终端/webview 隔离/CLI 定位/隔离 profile。
 
 ## 开发大纲
 | 编号 | 优先级 | 任务 | 状态 |

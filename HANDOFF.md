@@ -3,7 +3,12 @@
 - 快照：2026-10-25；分支 `main`；**无进行中任务**（S18–S22 已完成，成果见 `CHANGELOG.md` 未发布区与 `ROADMAP.md`）。
 - 本轮验证：`npm run typecheck`、`npm test`（77/77）、`npm run ext-host:build`、`cargo test --offline -p sc-code -p sc-code-workspace -p sc-code-git --lib`（98+25+156 通过，1 个 `#[ignore]` 回收站真机用例）全部通过；S18–S21 均在隔离 `SC_CODE_HOME` 下用 CDP 实跑验证。
 - 本轮实跑环境备注：`.runtime/s18-smoke`、`s19`、`s20`、`s21`、`s21b`、`s21c` 为测试目录（不入库）；曾有一个无法结束的 `ScCode.exe` 僵尸进程（PID 82180，HandleCount=0）锁住 `.runtime/target/debug/ScCode.exe`，改用 `CARGO_TARGET_DIR=.runtime/target-s21` 完成构建与验证；重启机器后建议确认该进程已消失。
-- 当前版本：**0.3.0**（本轮源码版本；发布状态见下方发布记录）。
+- 当前版本：**0.3.0**（已打包并发布为 GitHub prerelease）。
+- 最新发布：[v0.3.0](https://github.com/zouv/sc-code/releases/tag/v0.3.0)（GitHub prerelease）：
+  - `ScCode_0.3.0_x64-setup.exe`（68,791,143 B）
+  - `ScCode_0.3.0_x64-unpack.zip`（94,574,333 B）
+- 本轮发布冒烟（Release 包解压 + 隔离 `SC_CODE_HOME`）：搜索命中、终端可启动、Markdown 预览 webview 来自 `http://127.0.0.1:<端口>` 且 `window.parent` 被拒、webview 内 `stat` 被 IPC 守卫拒、`ScCode.exe -g <文件>:1:3` 定位到 `Ln 1, Col 3`、profile 落在 `SC_CODE_HOME` 内。
+- 打包：`npm run desktop:package` exit 0；`dist/dev/ScCode_0.3.0_x64-unpack-debug.zip`（含 PDB）、`dist/release/unpack/`、setup exe、unpack zip 均生成。
 - 最新发布：[v0.2.0](https://github.com/zouv/sc-code/releases/tag/v0.2.0)（GitHub prerelease）：
   - `ScCode_0.2.0_x64-setup.exe`（68,699,528 B）
   - `ScCode_0.2.0_x64-unpack.zip`（94,455,573 B）
