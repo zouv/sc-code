@@ -1470,7 +1470,7 @@ export class WorkspaceService extends Disposable implements IWorkbenchConfigurat
 			await this.configurationEditing
 		).writeConfiguration(editableConfigurationTarget, { key, value }, { scopes: overrides, ...options });
 
-		// [CUSTOM-BEGIN] CUSTOM-20261013-012 - sync only default user settings and workspace changes to Rust
+		// ScCode: sync only default user settings and workspace changes to Rust
 		if (value !== undefined) {
 			const scopeForRust =
 				editableConfigurationTarget === EditableConfigurationTarget.WORKSPACE ||
@@ -1489,7 +1489,6 @@ export class WorkspaceService extends Disposable implements IWorkbenchConfigurat
 				}
 			}
 		}
-		// [CUSTOM-END] CUSTOM-20261013-012
 		switch (editableConfigurationTarget) {
 			case EditableConfigurationTarget.USER_LOCAL:
 				if (this.applicationConfiguration && this.isSettingAppliedForAllProfiles(key)) {

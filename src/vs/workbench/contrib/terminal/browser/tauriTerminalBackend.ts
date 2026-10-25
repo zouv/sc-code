@@ -39,22 +39,36 @@ import { registerWorkbenchContribution2, WorkbenchPhase } from '../../../common/
 import { IConfigurationService } from '../../../../platform/configuration/common/configuration.js';
 
 let _invoke: ((cmd: string, args?: Record<string, unknown>) => Promise<unknown>) | undefined;
-let _listen: ((event: string, handler: (event: { payload: unknown }) => void) => Promise<() => void>) | undefined;
+let _Channel: typeof import('@tauri-apps/api/core').Channel | undefined;
 
 async function ensureTauri(): Promise<boolean> {
-	if (_invoke && _listen) {
+	if (_invoke && _Channel) {
 		return true;
 	}
 	try {
 		const core = await import('@tauri-apps/api/core');
-		const events = await import('@tauri-apps/api/event');
 		_invoke = core.invoke;
-		_listen = events.listen as typeof _listen;
+		_Channel = core.Channel;
 		return true;
 	} catch (e) {
 		console.error('[ScCode Terminal] Failed to load Tauri APIs:', e);
 		return false;
 	}
+}
+
+/** Mirrors `commands::terminal::TerminalEvent`: per-terminal output, `exit` last. */
+type TerminalEvent = { kind: 'data'; data: string } | { kind: 'exit'; exitCode: number };
+
+let windowsBuildNumber: Promise<number | undefined> | undefined;
+function getWindowsBuildNumber(): Promise<number | undefined> {
+	windowsBuildNumber ??= (async () => {
+		try {
+			return ((await _invoke?.('get_windows_build_number')) as number | null) ?? undefined;
+		} catch {
+			return undefined;
+		}
+	})();
+	return windowsBuildNumber;
 }
 
 function getShellBasename(shellPath: string): string {
@@ -64,21 +78,6 @@ function getShellBasename(shellPath: string): string {
 			.pop()
 			?.replace(/\.exe$/i, '') || 'zsh'
 	);
-}
-
-// Flow control: the Rust PTY reader counts emitted UTF-8 bytes
-// (String::len) and blocks above a high watermark until the frontend
-// acknowledges consumption, so we must ack with the same unit —
-// TextEncoder gives the UTF-8 byte length of the received string.
-const flowControlEncoder = new TextEncoder();
-
-function ackTerminalData(terminalId: number, data: string): void {
-	_invoke?.('terminal_ack_data', {
-		handle: terminalId,
-		bytes: flowControlEncoder.encode(data).length
-	})?.catch(() => {
-		// Best-effort: acks may race terminal teardown.
-	});
 }
 
 let nextPtyId = 1;
@@ -100,8 +99,7 @@ class TauriPty extends Disposable implements ITerminalChildProcess {
 	readonly onProcessExit = this._onProcessExit.event;
 
 	private _backendId: number | undefined;
-	private _unlisten: (() => void) | undefined;
-	private _unlistenExit: (() => void) | undefined;
+	private _exited = false;
 
 	constructor(
 		private readonly _shellLaunchConfig: IShellLaunchConfig,
@@ -116,7 +114,7 @@ class TauriPty extends Disposable implements ITerminalChildProcess {
 
 	async start(): Promise<ITerminalLaunchError | ITerminalLaunchResult | undefined> {
 		const ok = await ensureTauri();
-		if (!ok || !_invoke || !_listen) {
+		if (!ok || !_invoke || !_Channel) {
 			return { message: 'Tauri APIs not available' };
 		}
 
@@ -148,29 +146,17 @@ class TauriPty extends Disposable implements ITerminalChildProcess {
 			}
 			const shellBasename = shell ? shell.split('/').pop() || '' : '';
 
-			const dataBuffer: string[] = [];
-			let attached = false;
-
-			this._unlisten = await _listen('terminal-data', event => {
-				const payload = event.payload as { terminal_id: number; data: string };
-				if (this._backendId !== undefined && payload.terminal_id === this._backendId) {
-					if (attached) {
-						this._onProcessData.fire(payload.data);
-					} else {
-						dataBuffer.push(payload.data);
-					}
-					// Acknowledge every received chunk (buffered or not) so the
-					// backend's unacked-bytes counter mirrors what was emitted.
-					ackTerminalData(payload.terminal_id, payload.data);
+			// Output arrives on a channel owned by this terminal: no global event fan-out
+			// across terminals/windows, and the exit message always follows the last data.
+			const channel = new _Channel!<TerminalEvent>();
+			channel.onmessage = event => {
+				if (event.kind === 'data') {
+					this._onProcessData.fire(event.data);
+				} else if (!this._exited) {
+					this._exited = true;
+					this._onProcessExit.fire(event.exitCode);
 				}
-			});
-
-			this._unlistenExit = await _listen('terminal-exit', event => {
-				const payload = event.payload as { terminal_id: number; exit_code: number };
-				if (this._backendId !== undefined && payload.terminal_id === this._backendId) {
-					this._onProcessExit.fire(payload.exit_code);
-				}
-			});
+			};
 
 			const backendId = (await _invoke('terminal_spawn', {
 				shell: shell ?? null,
@@ -178,22 +164,22 @@ class TauriPty extends Disposable implements ITerminalChildProcess {
 				cwd: this._cwd || null,
 				env: Object.keys(envToPass).length > 0 ? envToPass : null,
 				cols: this._cols,
-				rows: this._rows
+				rows: this._rows,
+				onEvent: channel
 			})) as number;
 			this._backendId = backendId;
-
-			attached = true;
-			for (const data of dataBuffer) {
-				this._onProcessData.fire(data);
-			}
-			dataBuffer.length = 0;
 
 			let pid = backendId;
 			try {
 				pid = (await _invoke('terminal_get_pid', { terminalId: backendId })) as number;
 			} catch {}
 
-			this._onProcessReady.fire({ pid, cwd: this._cwd, windowsPty: undefined });
+			const buildNumber = isWindows ? await getWindowsBuildNumber() : undefined;
+			this._onProcessReady.fire({
+				pid,
+				cwd: this._cwd,
+				windowsPty: buildNumber ? { backend: 'conpty', buildNumber } : undefined
+			});
 			this._onDidChangeProperty.fire({ type: ProcessPropertyType.InitialCwd, value: this._cwd });
 
 			const shellName = shellBasename || 'terminal';
@@ -214,13 +200,9 @@ class TauriPty extends Disposable implements ITerminalChildProcess {
 			if (this._backendId !== undefined && _invoke) {
 				_invoke('terminal_kill', { terminalId: this._backendId }).catch(() => {});
 			}
-			this._unlisten?.();
-			this._unlistenExit?.();
 		} catch {
 			// IPC channel may already be closed during page unload
 		}
-		this._unlisten = undefined;
-		this._unlistenExit = undefined;
 	}
 
 	input(data: string): void {
@@ -237,7 +219,12 @@ class TauriPty extends Disposable implements ITerminalChildProcess {
 		}
 	}
 
-	acknowledgeDataEvent(_charCount: number): void {}
+	acknowledgeDataEvent(charCount: number): void {
+		// Releases the native reader's back-pressure (VS Code flow control, UTF-16 chars).
+		if (this._backendId !== undefined && _invoke) {
+			_invoke('terminal_ack', { terminalId: this._backendId, charCount }).catch(() => {});
+		}
+	}
 	async processBinary(_data: string): Promise<void> {}
 	async getInitialCwd(): Promise<string> {
 		return this._cwd;

@@ -1065,7 +1065,7 @@ export abstract class AbstractExtensionService extends Disposable implements IEx
 	}
 
 	public whenInstalledExtensionsRegistered(): Promise<boolean> {
-		// [CUSTOM-BEGIN] CUSTOM-20261016-001 - 打破启动死锁：调用方在等扩展注册时顺手触发初始化
+		// ScCode: 打破启动死锁：调用方在等扩展注册时顺手触发初始化
 		// ScCode(web) 下扩展初始化被排在 LifecyclePhase.Restored 之后（见 browser/extensionService.ts）。
 		// 若上次会话的侧边栏停在扩展容器（如 VAC 的 workbench.view.extension.vac-client），
 		// layout restore 会 `await openPaneComposite(...)`；该容器此刻尚未注册 → 落到
@@ -1075,7 +1075,6 @@ export abstract class AbstractExtensionService extends Disposable implements IEx
 		// 与上游 `_activateByEvent(ActivationKind.Immediate)` 的既有权衡一致：既然调用方已在等，
 		// 就主动启动初始化，不再干等一个可能永远不会打开的 barrier。
 		void this._initializeIfNeeded();
-		// [CUSTOM-END] CUSTOM-20261016-001
 		return this._installedExtensionsReady.wait();
 	}
 

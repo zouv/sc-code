@@ -73,7 +73,7 @@ export interface IBaseTextResourceEditorInput extends IBaseResourceEditorInput {
 	 */
 	contents?: string;
 
-	// [CUSTOM-BEGIN] CUSTOM-20261017-006 - 拖入文件的副本不应以「未保存修改」身份打开
+	// ScCode: 拖入文件的副本不应以「未保存修改」身份打开
 	/**
 	 * Whether an editor created from `contents` should start out dirty.
 	 *
@@ -84,7 +84,6 @@ export interface IBaseTextResourceEditorInput extends IBaseResourceEditorInput {
 	 * and only marks itself dirty once the user actually edits it.
 	 */
 	initialDirtyState?: boolean;
-	// [CUSTOM-END] CUSTOM-20261017-006
 
 	/**
 	 * The encoding of the text input if known.

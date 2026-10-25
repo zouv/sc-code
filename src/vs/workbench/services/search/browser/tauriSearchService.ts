@@ -3,9 +3,12 @@
  *  Delegates file search and text search to Rust via invoke().
  *--------------------------------------------------------------------------------------------*/
 
-import { invoke } from '@tauri-apps/api/core';
+import { Channel, invoke } from '@tauri-apps/api/core';
 import { CancellationToken } from '../../../../base/common/cancellation.js';
+import { timeout } from '../../../../base/common/async.js';
+import { IExpression } from '../../../../base/common/glob.js';
 import { Disposable } from '../../../../base/common/lifecycle.js';
+import { relativePath } from '../../../../base/common/resources.js';
 import { URI } from '../../../../base/common/uri.js';
 import { IModelService } from '../../../../editor/common/services/model.js';
 import { IFileService } from '../../../../platform/files/common/files.js';
@@ -19,27 +22,77 @@ import { InstantiationType, registerSingleton } from '../../../../platform/insta
 import {
 	IFileMatch,
 	IFileQuery,
+	IFolderQuery,
 	ISearchComplete,
 	ISearchProgressItem,
 	ISearchResultProvider,
 	ISearchService,
 	ITextQuery,
+	ITextSearchCompleteMessage,
+	ITextSearchMatch,
 	SearchProviderType,
 	SearchRange
 } from '../common/search.js';
 import { SearchService } from '../common/searchService.js';
+import { TextSearchCompleteMessageType } from '../common/searchExtTypes.js';
 
-interface RustFileMatch {
-	path: string;
-	name: string;
-}
-
+/** Mirrors `commands::search::TextMatch`; columns are UTF-16 units. */
 interface RustTextMatch {
 	path: string;
 	line_number: number;
 	line_content: string;
 	column: number;
 	match_length: number;
+	preview_column: number;
+}
+
+interface RustTextSearchSummary {
+	match_count: number;
+	limit_hit: boolean;
+	cancelled: boolean;
+}
+
+interface RustWorkspaceFiles {
+	paths: string[];
+	limit_hit: boolean;
+}
+
+const DEFAULT_MAX_RESULTS = 20000;
+const CHANNEL_DRAIN_TIMEOUT_MS = 2000;
+let nextRequestId = 1;
+
+/**
+ * Globs that apply unconditionally. Sibling clauses (`{ when: '$(basename).ts' }`) need the
+ * sibling's existence and are skipped rather than turned into unconditional excludes.
+ */
+function unconditionalGlobs(expression: IExpression | undefined, prefix = ''): string[] {
+	if (!expression) {
+		return [];
+	}
+	return Object.keys(expression)
+		.filter(key => expression[key] === true)
+		.map(key => (prefix && !key.startsWith('**/') ? `${prefix}/${key}` : key));
+}
+
+/** Folder-specific and global exclude globs, rewritten relative to the searched folder. */
+function folderExcludes(query: ITextQuery | IFileQuery, fq: IFolderQuery): string[] {
+	const globs = unconditionalGlobs(query.excludePattern);
+	for (const entry of fq.excludePattern ?? []) {
+		const prefix = entry.folder ? relativePath(fq.folder, entry.folder) : '';
+		if (prefix === undefined) {
+			continue; // pattern belongs to another root
+		}
+		globs.push(...unconditionalGlobs(entry.pattern, prefix));
+	}
+	return globs;
+}
+
+function folderIncludes(query: ITextQuery | IFileQuery, fq: IFolderQuery): string[] {
+	return [...unconditionalGlobs(query.includePattern), ...unconditionalGlobs(fq.includePattern)];
+}
+
+function errorMessage(err: unknown): string {
+	return typeof err === 'string' ? err : err instanceof Error ? err.message : String(err);
 }
 
 class TauriSearchProvider extends Disposable implements ISearchResultProvider {
@@ -57,102 +110,134 @@ class TauriSearchProvider extends Disposable implements ISearchResultProvider {
 		token?: CancellationToken
 	): Promise<ISearchComplete> {
 		const results: IFileMatch[] = [];
+		const messages: ITextSearchCompleteMessage[] = [];
+		const maxResults = query.maxResults ?? DEFAULT_MAX_RESULTS;
+		let reported = 0;
 		let limitHit = false;
 
 		for (const fq of query.folderQueries) {
-			if (token?.isCancellationRequested) {
+			if (token?.isCancellationRequested || reported >= maxResults) {
+				limitHit ||= reported >= maxResults;
 				break;
 			}
-
-			try {
-				const matches = await invoke<RustTextMatch[]>('search_text', {
-					root: fq.folder.fsPath,
-					query: query.contentPattern.pattern,
-					options: {
-						max_results: query.maxResults ?? 500,
-						case_sensitive: query.contentPattern.isCaseSensitive ?? false,
-						is_regex: query.contentPattern.isRegExp ?? false,
-						include: query.includePattern ? Object.keys(query.includePattern) : [],
-						exclude: query.excludePattern ? Object.keys(query.excludePattern) : []
-					}
-				});
-
-				const byFile = new Map<string, RustTextMatch[]>();
-				for (const m of matches) {
-					const arr = byFile.get(m.path);
-					if (arr) {
-						arr.push(m);
-					} else {
-						byFile.set(m.path, [m]);
-					}
-				}
-
-				for (const [filePath, fileMatches] of byFile) {
-					const resource = URI.file(filePath);
-					const textResults = fileMatches.map(m => {
-						const line = m.line_number - 1;
-						const start = m.column;
-						const end = m.column + m.match_length;
-						return {
-							previewText: m.line_content,
-							rangeLocations: [
-								{
-									source: new SearchRange(line, start, line, end),
-									preview: new SearchRange(0, start, 0, end)
-								}
-							]
-						};
-					});
-
-					const fileMatch: IFileMatch = { resource, results: textResults };
+			const requestId = nextRequestId++;
+			const cancel = token?.onCancellationRequested(() => {
+				invoke('search_cancel', { requestId }).catch(() => {});
+			});
+			const channel = new Channel<RustTextMatch[]>();
+			// Channel deliveries may trail the command's return value; reconcile on match_count.
+			let received = 0;
+			let expected = Number.POSITIVE_INFINITY;
+			let drained: () => void = () => {};
+			const allReceived = new Promise<void>(resolve => (drained = resolve));
+			channel.onmessage = matches => {
+				received += matches.length;
+				const fileMatch = this.toFileMatch(matches);
+				if (fileMatch) {
 					onProgress?.(fileMatch);
 					results.push(fileMatch);
 				}
-
-				if (matches.length >= (query.maxResults ?? 500)) {
-					limitHit = true;
+				if (received >= expected) {
+					drained();
+				}
+			};
+			try {
+				const summary = await invoke<RustTextSearchSummary>('search_text_stream', {
+					root: fq.folder.fsPath,
+					query: query.contentPattern.pattern,
+					requestId,
+					onFile: channel,
+					options: {
+						max_results: maxResults - reported,
+						case_sensitive: query.contentPattern.isCaseSensitive ?? false,
+						is_regex: query.contentPattern.isRegExp ?? false,
+						whole_word: query.contentPattern.isWordMatch ?? false,
+						include: folderIncludes(query, fq),
+						exclude: folderExcludes(query, fq),
+						use_ignore_files: !fq.disregardIgnoreFiles,
+						follow_symlinks: !fq.ignoreSymlinks,
+						ignore_glob_case: fq.ignoreGlobCase ?? query.ignoreGlobCase
+					}
+				});
+				reported += summary.match_count;
+				limitHit ||= summary.limit_hit;
+				expected = summary.match_count;
+				if (received < expected) {
+					await Promise.race([allReceived, timeout(CHANNEL_DRAIN_TIMEOUT_MS)]);
 				}
 			} catch (err) {
-				this.logService.error('[ScCode-Search] textSearch failed:', err);
+				const text = errorMessage(err);
+				this.logService.error('[ScCode-Search] textSearch failed:', text);
+				messages.push({ text: `${fq.folder.fsPath}: ${text}`, type: TextSearchCompleteMessageType.Warning });
+			} finally {
+				cancel?.dispose();
 			}
 		}
 
-		return { results, limitHit, messages: [] };
+		return { results, limitHit, messages };
+	}
+
+	private toFileMatch(matches: RustTextMatch[]): IFileMatch | undefined {
+		if (!matches.length) {
+			return undefined;
+		}
+		const textResults: ITextSearchMatch[] = matches.map(m => {
+			const line = m.line_number - 1;
+			return {
+				previewText: m.line_content,
+				rangeLocations: [
+					{
+						source: new SearchRange(line, m.column, line, m.column + m.match_length),
+						preview: new SearchRange(0, m.preview_column, 0, m.preview_column + m.match_length)
+					}
+				]
+			};
+		});
+		return { resource: URI.file(matches[0].path), results: textResults };
 	}
 
 	async fileSearch(query: IFileQuery, token?: CancellationToken): Promise<ISearchComplete> {
 		const results: IFileMatch[] = [];
+		const messages: ITextSearchCompleteMessage[] = [];
+		const maxResults = query.maxResults ?? DEFAULT_MAX_RESULTS;
 		let limitHit = false;
 
 		for (const fq of query.folderQueries) {
-			if (token?.isCancellationRequested) {
+			if (token?.isCancellationRequested || results.length >= maxResults) {
 				break;
 			}
-
+			const requestId = nextRequestId++;
+			const cancel = token?.onCancellationRequested(() => {
+				invoke('search_cancel', { requestId }).catch(() => {});
+			});
 			try {
-				const matches = await invoke<RustFileMatch[]>('search_files', {
+				const found = await invoke<RustWorkspaceFiles>('search_workspace_files', {
 					root: fq.folder.fsPath,
 					pattern: query.filePattern ?? '',
+					requestId,
 					options: {
-						max_results: query.maxResults ?? 500,
-						include: query.includePattern ? Object.keys(query.includePattern) : [],
-						exclude: query.excludePattern ? Object.keys(query.excludePattern) : []
+						max_results: query.exists ? 1 : maxResults - results.length,
+						include: folderIncludes(query, fq),
+						exclude: folderExcludes(query, fq),
+						use_ignore_files: !fq.disregardIgnoreFiles,
+						follow_symlinks: !fq.ignoreSymlinks,
+						ignore_glob_case: fq.ignoreGlobCase ?? query.ignoreGlobCase
 					}
 				});
-
-				for (const m of matches) {
-					results.push({ resource: URI.file(m.path) });
+				for (const path of found.paths) {
+					results.push({ resource: URI.file(path) });
 				}
-
-				if (matches.length >= (query.maxResults ?? 500)) {
-					limitHit = true;
-				}
+				limitHit ||= found.limit_hit;
 			} catch (err) {
-				this.logService.error('[ScCode-Search] fileSearch failed:', err);
+				const text = errorMessage(err);
+				this.logService.error('[ScCode-Search] fileSearch failed:', text);
+				messages.push({ text: `${fq.folder.fsPath}: ${text}`, type: TextSearchCompleteMessageType.Warning });
+			} finally {
+				cancel?.dispose();
 			}
 		}
 
-		return { results, limitHit, messages: [] };
+		return { results, limitHit, messages };
 	}
 
 	async clearCache(_cacheKey: string): Promise<void> {

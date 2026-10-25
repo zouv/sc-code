@@ -2,13 +2,127 @@ use portable_pty::{native_pty_system, CommandBuilder, MasterPty, PtySize};
 use serde::Serialize;
 use std::collections::HashMap;
 use std::io::{Read, Write};
-use std::sync::{Arc, Mutex};
-use tauri::{AppHandle, Emitter, Manager, State};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Condvar, Mutex};
+use std::time::{Duration, Instant};
+use tauri::ipc::Channel;
+use tauri::{AppHandle, Manager, State};
 
 pub struct PtyHandle {
     writer: Box<dyn Write + Send>,
     master: Box<dyn MasterPty + Send>,
     child: Box<dyn portable_pty::Child + Send>,
+    flow: Arc<FlowControl>,
+}
+
+/// Same thresholds as VS Code's pty host (`FlowControlConstants`), in UTF-16 chars.
+const HIGH_WATERMARK_CHARS: usize = 100_000;
+const LOW_WATERMARK_CHARS: usize = 5_000;
+/// A consumer that stops acknowledging (reloaded webview, lost acks) must not wedge the shell.
+const MAX_PAUSE: Duration = Duration::from_secs(5);
+/// How often a terminal's shell is checked for exit (see `terminal_spawn`).
+const EXIT_POLL_INTERVAL: Duration = Duration::from_millis(250);
+
+/// Back-pressure between the PTY reader and xterm: the reader pauses while more than
+/// `HIGH_WATERMARK_CHARS` are unacknowledged and resumes below `LOW_WATERMARK_CHARS`.
+#[derive(Default)]
+pub struct FlowControl {
+    unacked: Mutex<usize>,
+    resume: Condvar,
+    closed: AtomicBool,
+}
+
+impl FlowControl {
+    fn sent(&self, chars: usize) {
+        if let Ok(mut unacked) = self.unacked.lock() {
+            *unacked += chars;
+        }
+    }
+
+    fn ack(&self, chars: usize) {
+        if let Ok(mut unacked) = self.unacked.lock() {
+            *unacked = unacked.saturating_sub(chars);
+            if *unacked <= LOW_WATERMARK_CHARS {
+                self.resume.notify_all();
+            }
+        }
+    }
+
+    fn close(&self) {
+        self.closed.store(true, Ordering::Relaxed);
+        self.resume.notify_all();
+    }
+
+    /// Blocks the reader while the consumer is behind; gives up after `max_pause`.
+    fn wait_for_capacity(&self, max_pause: Duration) {
+        let Ok(mut unacked) = self.unacked.lock() else {
+            return;
+        };
+        let deadline = Instant::now() + max_pause;
+        while *unacked > HIGH_WATERMARK_CHARS && !self.closed.load(Ordering::Relaxed) {
+            let Some(remaining) = deadline.checked_duration_since(Instant::now()) else {
+                *unacked = 0;
+                return;
+            };
+            match self.resume.wait_timeout(unacked, remaining) {
+                Ok((guard, _)) => unacked = guard,
+                Err(_) => return,
+            }
+        }
+    }
+}
+
+/// Incremental UTF-8 decoding for PTY chunks: a multi-byte character split across
+/// two reads is held back instead of being turned into U+FFFD on both sides.
+#[derive(Default)]
+struct Utf8Stream {
+    pending: Vec<u8>,
+}
+
+impl Utf8Stream {
+    fn incomplete_tail_len(bytes: &[u8]) -> usize {
+        for back in 1..=bytes.len().min(3) {
+            let byte = bytes[bytes.len() - back];
+            if byte & 0xC0 == 0x80 {
+                continue; // continuation byte, keep looking for the lead byte
+            }
+            let needed = match byte {
+                0xF0..=0xFF => 4,
+                0xE0..=0xEF => 3,
+                0xC0..=0xDF => 2,
+                _ => 1,
+            };
+            return if needed > back { back } else { 0 };
+        }
+        0
+    }
+
+    fn decode(&mut self, chunk: &[u8]) -> String {
+        self.pending.extend_from_slice(chunk);
+        let keep = Self::incomplete_tail_len(&self.pending);
+        let ready = self.pending.len() - keep;
+        let text = String::from_utf8_lossy(&self.pending[..ready]).into_owned();
+        self.pending.drain(..ready);
+        text
+    }
+
+    fn finish(&mut self) -> String {
+        let text = String::from_utf8_lossy(&self.pending).into_owned();
+        self.pending.clear();
+        text
+    }
+}
+
+/// Per-terminal output stream delivered only to the webview that spawned the terminal;
+/// `exit` is always the last message.
+#[derive(Debug, Clone, Serialize)]
+#[serde(tag = "kind", rename_all = "camelCase")]
+pub enum TerminalEvent {
+    Data { data: String },
+    Exit {
+        #[serde(rename = "exitCode")]
+        exit_code: i32,
+    },
 }
 
 pub struct TerminalStore {
@@ -23,18 +137,6 @@ impl TerminalStore {
             next_id: Mutex::new(1),
         }
     }
-}
-
-#[derive(Debug, Clone, Serialize)]
-struct TerminalDataEvent {
-    terminal_id: u32,
-    data: String,
-}
-
-#[derive(Debug, Clone, Serialize)]
-struct TerminalExitEvent {
-    terminal_id: u32,
-    exit_code: i32,
 }
 
 pub(crate) fn resolve_windows_shell() -> String {
@@ -91,7 +193,7 @@ fn resolve_git_bash() -> Option<String> {
         .map(|path| path.to_string_lossy().to_string())
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 #[allow(
     clippy::too_many_lines,
     clippy::needless_pass_by_value,
@@ -106,6 +208,7 @@ pub fn terminal_spawn(
     env: Option<HashMap<String, String>>,
     cols: Option<u16>,
     rows: Option<u16>,
+    on_event: Channel<TerminalEvent>,
 ) -> Result<u32, String> {
     let pty_system = native_pty_system();
 
@@ -157,6 +260,7 @@ pub fn terminal_spawn(
                         env,
                         cols,
                         rows,
+                        on_event,
                     );
                 }
             }
@@ -262,6 +366,7 @@ pub fn terminal_spawn(
         id
     };
 
+    let flow = Arc::new(FlowControl::default());
     {
         let mut terminals = state.terminals.lock().map_err(|e| e.to_string())?;
         terminals.insert(
@@ -270,63 +375,100 @@ pub fn terminal_spawn(
                 writer,
                 master: pair.master,
                 child,
+                flow: Arc::clone(&flow),
             },
         );
     }
 
     let terminal_id = id;
     let state_clone = state.inner().clone();
+    drop(app);
+
+    // ConPTY keeps the output pipe open after the shell exits until the pseudoconsole is
+    // closed, so EOF alone never reports `exit`. The waiter records the real exit code and
+    // drops the PTY (closing ConPTY); the reader then drains what is left and sends `exit`.
+    let exit_slot: Arc<Mutex<Option<i32>>> = Arc::new(Mutex::new(None));
+    {
+        let state = state.inner().clone();
+        let exit_slot = Arc::clone(&exit_slot);
+        std::thread::spawn(move || loop {
+            std::thread::sleep(EXIT_POLL_INTERVAL);
+            let Ok(mut terminals) = state.terminals.lock() else {
+                return;
+            };
+            let Some(handle) = terminals.get_mut(&terminal_id) else {
+                return; // killed or already reaped by the reader
+            };
+            if let Ok(Some(status)) = handle.child.try_wait() {
+                if let Ok(mut slot) = exit_slot.lock() {
+                    *slot = Some(i32::try_from(status.exit_code()).unwrap_or(-1));
+                }
+                let handle = terminals.remove(&terminal_id);
+                drop(terminals);
+                drop(handle); // closes the PTY master -> reader reaches EOF
+                return;
+            }
+        });
+    }
+
     std::thread::spawn(move || {
         let mut buf = [0u8; 8192];
+        let mut decoder = Utf8Stream::default();
+        let mut consumer_gone = false;
         loop {
             match reader.read(&mut buf) {
                 Ok(n) if n > 0 => {
-                    let text = String::from_utf8_lossy(&buf[..n]).to_string();
-                    let _ = app.emit(
-                        "terminal-data",
-                        TerminalDataEvent {
-                            terminal_id,
-                            data: text,
-                        },
-                    );
+                    let text = decoder.decode(&buf[..n]);
+                    if text.is_empty() {
+                        continue;
+                    }
+                    flow.sent(text.encode_utf16().count());
+                    if on_event.send(TerminalEvent::Data { data: text }).is_err() {
+                        consumer_gone = true; // the spawning webview is gone
+                        break;
+                    }
+                    flow.wait_for_capacity(MAX_PAUSE);
                 }
                 Ok(_) | Err(_) => break,
             }
         }
+        let rest = decoder.finish();
+        if !rest.is_empty() {
+            let _ = on_event.send(TerminalEvent::Data { data: rest });
+        }
 
-        let exit_code = {
-            let Ok(mut terminals) = state_clone.terminals.lock() else {
-                let _ = app.emit(
-                    "terminal-exit",
-                    TerminalExitEvent {
-                        terminal_id,
-                        exit_code: -1,
-                    },
-                );
-                return;
-            };
-            let code = if let Some(handle) = terminals.get_mut(&terminal_id) {
-                match handle.child.try_wait() {
-                    Ok(Some(status)) => i32::from(!status.success()),
-                    _ => 0,
-                }
-            } else {
-                0
-            };
-            terminals.remove(&terminal_id);
-            code
-        };
-
-        let _ = app.emit(
-            "terminal-exit",
-            TerminalExitEvent {
-                terminal_id,
-                exit_code,
-            },
-        );
+        // Reap outside the store lock. No handle means the waiter already recorded the
+        // exit code (and dropped the PTY) or the terminal was killed.
+        let handle = state_clone
+            .terminals
+            .lock()
+            .ok()
+            .and_then(|mut terminals| terminals.remove(&terminal_id));
+        let recorded = || exit_slot.lock().ok().and_then(|slot| *slot).unwrap_or(0);
+        let exit_code = handle.map_or_else(recorded, |mut handle| {
+            if consumer_gone {
+                let _ = handle.child.kill();
+            }
+            handle
+                .child
+                .wait()
+                .map_or(-1, |status| i32::try_from(status.exit_code()).unwrap_or(-1))
+        });
+        let _ = on_event.send(TerminalEvent::Exit { exit_code });
     });
 
     Ok(id)
+}
+
+/// xterm consumed `char_count` UTF-16 chars of output (VS Code `acknowledgeDataEvent`).
+#[tauri::command]
+#[allow(clippy::needless_pass_by_value)]
+pub fn terminal_ack(state: State<'_, Arc<TerminalStore>>, terminal_id: u32, char_count: usize) {
+    if let Ok(terminals) = state.terminals.lock() {
+        if let Some(handle) = terminals.get(&terminal_id) {
+            handle.flow.ack(char_count);
+        }
+    }
 }
 
 #[tauri::command]
@@ -387,6 +529,7 @@ pub fn terminal_kill(state: State<'_, Arc<TerminalStore>>, terminal_id: u32) -> 
     let mut handle = terminals
         .remove(&terminal_id)
         .ok_or_else(|| format!("Terminal {terminal_id} not found"))?;
+    handle.flow.close();
 
     handle
         .child
@@ -672,4 +815,71 @@ fi
         .map_err(|e| format!("Failed to write .zlogin: {e}"))?;
 
     Ok(zdotdir.to_string_lossy().to_string())
+}
+
+#[cfg(test)]
+mod stream_tests {
+    use super::*;
+
+    #[test]
+    fn events_serialize_with_the_frontend_field_names() {
+        let exit = serde_json::to_value(TerminalEvent::Exit { exit_code: 3 }).unwrap();
+        assert_eq!(exit, serde_json::json!({ "kind": "exit", "exitCode": 3 }));
+        let data = serde_json::to_value(TerminalEvent::Data { data: "x".into() }).unwrap();
+        assert_eq!(data, serde_json::json!({ "kind": "data", "data": "x" }));
+    }
+
+    #[test]
+    fn utf8_split_across_chunks_is_reassembled() {
+        let bytes = "中文输出".as_bytes();
+        let mut stream = Utf8Stream::default();
+        let mut text = String::new();
+        // Split inside every multi-byte character.
+        for chunk in bytes.chunks(2) {
+            text.push_str(&stream.decode(chunk));
+        }
+        text.push_str(&stream.finish());
+        assert_eq!(text, "中文输出");
+        assert!(!text.contains('\u{FFFD}'));
+    }
+
+    #[test]
+    fn invalid_bytes_are_still_replaced() {
+        let mut stream = Utf8Stream::default();
+        assert_eq!(stream.decode(b"a\xffb"), "a\u{FFFD}b");
+        assert_eq!(stream.decode(b"\xe4\xb8"), "");
+        assert_eq!(stream.finish(), "\u{FFFD}");
+    }
+
+    #[test]
+    fn flow_control_pauses_until_acknowledged() {
+        let flow = Arc::new(FlowControl::default());
+        flow.sent(HIGH_WATERMARK_CHARS + 1);
+        let waiter = {
+            let flow = Arc::clone(&flow);
+            std::thread::spawn(move || {
+                let started = Instant::now();
+                flow.wait_for_capacity(Duration::from_secs(10));
+                started.elapsed()
+            })
+        };
+        std::thread::sleep(Duration::from_millis(100));
+        flow.ack(HIGH_WATERMARK_CHARS);
+        let waited = waiter.join().unwrap();
+        assert!(waited >= Duration::from_millis(90) && waited < Duration::from_secs(5));
+    }
+
+    #[test]
+    fn flow_control_gives_up_after_max_pause_and_on_close() {
+        let flow = FlowControl::default();
+        flow.sent(HIGH_WATERMARK_CHARS * 2);
+        let started = Instant::now();
+        flow.wait_for_capacity(Duration::from_millis(50));
+        assert!(started.elapsed() < Duration::from_secs(2));
+        assert_eq!(*flow.unacked.lock().unwrap(), 0);
+
+        flow.sent(HIGH_WATERMARK_CHARS * 2);
+        flow.close();
+        flow.wait_for_capacity(Duration::from_secs(10));
+    }
 }

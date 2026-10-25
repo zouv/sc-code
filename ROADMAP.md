@@ -37,7 +37,7 @@
 | S9 | P1 | ~~仓库布局、源码/生成物Git边界与首次提交~~ | ✅ 2026-10-18；干净检出验收通过，提交/推送记录以Git为准 |
 | S6 | P2 | 扩展 API/服务/许可矩阵、性能基准与新特性 | 待开发 |
 | S10a | P0 | ~~真实 Node 扩展宿主：bundle、Rust 监管、PersistentProtocol/WS、工作台 `IExtensionHost`、磁盘扩展先行注册、开关~~ | ✅ 2026-10-19；实验开关，默认关闭 |
-| S10b | P0 | 真实宿主全量验收：VAC/Claude Code 等第三方扩展、内置扩展矩阵、多窗口宿主隔离、异常恢复 | 待开发 |
+| S10b | P0 | 真实宿主全量验收：VAC/Claude Code 等第三方扩展、内置扩展矩阵、多窗口宿主隔离、异常恢复 | 待开发；实测真实宿主未注册扩展贡献命令（typescript/emmet 等 MISSING），旧宿主同样缺（2026-10-25） |
 | S10c | P1 | ~~设置/UI 状态迁到 profile SQLite + IndexedDB 一次性迁移~~ | ✅ 2026-10-19 |
 | S10d | P1 | ~~Go agent 懒启动、WASM 运行时懒初始化、前端分包、性能基线脚本、IPC 桥修复、依赖清理~~ | ✅ 2026-10-19 |
 | S10e | P0 | ~~修复 Release 黑屏（分包循环 TDZ）：恢复 base/platform/editor 单一 core，仅拆 terminal；新增 `smoke:dist` 生产包 headless 冒烟并接入 CI~~ | ✅ 2026-10-19 |
@@ -48,6 +48,11 @@
 | S15 | P0 | ~~v0.1.2 发布链路：版本号同步、Debug/Release 打包、隔离 profile 冒烟、GitHub prerelease 上传~~ | ✅ 2026-10-20；setup + unpack zip 均已上传 |
 | S16 | P1 | ~~桌面壳体验：关于对话框图标、标题栏应用图标置左、Windows 任务栏最近文件夹/工作空间跳转列表与单实例转发~~ | ✅ 2026-10-21；Rust 单测与静态回归通过，GUI 实跑待验收 |
 | S17 | P1 | ~~D 版图标接入、版本号 0.2.0、仓库本机路径清理与截图来源清单修复~~ | ✅ 2026-10-22；setup + unpack zip 已上传 GitHub prerelease |
+| S18 | P0 | ~~安全面收紧：webview 独立来源、IPC 来源守卫、`git_run` 收紧、asset 授权收窄~~ | ✅ 2026-10-25；dev 实跑 + CDP 验证，Release 包冒烟随 S19；命令面收敛并入 S22 |
+| S19 | P1 | ~~性能快修：重活命令移出主线程、文件二进制 IPC、搜索正确性与取消、存储批量写、事件定向~~ | ✅ 2026-10-25；另修复全局搜索失效、终端乱码/退出码、监听丢新建、回收站；dev 实跑验证 |
+| S20 | P0 | ~~真实宿主转正前置：`ICustomEditorService`、Node 调试服务（executable 适配器）~~ | ✅ 2026-10-25；宿主 stdio 排空修复；扩展注册缺口归 S10b |
+| S21 | P1 | ~~体验缺口：保存参与者、面包屑/Outline 服务、关窗拦截、CLI 打开路径~~ | ✅ 2026-10-25；Explorer 的 Outline 面板与 `--wait` 未做 |
+| S22 | P2 | ~~收敛：无消费者的 scCode 桥接服务加载、CUSTOM 标记~~ | ✅ 2026-10-25（部分）；源码文件按来源清单保留，仅解除引用 |
 
 ## 移植验收矩阵
 | 兼容场景 | 当前证据 | 尚待验收 |

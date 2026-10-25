@@ -315,7 +315,7 @@ impl TaskDefinition {
 }
 
 /// Auto-detect tasks (npm scripts, cargo targets, make targets) in a workspace.
-#[tauri::command]
+#[tauri::command(async)]
 #[allow(clippy::needless_pass_by_value)]
 #[allow(clippy::unnecessary_wraps)]
 pub fn tasks_detect(workspace: String) -> Result<Vec<DetectedTask>, String> {
@@ -337,7 +337,7 @@ pub fn tasks_detect(workspace: String) -> Result<Vec<DetectedTask>, String> {
 }
 
 /// Parse `.vscode/tasks.json` from a workspace directory.
-#[tauri::command]
+#[tauri::command(async)]
 #[allow(clippy::needless_pass_by_value)]
 pub fn tasks_parse_config(workspace: String) -> Result<Vec<TaskDefinition>, String> {
     let tasks_path = std::path::Path::new(&workspace)

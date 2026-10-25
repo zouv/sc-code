@@ -153,9 +153,8 @@ export class UntitledTextEditorModel extends BaseTextEditorModel implements IUnt
 		readonly resource: URI,
 		readonly hasAssociatedFilePath: boolean,
 		private readonly initialValue: string | undefined,
-		// [CUSTOM-BEGIN] CUSTOM-20261017-006 - `false` 时初始内容只作基线，不把标签标成未保存
+		// ScCode: `false` 时初始内容只作基线，不把标签标成未保存
 		private readonly initialDirtyState: boolean | undefined,
-		// [CUSTOM-END] CUSTOM-20261017-006
 		private preferredLanguageId: string | undefined,
 		private preferredEncoding: string | undefined,
 		@ILanguageService languageService: ILanguageService,
@@ -172,9 +171,8 @@ export class UntitledTextEditorModel extends BaseTextEditorModel implements IUnt
 	) {
 		super(modelService, languageService, languageDetectionService, accessibilityService);
 
-		// [CUSTOM-BEGIN] CUSTOM-20261017-006 - 允许调用方声明「初始内容不算未保存修改」
+		// ScCode: 允许调用方声明「初始内容不算未保存修改」
 		this.dirty = this.initialDirtyState ?? (this.hasAssociatedFilePath || !!this.initialValue);
-		// [CUSTOM-END] CUSTOM-20261017-006
 
 		// Make known to working copy service
 		this._register(this.workingCopyService.registerWorkingCopy(this));
@@ -400,10 +398,9 @@ export class UntitledTextEditorModel extends BaseTextEditorModel implements IUnt
 			}
 
 			// Untitled associated to file path are dirty right away as well as untitled with content
-			// [CUSTOM-BEGIN] CUSTOM-20261017-006 - `initialDirtyState:false` 的副本（如拖入文件）保持干净；
+			// ScCode: `initialDirtyState:false` 的副本（如拖入文件）保持干净；
 			// 真正从 backup 恢复出来的一定是未保存内容，仍然标脏
 			this.setDirty(hasBackup || (this.initialDirtyState ?? (this.hasAssociatedFilePath || !!this.initialValue)));
-			// [CUSTOM-END] CUSTOM-20261017-006
 
 			// If we have initial contents, make sure to emit this
 			// as the appropiate events to the outside.

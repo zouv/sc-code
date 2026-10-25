@@ -5,25 +5,24 @@
 
 import { loadNlsMessages } from './nls-loader.js';
 
-// [CUSTOM-BEGIN] CUSTOM-20261013-001 - 自定义模块挂载点（VSIX 安装等功能）
+// ScCode: 自定义模块挂载点（VSIX 安装等功能）
 // 必须在 workbench `create()` 之前完成导入：命令/菜单注册与 registerWorkbenchContribution2
 // 都依赖「创建前注册」。模块内部自带 __SC_CODE_TAURI__ 守卫，非 Tauri 环境不会注册任何东西。
 import './sc-code/vsix-install/vsixInstall.contribution.js';
-// [CUSTOM-END] CUSTOM-20261013-001
 
-// [CUSTOM-BEGIN] CUSTOM-20261014-001 - 补注册移植缺口 IAccessibleViewInformationService
+// ScCode: 补注册移植缺口 IAccessibleViewInformationService
 // 必须在任何 ViewPane 被创建之前注册，否则 `type: "tree"` 的扩展视图会在构造时抛
 // "TreeViewPane depends on UNKNOWN service accessibleViewInformationService"，容器打不开。
 import './sc-code/accessibility/accessibleViewInformationService.contribution.js';
-// [CUSTOM-END] CUSTOM-20261014-001
 
-// [CUSTOM-BEGIN] CUSTOM-20261015-003 - 启动时把磁盘扩展同步进当前 profile（dev/release origin 隔离修复）
+// ScCode: 启动时把磁盘扩展同步进当前 profile（dev/release origin 隔离修复）
 import './sc-code/extension-sync/extensionSync.contribution.js';
-// [CUSTOM-END] CUSTOM-20261015-003
 
-// [CUSTOM-BEGIN] CUSTOM-20261021-001 - 最近文件夹/工作区同步到 Windows 任务栏跳转列表
+// ScCode: 最近文件夹/工作区同步到 Windows 任务栏跳转列表
 import './sc-code/taskbar/recentJumpList.contribution.js';
-// [CUSTOM-END] CUSTOM-20261021-001
+
+// Confirm unsaved changes before a window closes (native CloseRequested asks this hook).
+import './sc-code/window-close/closeHandler.contribution.js';
 
 async function scCodeOpenFolder() {
 	try {
@@ -39,7 +38,7 @@ async function scCodeOpenFolder() {
 }
 (window as any).__sc_code_openFolder = scCodeOpenFolder;
 
-// [CUSTOM-BEGIN] CUSTOM-20261013-004 - 支持文件夹与 .code-workspace 的 URL 路由
+// ScCode: 支持文件夹与 .code-workspace 的 URL 路由
 function navigateToWorkspace(uri: string, type: 'folder' | 'workspace') {
 	const url = new URL(window.location.href);
 	const parameter = type === 'folder' ? 'folder' : 'workspace';
@@ -52,7 +51,6 @@ function navigateToWorkspace(uri: string, type: 'folder' | 'workspace') {
 function navigateToFolder(folderUri: string) {
 	navigateToWorkspace(folderUri, 'folder');
 }
-// [CUSTOM-END] CUSTOM-20261013-004
 
 async function boot() {
 	// Load locale translations before any VS Code module imports
@@ -77,35 +75,6 @@ async function boot() {
 		})
 	]);
 
-	// ScCode Rust bridge initialization — make services available before workbench creation
-	if ((globalThis as any).__SC_CODE_TAURI__) {
-		const {
-			ScCodeEditorBridge,
-			ScCodeSyntaxService,
-			ScCodeGitService,
-			ScCodeSearchService,
-			ScCodeSettingsService,
-			ScCodeThemeService,
-			ScCodeExtensionService,
-			ScCodeKeymapService,
-			ScCodeFileSystemProvider
-		} = await import('./vs/platform/scCode/common/scCodeServices.js');
-
-		(globalThis as any).__SC_CODE_SERVICES__ = {
-			editor: ScCodeEditorBridge.getInstance(),
-			syntax: new ScCodeSyntaxService(),
-			git: new ScCodeGitService(),
-			search: new ScCodeSearchService(),
-			settings: new ScCodeSettingsService(),
-			theme: new ScCodeThemeService(),
-			extensions: new ScCodeExtensionService(),
-			keymap: new ScCodeKeymapService(),
-			fileSystem: new ScCodeFileSystemProvider()
-		};
-
-		console.log('[ScCode] Rust bridge services initialized');
-	}
-
 	const { create } = await import('./vs/workbench/browser/web.factory.js');
 	const { URI } = await import('./vs/base/common/uri.js');
 
@@ -114,19 +83,30 @@ async function boot() {
 	}
 
 	const urlParams = new URLSearchParams(window.location.search);
-	// [CUSTOM-BEGIN] CUSTOM-20261013-004 - 初始化支持单文件夹和多根工作区
+	// ScCode: 初始化支持单文件夹和多根工作区
 	const folderParam = urlParams.get('folder');
 	const workspaceParam = urlParams.get('workspace');
+	// Command line: `ScCode.exe <file>`, `-g <file>:<line>:<col>` → `?file=<uri>&line=&column=`.
+	const fileParam = urlParams.get('file');
+	const lineParam = Number.parseInt(urlParams.get('line') ?? '', 10);
+	const columnParam = Number.parseInt(urlParams.get('column') ?? '', 10);
 	const activeWorkspaceParam = workspaceParam || folderParam;
 
 	let workspace: any = undefined;
+	let fileToOpen: any = undefined;
 	if (activeWorkspaceParam) {
 		const parsed = URI.parse(activeWorkspaceParam);
 		if (parsed.scheme === 'file' || parsed.scheme === 'vscode-remote' || parsed.scheme === 'vscode-vfs') {
 			workspace = workspaceParam ? { workspaceUri: parsed } : { folderUri: parsed };
 		}
+	} else if (fileParam) {
+		const parsed = URI.parse(fileParam);
+		if (parsed.scheme === 'file') {
+			const { dirname } = await import('./vs/base/common/resources.js');
+			fileToOpen = parsed;
+			workspace = { folderUri: dirname(parsed) };
+		}
 	}
-	// [CUSTOM-END] CUSTOM-20261013-004
 
     if ((globalThis as any).__SC_CODE_TAURI__ && workspace) {
         const { invoke } = await import('@tauri-apps/api/core');
@@ -152,12 +132,12 @@ async function boot() {
         }
     }
 
-	// [CUSTOM-BEGIN] CUSTOM-20261015-004 - About 对话框显示 ScCode 版本号（而非 VSCode 1.110.0）
+	// ScCode: About 对话框显示 ScCode 版本号（而非 VSCode 1.110.0）
 	// ⚠️ productConfiguration.version 必须保持 '1.110.0'：它同时用于扩展 engines.vscode 兼容性校验
 	//（webExtensionsScannerService → validateExtensionManifest），改成 0.1.3-custom.4 会让
 	// VAC(^1.85.0)/Claude Code(^1.94.0) 被判 DisabledByInvalidExtension，扩展视图全部失效。
 	// 真正的 ScCode 版本号放到全局 __SC_CODE_VERSION__，由 About 对话框读取。
-	let scCodeVersion = '0.2.0';
+	let scCodeVersion = '0.3.0';
 	if ((globalThis as any).__SC_CODE_TAURI__) {
 		try {
 			const { getVersion } = await import('@tauri-apps/api/app');
@@ -167,7 +147,18 @@ async function boot() {
 		}
 	}
 	(globalThis as any).__SC_CODE_VERSION__ = scCodeVersion;
-	// [CUSTOM-END] CUSTOM-20261015-004
+
+	// Extension webviews are served from a separate loopback origin (native webview host),
+	// so their iframes cannot reach this window or the workbench IPC. Read before create():
+	// the environment service resolves the webview endpoint synchronously.
+	if ((globalThis as any).__SC_CODE_TAURI__) {
+		try {
+			const { invoke } = await import('@tauri-apps/api/core');
+			(globalThis as any).__SC_CODE_WEBVIEW_ORIGIN__ = await invoke<string>('webview_host_origin');
+		} catch (error) {
+			console.error('[ScCode] Isolated webview host unavailable; extension webviews are disabled:', error);
+		}
+	}
 
 	const options: any = {
 		initialColorTheme: {
@@ -181,20 +172,18 @@ async function boot() {
 			workspace,
 			trusted: true,
 			open: async (_workspace: any, _options: any) => {
-				// [CUSTOM-BEGIN] CUSTOM-20261013-004 - provider 可重载打开 .code-workspace
+				// ScCode: provider 可重载打开 .code-workspace
 				if (_workspace && 'folderUri' in _workspace) {
 					navigateToWorkspace(_workspace.folderUri.toString(), 'folder');
 				} else if (_workspace && 'workspaceUri' in _workspace) {
 					navigateToWorkspace(_workspace.workspaceUri.toString(), 'workspace');
 				}
-				// [CUSTOM-END] CUSTOM-20261013-004
 				return true;
 			}
 		},
 		windowIndicator: {
-			// [CUSTOM-BEGIN] CUSTOM-20261013-004 - 标题使用当前工作区 URI
+			// ScCode: 标题使用当前工作区 URI
 			label: activeWorkspaceParam ? decodeURIComponent(activeWorkspaceParam.split('/').pop() || 'ScCode') : 'ScCode',
-			// [CUSTOM-END] CUSTOM-20261013-004
 			tooltip: 'ScCode — Tauri Code Editor',
 			command: undefined
 		},
@@ -216,6 +205,8 @@ async function boot() {
 			'workbench.iconTheme': 'vs-seti',
 			'workbench.colorTheme': 'Dark Modern',
 			'editor.experimentalGpuAcceleration': 'auto',
+			// Desktop default (the web workbench defaults to autosave after 1s).
+			'files.autoSave': 'off',
 			'workbench.productIconTheme': 'Default',
 			'workbench.editor.showTabs': 'multiple',
 			'workbench.editor.enablePreview': false,
@@ -291,6 +282,10 @@ async function boot() {
 		create(document.body, options);
 	}
 
+	if (fileToOpen) {
+		openFileFromCommandLine(fileToOpen, lineParam, columnParam);
+	}
+
 	setupTauriExternalOpener();
 	setupMenuActions();
 	setupWindowStateSave();
@@ -299,12 +294,36 @@ async function boot() {
 	updateNativeMenuLabels();
 
 	console.log(
-		// [CUSTOM-BEGIN] CUSTOM-20261013-004 - 诊断输出覆盖文件夹及 workspace URI
+		// ScCode: 诊断输出覆盖文件夹及 workspace URI
 		'[ScCode] Workbench created' + (activeWorkspaceParam ? ` (workspace: ${activeWorkspaceParam})` : ' (no workspace)'),
-		// [CUSTOM-END] CUSTOM-20261013-004
 		'workspace:',
 		workspace
 	);
+}
+
+/** Opens a file passed on the command line once the workbench command service is ready. */
+function openFileFromCommandLine(file: any, line: number, column: number) {
+	const isPosition = Number.isFinite(line) && line > 0;
+	const attempt = (tries: number) => {
+		const commandService = (window as any).__sc_code_commandService;
+		if (!commandService) {
+			if (tries > 0) {
+				setTimeout(() => attempt(tries - 1), 250);
+			}
+			return;
+		}
+		const position = {
+			startLineNumber: line,
+			startColumn: Number.isFinite(column) && column > 0 ? column : 1
+		};
+		// `vscode.open` drops the options argument; the internal command takes
+		// `[column, options]` like the extension API converter does.
+		const options = isPosition ? { selection: { ...position, endLineNumber: position.startLineNumber, endColumn: position.startColumn } } : undefined;
+		commandService.executeCommand('_workbench.open', file, [undefined, options]).catch((error: unknown) => {
+			console.error('[ScCode] Failed to open command line file:', error);
+		});
+	};
+	attempt(120);
 }
 
 function setupTauriExternalOpener() {

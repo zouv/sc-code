@@ -333,7 +333,6 @@ class FileAccessImpl {
             const encoded = encodeURIComponent(uri.fsPath);
             return URI.parse(platform.isWindows ? `https://asset.localhost/${encoded}` : `asset://localhost/${encoded}`);
         }
-		// [CUSTOM-END] CUSTOM-20261015-001
 
 		// Convert to `vscode-file` resource..
 		if (

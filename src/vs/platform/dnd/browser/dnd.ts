@@ -89,7 +89,7 @@ export function extractEditorsDropData(e: DragEvent): Array<IDraggedResourceEdit
 			}
 		}
 
-		// [CUSTOM-BEGIN] CUSTOM-20261017-005 - OS 文件拖入的「真实路径」来源：text/uri-list
+		// ScCode: OS 文件拖入的「真实路径」来源：text/uri-list
 		// 背景：ScCode 关掉了 Tauri 原生拖放（`dragDropEnabled:false`，否则 webview 内 HTML5 拖拽全哑），
 		// 于是 OS 文件拖入时上面那条 `getPathForFile()`（Electron `webUtils`，只在 Electron 里存在）恒为
 		// 空，只剩 `extractFilesDropData()` 那条「读内容当未命名副本」的 web 退路。
@@ -100,7 +100,6 @@ export function extractEditorsDropData(e: DragEvent): Array<IDraggedResourceEdit
 		for (const uri of extractFileUrisFromDragEvent(e)) {
 			editors.push({ resource: uri, isExternal: true, allowWorkspaceOpen: true });
 		}
-		// [CUSTOM-END] CUSTOM-20261017-005
 
 		// Check for CodeFiles transfer
 		const rawCodeFiles = e.dataTransfer.getData(CodeDataTransfers.FILES);
@@ -155,12 +154,11 @@ export async function extractEditorsAndFilesDropData(
 
 	// Web: Check for file transfer
 	if (e.dataTransfer && isWeb && containsDragType(e, DataTransfers.FILES)) {
-		// [CUSTOM-BEGIN] CUSTOM-20261017-005 - 已在 extractEditorsDropData 里从 text/uri-list 拿到真实路径
+		// ScCode: 已在 extractEditorsDropData 里从 text/uri-list 拿到真实路径
 		// （`isExternal` 的 file: 资源）时，别再读文件内容造一份未命名副本，否则同一次拖入会开出两个编辑器。
 		if (editors.length > 0) {
 			return editors;
 		}
-		// [CUSTOM-END] CUSTOM-20261017-005
 		const files = e.dataTransfer.items;
 		if (files) {
 			const instantiationService = accessor.get(IInstantiationService);
@@ -204,10 +202,9 @@ interface IFileTransferData {
 	resource: URI;
 	isDirectory?: boolean;
 	contents?: VSBuffer;
-	// [CUSTOM-BEGIN] CUSTOM-20261017-006 - 这些内容只是拖入文件的快照，不是未保存修改
+	// ScCode: 这些内容只是拖入文件的快照，不是未保存修改
 	/** `false` = 以「干净副本」打开（拖入文件拿不到路径时的退路），用户编辑后才算脏 */
 	initialDirtyState?: boolean;
-	// [CUSTOM-END] CUSTOM-20261017-006
 }
 
 async function extractFilesDropData(accessor: ServicesAccessor, event: DragEvent): Promise<IFileTransferData[]> {
@@ -504,7 +501,7 @@ export function getPathForFile(file: File): string | undefined {
 	return undefined;
 }
 
-// [CUSTOM-BEGIN] CUSTOM-20261017-005 - 从拖拽事件里取 OS 文件的真实路径（text/uri-list，见 extractEditorsDropData）
+// ScCode: 从拖拽事件里取 OS 文件的真实路径（text/uri-list，见 extractEditorsDropData）
 /**
  * 拖拽事件里的 `text/uri-list`（如 `file:///c%3A/Users/a.code-workspace`）→ `file:` URI 列表。
  * 只在 Tauri/webview 里作为「Electron `getPathForFile` 的替代来源」；拿不到时返回空数组，
@@ -545,6 +542,5 @@ export function extractFileUrisFromDragEvent(e: DragEvent): URI[] {
 
 	return uris;
 }
-// [CUSTOM-END] CUSTOM-20261017-005
 
 //#endregion

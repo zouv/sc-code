@@ -1,7 +1,9 @@
 # 会话接力 · ScCode
 
-- 快照：2026-10-22；分支 `main`；**无进行中任务**。
-- 当前版本：**0.2.0**（已打包并发布为 GitHub prerelease）。
+- 快照：2026-10-25；分支 `main`；**无进行中任务**（S18–S22 已完成，成果见 `CHANGELOG.md` 未发布区与 `ROADMAP.md`）。
+- 本轮验证：`npm run typecheck`、`npm test`（77/77）、`npm run ext-host:build`、`cargo test --offline -p sc-code -p sc-code-workspace -p sc-code-git --lib`（98+25+156 通过，1 个 `#[ignore]` 回收站真机用例）全部通过；S18–S21 均在隔离 `SC_CODE_HOME` 下用 CDP 实跑验证。
+- 本轮实跑环境备注：`.runtime/s18-smoke`、`s19`、`s20`、`s21`、`s21b`、`s21c` 为测试目录（不入库）；曾有一个无法结束的 `ScCode.exe` 僵尸进程（PID 82180，HandleCount=0）锁住 `.runtime/target/debug/ScCode.exe`，改用 `CARGO_TARGET_DIR=.runtime/target-s21` 完成构建与验证；重启机器后建议确认该进程已消失。
+- 当前版本：**0.3.0**（本轮源码版本；发布状态见下方发布记录）。
 - 最新发布：[v0.2.0](https://github.com/zouv/sc-code/releases/tag/v0.2.0)（GitHub prerelease）：
   - `ScCode_0.2.0_x64-setup.exe`（68,699,528 B）
   - `ScCode_0.2.0_x64-unpack.zip`（94,455,573 B）
@@ -9,12 +11,15 @@
 
 ## 下一步（未排期）
 
-1. 手工验收 S16 桌面壳体验：关于对话框图标；Windows 任务栏右键“Recent Folders / Recent Workspaces”；运行中点击跳转列表应转发到已运行实例并新开窗口；冷启动点击应直接以目标文件夹/工作区启动。
-2. 真实宿主全量验收（S10b）：VAC、Claude Code、VSIX 安装、树视图、webview、对话框、配置读取。
-3. 真实宿主 `MainThread*` 覆盖补齐：comments/timeline/browserView/externalUriOpener 尚未移植。
-4. 多窗口宿主隔离：`real_ext_host_start` 目前是应用级单进程。
-5. ESM 扩展热重载不完整；宿主随窗口 reload 重建后需验证。
-6. 其他协作者/克隆需重新拉取或 `git reset --hard origin/main`；旧历史 SHA 已失效。
+1. **打包冒烟**：`npm run desktop:package` 后按 `scripts/smoke-dist.cjs` 与隔离 profile 验证 Release 包内的 webview 隔离、搜索、终端、关窗询问、CLI `-g`（本轮只在 dev 构建里验证过）。
+2. 真实宿主（S10b）：扩展贡献命令在真实宿主下 MISSING（typescript/emmet/json 等），旧宿主同样缺；需先修扩展注册/激活链路，再验自定义编辑器与 Node 调试适配器。
+3. 剩余体验缺口：Explorer 的 Outline 视图面板（`contrib/outline` 未移植，面包屑已可用）、`--wait`（git `core.editor`）、`IWorkingCopyService.modifiedWorkingCopies` 在本移植中为空（关窗判断改用编辑器脏状态绕开）。
+4. 手工验收 S16 桌面壳体验：关于对话框图标；Windows 任务栏右键“Recent Folders / Recent Workspaces”；运行中点击跳转列表应转发到已运行实例并新开窗口；冷启动点击应直接以目标文件夹/工作区启动。
+5. 真实宿主全量验收（S10b）：VAC、Claude Code、VSIX 安装、树视图、webview、对话框、配置读取。
+6. 真实宿主 `MainThread*` 覆盖补齐：comments/timeline/browserView/externalUriOpener 尚未移植。
+7. 多窗口宿主隔离：`real_ext_host_start` 目前是应用级单进程。
+8. ESM 扩展热重载不完整；宿主随窗口 reload 重建后需验证。
+9. 其他协作者/克隆需重新拉取或 `git reset --hard origin/main`；旧历史 SHA 已失效。
 
 ## 最近验证（2026-10-22）
 
@@ -37,7 +42,7 @@
 - 通过：`cargo test --offline -p sc-code --lib taskbar`（4/4：参数解析、URI 校验、去重/标签、app URL）。
 - 通过：`cargo clippy --offline -p sc-code --lib` 对 `taskbar.rs` 无告警。
 - 实跑：隔离 `SC_CODE_HOME` 启动 Debug 桌面应用；截图确认标题栏应用图标位于最左侧（菜单之前）。关于对话框与任务栏跳转列表尚需按“下一步 1”做手工验收。
-- 注意：默认 profile 下同时运行旧 release 与 dev 会争用 `EBWebView` 数据目录；GUI 冒烟请使用独立 `SC_CODE_HOME`。新单实例锁按 profile 数据目录隔离。
+- 注意：此前 Tauri 丢弃窗口配置的 `dataDirectory`，所有 profile 共用默认 `%LOCALAPPDATA%\dev.sccode.app\EBWebView`；S18 起设置 `SC_CODE_HOME` 时 WebView 数据在该目录内。新单实例锁按 profile 数据目录隔离。
 
 ## 打包与发布
 

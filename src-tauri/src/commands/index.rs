@@ -682,7 +682,7 @@ impl IndexStore {
 }
 
 /// Build index for a directory
-#[tauri::command]
+#[tauri::command(async)]
 #[allow(clippy::needless_pass_by_value)]
 pub fn index_build(
     state: State<'_, Arc<IndexStore>>,
@@ -714,7 +714,7 @@ pub fn index_build(
 }
 
 /// Search the index
-#[tauri::command]
+#[tauri::command(async)]
 #[allow(clippy::needless_pass_by_value)]
 pub fn index_search(
     state: State<'_, Arc<IndexStore>>,
@@ -738,7 +738,7 @@ pub fn index_search(
 }
 
 /// Update index for changed files
-#[tauri::command]
+#[tauri::command(async)]
 #[allow(clippy::needless_pass_by_value)]
 pub fn index_update(
     state: State<'_, Arc<IndexStore>>,
@@ -765,14 +765,14 @@ pub fn index_update(
 }
 
 /// Get index statistics
-#[tauri::command]
+#[tauri::command(async)]
 #[allow(clippy::unnecessary_wraps, clippy::needless_pass_by_value)]
 pub fn index_stats(state: State<'_, Arc<IndexStore>>) -> Result<IndexStats, String> {
     Ok(state.index.stats())
 }
 
 /// Clear the index
-#[tauri::command]
+#[tauri::command(async)]
 #[allow(clippy::unnecessary_wraps, clippy::needless_pass_by_value)]
 pub fn index_clear(state: State<'_, Arc<IndexStore>>) -> Result<(), String> {
     state.index.clear();

@@ -34,6 +34,7 @@ esbuild.build({
 		'@vscode/windows-ca-certs',
 		'kerberos',
 		'vsda',
+		'@vscode/windows-process-tree',
 		'bufferutil',
 		'utf-8-validate',
 	],

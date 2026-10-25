@@ -617,7 +617,7 @@ export class UserSettings extends Disposable {
 	}
 
 	async loadConfiguration(): Promise<ConfigurationModel> {
-		// [CUSTOM-BEGIN] CUSTOM-20261013-005 - read user configuration from the current profile file
+		// ScCode: read user configuration from the current profile file
 		// Always load from the current profile's settings resource; Rust may hold stale data.
 		try {
 			const content = await this.fileService.readFile(this.userSettingsResource);
@@ -626,7 +626,6 @@ export class UserSettings extends Disposable {
 		} catch (_e) {
 			return ConfigurationModel.createEmptyModel(this.logService);
 		}
-		// [CUSTOM-END] CUSTOM-20261013-005
 	}
 
 	reparse(parseOptions?: ConfigurationParseOptions): ConfigurationModel {

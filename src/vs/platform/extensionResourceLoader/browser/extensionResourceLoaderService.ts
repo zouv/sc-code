@@ -42,7 +42,7 @@ class ExtensionResourceLoaderService extends AbstractExtensionResourceLoaderServ
 	}
 
 	async readExtensionResource(uri: URI): Promise<string> {
-		// [CUSTOM-BEGIN] CUSTOM-20261013-002 - ScCode(Tauri)：file:// 必须直接走 IFileService
+		// ScCode: ScCode(Tauri)：file:// 必须直接走 IFileService
 		// 根因：FileAccess.uriToBrowserUri 在 Tauri 下会把 file:// 改写成供 <img src>/fetch 用的
 		// 资源 URL（见 base/common/network.ts；CUSTOM-20261015-001 起为 Tauri 官方 asset 协议
 		// https://asset.localhost/<enc>，此前为自造的 sc-code-asset://）。但本方法紧接着按 scheme 分派，
@@ -53,7 +53,6 @@ class ExtensionResourceLoaderService extends AbstractExtensionResourceLoaderServ
 			const result = await this._fileService.readFile(uri);
 			return result.value.toString();
 		}
-		// [CUSTOM-END] CUSTOM-20261013-002
 
 		uri = FileAccess.uriToBrowserUri(uri);
 

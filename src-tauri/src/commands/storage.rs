@@ -79,6 +79,44 @@ impl StorageDb {
         Ok(items)
     }
 
+    /// Applies one flush of the workbench storage in a single transaction, in order:
+    /// inserts first, then deletes (VS Code never puts the same key in both).
+    /// Oversized entries are skipped and reported; the rest are still committed.
+    pub fn apply(&self, inserts: &[(String, String)], deletes: &[String]) -> Result<(), String> {
+        let mut rejected = Vec::new();
+        let mut conn = self.conn.lock().map_err(|e| e.to_string())?;
+        let tx = conn.transaction().map_err(|e| e.to_string())?;
+        {
+            let mut upsert = tx
+                .prepare_cached("INSERT OR REPLACE INTO kv_store (key, value) VALUES (?1, ?2)")
+                .map_err(|e| e.to_string())?;
+            for (key, value) in inserts {
+                if let Err(reason) = validate_entry(key, value) {
+                    rejected.push(format!("'{key}': {reason}"));
+                    continue;
+                }
+                upsert
+                    .execute([key, value])
+                    .map_err(|e| format!("Failed to set key '{key}': {e}"))?;
+            }
+            let mut delete = tx
+                .prepare_cached("DELETE FROM kv_store WHERE key = ?1")
+                .map_err(|e| e.to_string())?;
+            for key in deletes {
+                delete
+                    .execute([key])
+                    .map_err(|e| format!("Failed to delete key '{key}': {e}"))?;
+            }
+        }
+        tx.commit()
+            .map_err(|e| format!("Failed to commit storage update: {e}"))?;
+        if rejected.is_empty() {
+            Ok(())
+        } else {
+            Err(format!("Skipped storage entries: {}", rejected.join("; ")))
+        }
+    }
+
     pub fn set(&self, key: &str, value: &str) -> Result<(), String> {
         // SECURITY: Enforce size limits to prevent resource exhaustion (CWE-400)
         if key.len() > MAX_KEY_LENGTH {
@@ -107,7 +145,7 @@ impl StorageDb {
 }
 
 #[allow(clippy::needless_pass_by_value)]
-#[tauri::command]
+#[tauri::command(async)]
 pub fn storage_get(
     state: State<'_, Arc<StorageDb>>,
     key: String,
@@ -155,12 +193,39 @@ pub fn storage_set(
 }
 
 #[allow(clippy::needless_pass_by_value)]
-#[tauri::command]
+#[tauri::command(async)]
 pub fn storage_list(
     state: State<'_, Arc<StorageDb>>,
     prefix: String,
 ) -> Result<Vec<(String, String)>, String> {
     state.list_by_prefix(&prefix)
+}
+
+fn validate_entry(key: &str, value: &str) -> Result<(), String> {
+    if key.len() > MAX_KEY_LENGTH {
+        return Err(format!(
+            "key length exceeds maximum of {MAX_KEY_LENGTH} bytes (got {} bytes)",
+            key.len()
+        ));
+    }
+    if value.len() > MAX_VALUE_LENGTH {
+        return Err(format!(
+            "value length exceeds maximum of {MAX_VALUE_LENGTH} bytes (got {} bytes)",
+            value.len()
+        ));
+    }
+    Ok(())
+}
+
+/// Batched, transactional variant of `storage_set` / `storage_delete` for workbench flushes.
+#[allow(clippy::needless_pass_by_value)]
+#[tauri::command(async)]
+pub fn storage_apply(
+    state: State<'_, Arc<StorageDb>>,
+    inserts: Vec<(String, String)>,
+    deletes: Vec<String>,
+) -> Result<(), String> {
+    state.apply(&inserts, &deletes)
 }
 
 #[allow(clippy::needless_pass_by_value)]
@@ -175,6 +240,26 @@ pub fn storage_delete(state: State<'_, Arc<StorageDb>>, key: String) -> Result<(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn apply_is_transactional_and_skips_oversized_entries() {
+        let dir = tempfile::tempdir().unwrap();
+        let db = StorageDb::new(dir.path().join("s.db").to_str().unwrap()).unwrap();
+        db.set("gone", "1").unwrap();
+        db.apply(&[("a".into(), "1".into()), ("b".into(), "2".into())], &["gone".into()])
+            .unwrap();
+        assert_eq!(db.get("a").unwrap().as_deref(), Some("1"));
+        assert_eq!(db.get("b").unwrap().as_deref(), Some("2"));
+        assert_eq!(db.get("gone").unwrap(), None);
+
+        let huge = "x".repeat(MAX_VALUE_LENGTH + 1);
+        let error = db
+            .apply(&[("big".into(), huge), ("c".into(), "3".into())], &[])
+            .unwrap_err();
+        assert!(error.contains("'big'"));
+        assert_eq!(db.get("big").unwrap(), None);
+        assert_eq!(db.get("c").unwrap().as_deref(), Some("3"));
+    }
 
     #[test]
     fn escape_like_prefix_leaves_plain_text() {

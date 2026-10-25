@@ -10,17 +10,10 @@ import '../editor/editor.all.js';
 // ScCode: Register null stubs for stripped services (must be early)
 import './scCodeNullServices.js';
 
-// ScCode: Register Rust-backed bridge services as DI singletons
-import '../platform/scCode/browser/scCodeFileSystemProvider.js';
-import '../platform/scCode/browser/scCodeSearchProvider.js';
-import '../platform/scCode/browser/scCodeSCMProvider.js';
-import '../platform/scCode/browser/scCodeSyntaxService.js';
-import '../platform/scCode/browser/scCodeLspService.js';
-import '../platform/scCode/browser/scCodeDapService.js';
+// ScCode: Rust-backed remote service (the only bridge with consumers).
+// Other scCode bridge services were removed: nothing injected them; providers talk
+// to Rust through their own modules (file system, search, terminal, SCM).
 import '../platform/scCode/browser/scCodeRemoteService.js';
-import '../platform/scCode/common/scCodeThemeService.js';
-import '../platform/scCode/common/scCodeSettingsService.js';
-import '../platform/scCode/common/scCodeKeymapService.js';
 
 import './api/browser/extensionHost.contribution.js';
 import './browser/workbench.contribution.js';
@@ -251,6 +244,14 @@ import './contrib/url/browser/url.contribution.js';
 import './contrib/webview/browser/webview.contribution.js';
 import './contrib/webviewPanel/browser/webviewPanel.contribution.js';
 import './contrib/webviewView/browser/webviewView.contribution.js';
+// Custom Editors (extension `customEditors`; required by MainThreadWebviewManager)
+import './contrib/customEditor/browser/customEditor.contribution.js';
+// Code editor: editor feature instantiation, Outline view/breadcrumb symbols, save participants
+import './contrib/codeEditor/browser/editorFeatures.js';
+import './contrib/codeEditor/browser/outline/documentSymbolsOutline.js';
+import { SaveParticipantsContribution } from './contrib/codeEditor/browser/saveParticipants.js';
+import { registerWorkbenchContribution2, WorkbenchPhase } from './common/contributions.js';
+registerWorkbenchContribution2('workbench.contrib.saveParticipants', SaveParticipantsContribution, WorkbenchPhase.BlockRestore);
 
 // Image Preview
 import './contrib/imagePreview/browser/imagePreview.contribution.js';

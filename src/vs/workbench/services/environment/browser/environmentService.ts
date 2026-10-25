@@ -276,7 +276,14 @@ export class BrowserWorkbenchEnvironmentService implements IBrowserWorkbenchEnvi
 	@memoize
 	get webviewExternalEndpoint(): string {
 		if ((globalThis as any).__SC_CODE_TAURI__) {
-			return `${window.location.origin}/webview-pre/`;
+			// Extension webviews (allow-scripts + allow-same-origin) must not share the workbench
+			// origin. main.ts resolves the native loopback webview host before the workbench starts.
+			// Without it webviews fail closed instead of falling back to the app origin.
+			const isolatedOrigin = (globalThis as any).__SC_CODE_WEBVIEW_ORIGIN__;
+			if (typeof isolatedOrigin === 'string' && /^http:\/\/127\.0\.0\.1:\d+$/.test(isolatedOrigin)) {
+				return `${isolatedOrigin}/`;
+			}
+			return 'http://127.0.0.1:0/';
 		}
 
 		const endpoint =

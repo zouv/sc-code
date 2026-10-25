@@ -1,7 +1,7 @@
 [package]
 name = "sc-code"
 # [CUSTOM-BEGIN] CUSTOM-20261012-002 - custom 版本号（v0.1.3-custom.N）
-version = "0.2.0"
+version = "0.3.0"
 # [CUSTOM-END] CUSTOM-20261012-002
 description = "ScCode - A fast, open-source code editor"
 authors = ["ScCode contributors", "Siden Technologies Inc (original portions)"]

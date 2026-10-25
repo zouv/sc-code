@@ -110,6 +110,16 @@ fn read_handshake(stdout: ChildStdout, sender: std::sync::mpsc::Sender<Result<St
         .map(|_| line)
         .map_err(|e| format!("read extension host handshake: {e}"));
     let _ = sender.send(result);
+    // Keep draining stdout for the host's lifetime: its `console.log` output would
+    // otherwise fill the pipe (64 KiB) and block the host.
+    let mut rest = String::new();
+    loop {
+        rest.clear();
+        match reader.read_line(&mut rest) {
+            Ok(0) | Err(_) => break,
+            Ok(_) => log::info!("[ext-host stdout] {}", rest.trim_end()),
+        }
+    }
 }
 
 fn fail_with_stderr(child: &mut Child, error: String) -> String {
@@ -142,12 +152,23 @@ fn strip_verbatim(path: PathBuf) -> PathBuf {
     path
 }
 
+/// Spawning Node and waiting (up to 20 s) for its endpoint line must not run on the
+/// main thread, which drives the window event loop.
 #[tauri::command]
-pub fn real_ext_host_start(
+pub async fn real_ext_host_start(
     app: AppHandle,
     host: tauri::State<'_, std::sync::Arc<RealExtensionHost>>,
 ) -> Result<RealExtensionHostEndpoint, String> {
     let host = std::sync::Arc::clone(host.inner());
+    tauri::async_runtime::spawn_blocking(move || start_blocking(&app, &host))
+        .await
+        .map_err(|e| format!("extension host start task failed: {e}"))?
+}
+
+fn start_blocking(
+    app: &AppHandle,
+    host: &std::sync::Arc<RealExtensionHost>,
+) -> Result<RealExtensionHostEndpoint, String> {
     let _start_guard = host.start_lock.lock().map_err(|e| e.to_string())?;
 
     {
@@ -226,6 +247,16 @@ pub fn real_ext_host_start(
         ));
     }
 
+    // The host keeps writing diagnostics to stderr for its whole lifetime. An unread
+    // pipe fills up (64 KiB) and then blocks the host process indefinitely.
+    if let Some(stderr) = child.stderr.take() {
+        std::thread::spawn(move || {
+            for line in std::io::BufReader::new(stderr).lines().map_while(Result::ok) {
+                log::info!("[ext-host stderr] {line}");
+            }
+        });
+    }
+
     *host.child.lock().map_err(|e| e.to_string())? = Some(child);
     *host.endpoint.lock().map_err(|e| e.to_string())? = Some(endpoint.clone());
     log::info!(
@@ -236,7 +267,7 @@ pub fn real_ext_host_start(
     Ok(endpoint)
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn real_ext_host_stop(host: tauri::State<'_, std::sync::Arc<RealExtensionHost>>) {
     host.shutdown();
 }

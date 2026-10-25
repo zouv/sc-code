@@ -22,14 +22,13 @@ export interface INewUntitledTextEditorOptions {
 	 */
 	initialValue?: string;
 
-	// [CUSTOM-BEGIN] CUSTOM-20261017-006 - 允许「初始内容只作基线」的副本以干净状态打开
+	// ScCode: 允许「初始内容只作基线」的副本以干净状态打开
 	/**
 	 * Whether the initial value alone should mark the untitled editor dirty.
 	 * Defaults to `true` (upstream behavior); pass `false` for snapshots of an existing
 	 * file (e.g. an OS file dropped without a resolvable path) so the tab opens clean.
 	 */
 	initialDirtyState?: boolean;
-	// [CUSTOM-END] CUSTOM-20261017-006
 
 	/**
 	 * Preferred language id to use when saving the untitled editor.

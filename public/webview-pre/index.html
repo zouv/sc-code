@@ -375,7 +375,16 @@
 
 				const hostname = location.hostname;
 
-				if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === 'tauri.localhost' || hostname.endsWith('.tauri.localhost')) {
+				if (hostname === '127.0.0.1') {
+					// ScCode isolated loopback webview host: only the app's own workbench may embed it.
+					const appOrigin = /^(https?:\/\/tauri\.localhost|tauri:\/\/localhost|http:\/\/localhost:\d+)$/;
+					if (parentOrigin && appOrigin.test(parentOrigin)) {
+						return start(parentOrigin);
+					}
+					throw new Error(`Unexpected webview parent origin '${parentOrigin}'`);
+				}
+
+				if (hostname === 'localhost' || hostname === 'tauri.localhost' || hostname.endsWith('.tauri.localhost')) {
 					return start(parentOrigin);
 				}
 

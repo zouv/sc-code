@@ -62,11 +62,10 @@ export function createBrowserAboutDialogDetails(productService: IProductService)
 	detailsToCopy: string;
 } {
 	const detailString = (useAgo: boolean): string => {
-		// [CUSTOM-BEGIN] CUSTOM-20261015-004 - About 显示 ScCode 版本号
+		// ScCode: About 显示 ScCode 版本号
 		// productConfiguration.version 仍是 '1.110.0'（供扩展 engines.vscode 兼容性校验），
 		// 真实的 ScCode 应用版本由 main.ts 放入全局 __SC_CODE_VERSION__，这里优先取它。
 		const version = (globalThis as any).__SC_CODE_VERSION__ || productService.version;
-		// [CUSTOM-END] CUSTOM-20261015-004
 		return localize(
 			'aboutDetail',
 			'Version: {0}\nCommit: {1}\nDate: {2}\nBrowser: {3}',

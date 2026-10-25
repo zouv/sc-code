@@ -43,7 +43,14 @@ interface INotebookService {
 	readonly onDidAddNotebookDocument: Event<void>;
 	readonly onDidRemoveNotebookDocument: Event<void>;
 	getNotebookTextModels(): Iterable<unknown>;
+	getNotebookTextModel(uri: unknown): undefined;
+	getContributedNotebookTypes(resource?: unknown): readonly unknown[];
+	canResolve(viewType: string): Promise<boolean>;
+	hasSupportedNotebooks(resource: unknown): boolean;
+	withNotebookDataProvider(viewType: string): Promise<never>;
 }
+// Notebooks are not ported. Callers such as the text search (NotebookSearchService) query
+// these members unconditionally, so they must answer "no notebooks" rather than be missing.
 class NullNotebookService implements INotebookService {
 	declare readonly _serviceBrand: undefined;
 	private _e = new Emitter<void>();
@@ -53,6 +60,21 @@ class NullNotebookService implements INotebookService {
 	getNotebookTextModels() {
 		return [];
 	}
+	getNotebookTextModel() {
+		return undefined;
+	}
+	getContributedNotebookTypes() {
+		return [];
+	}
+	async canResolve() {
+		return false;
+	}
+	hasSupportedNotebooks() {
+		return false;
+	}
+	async withNotebookDataProvider(viewType: string): Promise<never> {
+		throw new Error(`Notebooks are not supported (${viewType})`);
+	}
 }
 registerSingleton(INotebookService, NullNotebookService, InstantiationType.Delayed);
 
@@ -60,9 +82,25 @@ registerSingleton(INotebookService, NullNotebookService, InstantiationType.Delay
 const INotebookEditorService = createDecorator<INotebookEditorService>('notebookEditorService');
 interface INotebookEditorService {
 	readonly _serviceBrand: undefined;
+	readonly onDidAddNotebookEditor: Event<unknown>;
+	readonly onDidRemoveNotebookEditor: Event<unknown>;
+	retrieveAllExistingWidgets(): readonly unknown[];
+	retrieveExistingWidgetFromURI(resource: unknown): undefined;
+	listNotebookEditors(): readonly unknown[];
 }
 class NullNotebookEditorService implements INotebookEditorService {
 	declare readonly _serviceBrand: undefined;
+	readonly onDidAddNotebookEditor = Event.None;
+	readonly onDidRemoveNotebookEditor = Event.None;
+	retrieveAllExistingWidgets() {
+		return [];
+	}
+	retrieveExistingWidgetFromURI() {
+		return undefined;
+	}
+	listNotebookEditors() {
+		return [];
+	}
 }
 registerSingleton(INotebookEditorService, NullNotebookEditorService, InstantiationType.Delayed);
 

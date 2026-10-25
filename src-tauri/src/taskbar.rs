@@ -36,6 +36,8 @@ pub struct JumpListEntry {
 pub enum TargetKind {
     Folder,
     Workspace,
+    /// A file opened from the command line (`ScCode.exe <file>`, `-g file:line`).
+    File,
 }
 
 impl TargetKind {
@@ -43,6 +45,7 @@ impl TargetKind {
         match self {
             Self::Folder => "folder",
             Self::Workspace => "workspace",
+            Self::File => "file",
         }
     }
 
@@ -50,6 +53,7 @@ impl TargetKind {
         match self {
             Self::Folder => "--open-folder=",
             Self::Workspace => "--open-workspace=",
+            Self::File => "--open-file=",
         }
     }
 }
@@ -58,16 +62,30 @@ impl TargetKind {
 pub struct OpenTarget {
     pub kind: TargetKind,
     pub uri: String,
+    /// 1-based position for `File` targets (`-g file:line:column`).
+    pub line: Option<u32>,
+    pub column: Option<u32>,
 }
 
 impl OpenTarget {
+    fn new(kind: TargetKind, uri: String) -> Self {
+        Self { kind, uri, line: None, column: None }
+    }
+
     /// Query string understood by `src/main.ts` when the workbench boots.
     pub fn app_url(&self) -> String {
-        format!(
+        let mut url = format!(
             "index.html?{}={}",
             self.kind.query_name(),
             urlencoding::encode(&self.uri)
-        )
+        );
+        if let Some(line) = self.line {
+            url.push_str(&format!("&line={line}"));
+        }
+        if let Some(column) = self.column {
+            url.push_str(&format!("&column={column}"));
+        }
+        url
     }
 
     fn argument(&self) -> String {
@@ -88,11 +106,7 @@ struct PreparedEntry {
 
 impl PreparedEntry {
     fn argument(&self) -> String {
-        OpenTarget {
-            kind: self.kind,
-            uri: self.uri.clone(),
-        }
-        .argument()
+        OpenTarget::new(self.kind, self.uri.clone()).argument()
     }
 }
 
@@ -114,9 +128,62 @@ pub fn parse_open_target(args: &[String]) -> Option<OpenTarget> {
             continue;
         }
 
-        return Some(OpenTarget { kind, uri });
+        return Some(OpenTarget::new(kind, uri));
     }
 
+    parse_cli_target(args)
+}
+
+/// Splits `path:line[:column]` (Windows drive letters stay part of the path).
+fn split_position(arg: &str) -> (String, Option<u32>, Option<u32>) {
+    let mut rest = arg;
+    let mut numbers = Vec::new();
+    while numbers.len() < 2 {
+        let Some((head, tail)) = rest.rsplit_once(':') else {
+            break;
+        };
+        match tail.parse::<u32>() {
+            Ok(number) if !tail.is_empty() && tail.chars().all(|c| c.is_ascii_digit()) => {
+                numbers.push(number);
+                rest = head;
+            }
+            _ => break,
+        }
+    }
+    numbers.reverse();
+    (rest.to_string(), numbers.first().copied(), numbers.get(1).copied())
+}
+
+/// `ScCode.exe <path>`, `ScCode.exe -g <path>:<line>[:<column>]` and `--goto <path>:<line>`.
+/// Only existing absolute paths are accepted; everything else is ignored.
+fn parse_cli_target(args: &[String]) -> Option<OpenTarget> {
+    let mut goto = false;
+    for arg in args.iter().skip(1) {
+        if arg == "-g" || arg == "--goto" {
+            goto = true;
+            continue;
+        }
+        if arg.starts_with('-') {
+            continue;
+        }
+        let (path, line, column) = split_position(arg);
+        let path = std::path::PathBuf::from(&path);
+        if !path.is_absolute() || !path.exists() {
+            continue;
+        }
+        let canonical = path.canonicalize().ok()?;
+        let uri = url::Url::from_file_path(&canonical).ok()?.to_string();
+        let mut target = if canonical.is_dir() {
+            OpenTarget::new(TargetKind::Folder, uri)
+        } else {
+            OpenTarget::new(TargetKind::File, uri)
+        };
+        if target.kind == TargetKind::File && (goto || line.is_some()) {
+            target.line = line.map(|n| n.max(1));
+            target.column = column.map(|n| n.max(1));
+        }
+        return Some(target);
+    }
     None
 }
 
@@ -679,11 +746,7 @@ mod tests {
     use super::*;
 
     fn arg(kind: TargetKind, uri: &str) -> String {
-        OpenTarget {
-            kind,
-            uri: uri.to_string(),
-        }
-        .argument()
+        OpenTarget::new(kind, uri.to_string()).argument()
     }
 
     #[test]
@@ -708,10 +771,7 @@ mod tests {
 
     #[test]
     fn app_url_uses_the_workbench_query_parameters() {
-        let target = OpenTarget {
-            kind: TargetKind::Folder,
-            uri: "file:///C:/work/demo folder".to_string(),
-        };
+        let target = OpenTarget::new(TargetKind::Folder, "file:///C:/work/demo folder".to_string());
         assert_eq!(
             target.app_url(),
             "index.html?folder=file%3A%2F%2F%2FC%3A%2Fwork%2Fdemo%20folder"
@@ -747,5 +807,67 @@ mod tests {
         assert_eq!(prepared.len(), 2);
         assert_eq!(prepared[0].label, "Demo Folder");
         assert_eq!(prepared[1].label, "demo");
+    }
+}
+
+#[cfg(test)]
+mod cli_tests {
+    use super::*;
+
+    fn strings(args: &[&str]) -> Vec<String> {
+        args.iter().map(|a| (*a).to_string()).collect()
+    }
+
+    #[test]
+    fn opens_an_existing_folder_and_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let file = dir.path().join("note.txt");
+        std::fs::write(&file, "x").unwrap();
+
+        let folder = parse_cli_target(&strings(&["ScCode.exe", &dir.path().to_string_lossy()]))
+            .expect("folder");
+        assert_eq!(folder.kind, TargetKind::Folder);
+        assert!(folder.uri.starts_with("file:///"));
+
+        let opened = parse_cli_target(&strings(&["ScCode.exe", &file.to_string_lossy()]))
+            .expect("file");
+        assert_eq!(opened.kind, TargetKind::File);
+        assert!(opened.uri.ends_with("note.txt"));
+        assert_eq!(opened.line, None);
+    }
+
+    #[test]
+    fn goto_opens_at_a_position() {
+        let dir = tempfile::tempdir().unwrap();
+        let file = dir.path().join("note.txt");
+        std::fs::write(&file, "x").unwrap();
+        let arg = format!("{}:12:4", file.display());
+
+        let target = parse_cli_target(&strings(&["ScCode.exe", "-g", &arg])).expect("target");
+        assert_eq!(target.kind, TargetKind::File);
+        assert_eq!((target.line, target.column), (Some(12), Some(4)));
+        assert!(target.app_url().contains("&line=12&column=4"));
+
+        // `-g` without a position still opens the file.
+        let plain = format!("{}", file.display());
+        let target = parse_cli_target(&strings(&["ScCode.exe", "--goto", &plain])).expect("target");
+        assert_eq!((target.line, target.column), (None, None));
+    }
+
+    #[test]
+    fn ignores_flags_unknown_paths_and_relative_paths() {
+        assert!(parse_cli_target(&strings(&["ScCode.exe", "--wait"])).is_none());
+        assert!(parse_cli_target(&strings(&["ScCode.exe", "relative/path.txt"])).is_none());
+        assert!(parse_cli_target(&strings(&["ScCode.exe", "C:/definitely/missing/path.txt"])).is_none());
+    }
+
+    #[test]
+    fn windows_drive_letters_survive_position_split() {
+        let (path, line, column) = split_position(r"C:\work\a.txt:7:3");
+        assert_eq!(path, r"C:\work\a.txt");
+        assert_eq!((line, column), (Some(7), Some(3)));
+        let (path, line, column) = split_position(r"C:\work\a.txt");
+        assert_eq!(path, r"C:\work\a.txt");
+        assert_eq!((line, column), (None, None));
     }
 }

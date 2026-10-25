@@ -243,14 +243,15 @@ fn maybe_read_content(path: &Path, should_emit: bool) -> Option<String> {
 
 /// Convert `EventKind` to string representation
 fn event_kind_to_string(kind: EventKind) -> String {
-    use notify::event::{CreateKind, EventKind, ModifyKind, RemoveKind, RenameMode};
+    use notify::event::{EventKind, ModifyKind, RenameMode};
 
     match kind {
-        EventKind::Create(CreateKind::File | CreateKind::Any) => "created",
-        EventKind::Modify(ModifyKind::Data(_) | ModifyKind::Metadata(_) | ModifyKind::Any) => {
-            "modified"
-        }
-        EventKind::Remove(RemoveKind::File | RemoveKind::Any) => "deleted",
+        // Folders included: the explorer needs externally created/removed directories too.
+        EventKind::Create(_) => "created",
+        EventKind::Modify(
+            ModifyKind::Data(_) | ModifyKind::Metadata(_) | ModifyKind::Any | ModifyKind::Other,
+        ) => "modified",
+        EventKind::Remove(_) => "deleted",
         EventKind::Modify(ModifyKind::Name(RenameMode::From)) => "renamed_from",
         EventKind::Modify(ModifyKind::Name(RenameMode::To)) => "renamed_to",
         EventKind::Modify(ModifyKind::Name(_)) => "renamed",
@@ -259,16 +260,86 @@ fn event_kind_to_string(kind: EventKind) -> String {
     .to_string()
 }
 
+fn is_addition(kind: EventKind) -> bool {
+    use notify::event::{ModifyKind, RenameMode};
+    matches!(
+        kind,
+        EventKind::Create(_) | EventKind::Modify(ModifyKind::Name(RenameMode::To))
+    )
+}
+
+fn is_removal(kind: EventKind) -> bool {
+    use notify::event::{ModifyKind, RenameMode};
+    matches!(
+        kind,
+        EventKind::Remove(_) | EventKind::Modify(ModifyKind::Name(RenameMode::From))
+    )
+}
+
+/// Coalesces one debounce window per path like VS Code's watcher: an add followed by
+/// changes stays an add (Windows reports Create then Modify for a new file), an add
+/// followed by a removal cancels out, and a removal followed by an add is a change.
+/// Paths keep the order in which they first appeared.
+fn coalesce_events(events: impl IntoIterator<Item = PendingEvent>) -> Vec<PendingEvent> {
+    let mut order: Vec<PathBuf> = Vec::new();
+    let mut by_path: HashMap<PathBuf, Option<PendingEvent>> = HashMap::new();
+    for event in events {
+        let Some(slot) = by_path.get_mut(&event.path) else {
+            order.push(event.path.clone());
+            by_path.insert(event.path.clone(), Some(event));
+            continue;
+        };
+        *slot = match slot.take() {
+            None => Some(event),
+            Some(prev) if is_addition(prev.kind) && is_removal(event.kind) => None,
+            Some(prev) if is_addition(prev.kind) => Some(PendingEvent {
+                is_dir: prev.is_dir || event.is_dir,
+                ..prev
+            }),
+            Some(prev) if is_removal(prev.kind) && is_addition(event.kind) => Some(PendingEvent {
+                kind: EventKind::Modify(notify::event::ModifyKind::Any),
+                ..event
+            }),
+            Some(_) => Some(event),
+        };
+    }
+    order
+        .into_iter()
+        .filter_map(|path| by_path.remove(&path).flatten())
+        .collect()
+}
+
 /// Determine if an event is a deletion
 fn is_deletion(kind: EventKind) -> bool {
     matches!(kind, EventKind::Remove(_))
+}
+
+/// Where batches go: the caller's own channel (only its webview receives them) or,
+/// for callers that pass none, the legacy app-wide `watch-batch` event.
+#[derive(Clone)]
+enum WatchSink {
+    Broadcast(AppHandle),
+    Channel(tauri::ipc::Channel<WatchEventBatch>),
+}
+
+impl WatchSink {
+    fn deliver(&self, batch: WatchEventBatch) {
+        match self {
+            Self::Broadcast(app) => {
+                let _ = app.emit("watch-batch", batch);
+            }
+            Self::Channel(channel) => {
+                let _ = channel.send(batch);
+            }
+        }
+    }
 }
 
 /// Create the debounce task that batches and emits events
 #[allow(clippy::too_many_lines, clippy::cast_possible_truncation)]
 fn spawn_debounce_task(
     watch_id: u32,
-    app: AppHandle,
+    app: WatchSink,
     debounce_duration: Duration,
     emit_content: bool,
 ) -> (UnboundedSender<PendingEvent>, DebounceStopper) {
@@ -301,14 +372,11 @@ fn spawn_debounce_task(
 
                 if should_emit {
                     // Deduplicate events - keep only the latest event for each path
-                    let mut latest_events: HashMap<PathBuf, PendingEvent> = HashMap::new();
-                    for event in pending_events.drain(..) {
-                        latest_events.insert(event.path.clone(), event);
-                    }
+                    let latest_events = coalesce_events(pending_events.drain(..));
 
                     // Convert to WatchEvent structs
                     let events: Vec<WatchEvent> = latest_events
-                        .into_values()
+                        .into_iter()
                         .map(|pending| {
                             // Skip reading content for deletions
                             let content = if is_deletion(pending.kind) {
@@ -338,7 +406,7 @@ fn spawn_debounce_task(
                             timestamp,
                         };
 
-                        let _ = app.emit("watch-batch", batch);
+                        app.deliver(batch);
                     }
 
                     last_event_time = None;
@@ -377,11 +445,8 @@ fn spawn_debounce_task(
                         () = tokio::time::sleep(Duration::from_millis(10)) => {
                             if let Some(last) = last_event_time {
                                 if last.elapsed() >= debounce_duration && !pending_events.is_empty() {
-                                    let mut deduped: std::collections::HashMap<String, PendingEvent> = std::collections::HashMap::new();
-                                    for ev in pending_events.drain(..) {
-                                        deduped.insert(ev.path.to_string_lossy().to_string(), ev);
-                                    }
-                                    let events: Vec<WatchEvent> = deduped.into_values().map(|ev| {
+                                    let deduped = coalesce_events(pending_events.drain(..));
+                                    let events: Vec<WatchEvent> = deduped.into_iter().map(|ev| {
                                         WatchEvent {
                                             path: ev.path.to_string_lossy().to_string(),
                                             kind: event_kind_to_string(ev.kind),
@@ -398,7 +463,7 @@ fn spawn_debounce_task(
                                                 .unwrap_or_default()
                                                 .as_millis() as u64,
                                         };
-                                        let _ = app.emit("watch-batch", batch);
+                                        app.deliver(batch);
                                     }
                                     last_event_time = None;
                                 }
@@ -422,6 +487,8 @@ pub async fn watch_start(
     state: State<'_, Arc<WatchStore>>,
     paths: Vec<String>,
     options: WatchOptions,
+    webview: tauri::Webview,
+    on_batch: Option<tauri::ipc::JavaScriptChannelId>,
 ) -> Result<u32, String> {
     // Validate paths
     if paths.is_empty() {
@@ -450,7 +517,10 @@ pub async fn watch_start(
         build_ignore_globset(&options.ignore_patterns.clone().unwrap_or_default())?;
 
     // Clone values for the watcher closure
-    let app_clone = app.clone();
+    let app_clone = on_batch.map_or_else(
+        || WatchSink::Broadcast(app.clone()),
+        |id| WatchSink::Channel(id.channel_on(webview)),
+    );
     let ignore_clone = ignore_globset.clone();
 
     // Build file extension set
@@ -573,4 +643,52 @@ pub fn watch_list(state: State<'_, Arc<WatchStore>>) -> Result<Vec<u32>, String>
 pub fn watch_is_active(state: State<'_, Arc<WatchStore>>, id: u32) -> Result<bool, String> {
     let sessions = state.sessions.lock().map_err(|e| e.to_string())?;
     Ok(sessions.contains_key(&id))
+}
+
+#[cfg(test)]
+mod coalesce_tests {
+    use super::*;
+    use notify::event::{CreateKind, ModifyKind, RemoveKind, RenameMode};
+
+    fn ev(path: &str, kind: EventKind) -> PendingEvent {
+        PendingEvent {
+            path: PathBuf::from(path),
+            kind,
+            is_dir: false,
+        }
+    }
+
+    fn kinds(events: Vec<PendingEvent>) -> Vec<(String, String)> {
+        events
+            .into_iter()
+            .map(|e| (e.path.to_string_lossy().into_owned(), event_kind_to_string(e.kind)))
+            .collect()
+    }
+
+    #[test]
+    fn new_file_stays_created_and_create_delete_cancels() {
+        let events = vec![
+            ev("a", EventKind::Create(CreateKind::Any)),
+            ev("b", EventKind::Create(CreateKind::File)),
+            ev("a", EventKind::Modify(ModifyKind::Any)),
+            ev("b", EventKind::Remove(RemoveKind::File)),
+            ev("c", EventKind::Remove(RemoveKind::File)),
+            ev("c", EventKind::Create(CreateKind::File)),
+            ev("d", EventKind::Modify(ModifyKind::Name(RenameMode::From))),
+        ];
+        assert_eq!(
+            kinds(coalesce_events(events)),
+            [
+                ("a".into(), "created".into()),
+                ("c".into(), "modified".into()),
+                ("d".into(), "renamed_from".into()),
+            ]
+        );
+    }
+
+    #[test]
+    fn folders_are_reported() {
+        assert_eq!(event_kind_to_string(EventKind::Create(CreateKind::Folder)), "created");
+        assert_eq!(event_kind_to_string(EventKind::Remove(RemoveKind::Folder)), "deleted");
+    }
 }

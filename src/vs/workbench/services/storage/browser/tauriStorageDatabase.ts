@@ -89,32 +89,22 @@ export class TauriStorageDatabase extends Disposable implements IStorageDatabase
 			return;
 		}
 
-		const tasks: Promise<unknown>[] = [];
-
-		if (request.insert) {
-			for (const [key, value] of request.insert) {
-				tasks.push(invoke('storage_set', { key: this.prefix + key, value }));
-			}
+		const inserts: [string, string][] = [];
+		for (const [key, value] of request.insert ?? []) {
+			inserts.push([this.prefix + key, value]);
 		}
-
-		if (request.delete) {
-			for (const key of request.delete) {
-				tasks.push(invoke('storage_delete', { key: this.prefix + key }));
-			}
-		}
-
-		if (tasks.length === 0) {
+		const deletes = [...(request.delete ?? [])].map(key => this.prefix + key);
+		if (inserts.length === 0 && deletes.length === 0) {
 			return;
 		}
 
+		// One IPC call and one SQLite transaction per flush; the native side keeps
+		// insert/delete order and reports (without failing the batch) oversized entries.
 		this._pendingUpdates++;
 		try {
-			const results = await Promise.allSettled(tasks);
-			for (const result of results) {
-				if (result.status === 'rejected') {
-					console.error(`[TauriStorageDatabase] updateItems(prefix=${this.prefix}) failed:`, result.reason);
-				}
-			}
+			await invoke('storage_apply', { inserts, deletes });
+		} catch (error) {
+			console.error(`[TauriStorageDatabase] updateItems(prefix=${this.prefix}) failed:`, error);
 		} finally {
 			this._pendingUpdates--;
 		}

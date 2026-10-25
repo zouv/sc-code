@@ -1,7 +1,10 @@
 mod app_dirs;
 mod commands;
 mod server;
+mod ipc_guard;
+mod recycle_bin;
 mod taskbar;
+mod webview_host;
 
 use commands::auth::AuthState;
 use commands::db_state::ScCodeDbState;
@@ -431,6 +434,12 @@ fn fix_macos_path() {
     }
 }
 
+/// Origin that serves extension webview host pages (see `webview_host`).
+#[tauri::command]
+fn webview_host_origin(host: tauri::State<'_, webview_host::WebviewHost>) -> String {
+    host.origin().to_string()
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 #[allow(clippy::too_many_lines)]
 pub fn run() {
@@ -468,171 +477,18 @@ pub fn run() {
             window.url = tauri::WebviewUrl::App(target.app_url().into());
         }
     }
-    // Keep browser state in the same isolated profile as settings and agent data.
-    // SC_CODE_HOME tests must never open a real user's WebView database.
-    for window in &mut context.config_mut().app.windows {
-        window.data_directory = Some(crate::app_dirs::app_data_dir().join("EBWebView"));
+    // Workbench windows are created in setup (config `create: false`) so the
+    // builder can apply the profile's WebView data folder; see
+    // commands::window::build_workbench_window.
+
+    // Extension webviews load from a separate loopback origin; see webview_host.
+    let webview_host = webview_host::start().expect("failed to start the webview host server");
+    let dev_origin = ipc_guard::dev_origin(context.config());
+    fn handler<F: Fn(tauri::ipc::Invoke<tauri::Wry>) -> bool>(f: F) -> F {
+        f
     }
-
-    tauri::Builder::default()
-        .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_shell::init())
-        .manage(AuthState::new())
-        .manage(UpdateManagerState::new())
-        .manage(Arc::new(commands::extensions::MarketplaceClientState::new()))
-        .manage(Arc::new(TerminalStore::new()))
-        .manage(Arc::new(DebugAdapterStore::new()))
-        .manage(Arc::new(DapClientStore::new()))
-        .manage(Arc::new(LspState::new()))
-        .manage(Arc::new(TaskProcessStore::new()))
-        .manage(Arc::new(OrchestrationStore::new()))
-        .manage(Arc::new(WatchStore::new()))
-        .manage(commands::browser::BrowserState::new())
-        .manage(commands::mcp::McpState::new())
-        .manage(commands::hooks::HooksState::default_global())
-        .manage(commands::next_gen_tools::CheckpointStore::new())
-        .manage(Arc::new(IndexStore::new(false)))
-        .manage(ExtensionPlatformSupervisor::new())
-        .manage(Arc::new(
-            commands::real_ext_host::RealExtensionHost::new(),
-        ))
-        .manage(ExtensionDiagnosticsStore::new())
-        .manage(Arc::new(SettingsStore::new()))
-        .manage(Arc::new(sc_code_extension_api::CommandRegistry::new()))
-        .manage(Arc::new(RemoteManagerStore::new()))
-        .manage(Arc::new(
-            WasmExtensionRuntime::new().expect("failed to initialize WASM runtime"),
-        ))
-        .setup(|app| {
-            if let Err(error) = taskbar::install_single_instance(app.handle()) {
-                log::warn!("single-instance forwarding disabled: {error}");
-            }
-            let app_data = crate::app_dirs::resolve_app_data_dir();
-            std::fs::create_dir_all(&app_data).ok();
-            // Only extension resources are globally eligible for the browser asset protocol.
-            // Workspace roots/files are added explicitly when opened; never all of HOME/TEMP.
-            for root in [commands::extension_platform::resolve_builtin_extensions_dir(app.handle()),
-                         commands::extension_platform::user_extensions_dir()] {
-                if root.is_dir() {
-                    app.asset_protocol_scope().allow_directory(&root, true)?;
-                }
-            }
-            let db_path = app_data.join("sc_code_storage.db");
-            // Opening failure (locked/corrupt/permissions) is never permission to delete user data.
-            let db_path_str = db_path.to_string_lossy().to_string();
-            let db = StorageDb::new(&db_path_str)
-                .map_err(|e| format!("Cannot open storage database {}: {e}. Data has been preserved; close other instances and back up before recovery.", db_path.display()))?;
-
-            restore_and_show(app, &db);
-
-            // Debug-only: SC_CODE_DEVTOOLS=1 auto-opens devtools to capture boot errors
-            #[cfg(debug_assertions)]
-            if std::env::var("SC_CODE_DEVTOOLS").is_ok() {
-                if let Some(w) = app.get_webview_window("main") {
-                    w.open_devtools();
-                }
-            }
-
-            app.manage(Arc::new(db));
-
-            // Full extension-API dispatcher (ext_api_call), sharing the
-            // already-managed CommandRegistry.
-            {
-                use sc_code_extension_api as ext;
-                let registry = app
-                    .state::<Arc<ext::CommandRegistry>>()
-                    .inner()
-                    .clone();
-                app.manage(Arc::new(ext::ExtensionApiHandler::new(
-                    Arc::new(ext::WindowApi::new()),
-                    Arc::new(ext::WorkspaceApi::new()),
-                    Arc::new(ext::LanguagesApi::new()),
-                    registry,
-                    Arc::new(ext::DebugApi::new()),
-                    Arc::new(ext::TasksApi::new()),
-                    Arc::new(ext::ScmApi::new()),
-                    Arc::new(ext::TestApi::new()),
-                    Arc::new(ext::EnvApi::new()),
-                )));
-            }
-
-            {
-                let settings_store = app.state::<Arc<SettingsStore>>();
-                // [CUSTOM-BEGIN] CUSTOM-20261013-009 - use the same user settings file as the Workbench
-                let user_settings_path = app_data.join("User").join("settings.json");
-                // Always record the path so user-scope updates persist to
-                // disk, even on first launch when the file doesn't exist yet.
-                settings_store.set_user_path(&user_settings_path);
-                if user_settings_path.exists() {
-                    if let Err(e) = settings_store.load_user(&user_settings_path) {
-                        log::warn!("failed to pre-load user settings: {e}");
-                    }
-                }
-                // [CUSTOM-END] CUSTOM-20261013-009
-            }
-
-            let sc_code_db_path = app_data.join("sc_code_state.db");
-            // Same graceful-recreate policy as the storage DB above.
-            let sc_code_db = match sc_code_db::Database::open(&sc_code_db_path) {
-                Ok(db) => db,
-                Err(e) => {
-                    log::error!("state DB open failed ({e}); recreating {}", sc_code_db_path.display());
-                    let _ = std::fs::remove_file(&sc_code_db_path);
-                    sc_code_db::Database::open(&sc_code_db_path)
-                        .map_err(|e| format!("failed to initialize sc-code-db state database: {e}"))?
-                }
-            };
-            app.manage(Arc::new(ScCodeDbState::new(sc_code_db)));
-
-            if let Err(err) = commands::updater::initialize(app.handle()) {
-                log::warn!("update manager disabled: {err}");
-            }
-            if let Err(err) = commands::profiles::initialize(app.handle()) {
-                log::warn!("profile storage disabled: {err}");
-            }
-            if let Err(err) = commands::secrets::initialize(app.handle()) {
-                log::warn!("secret storage disabled: {err}");
-            }
-
-            #[cfg(target_os = "macos")]
-            {
-                let menu = build_menu(app.handle())?;
-                app.set_menu(menu)?;
-            }
-
-            if cfg!(debug_assertions) {
-                app.handle().plugin(
-                    tauri_plugin_log::Builder::default()
-                        .level(log::LevelFilter::Info)
-                        .build(),
-                )?;
-            }
-
-            #[allow(unexpected_cfgs)]
-            {
-                #[cfg(feature = "devtools")]
-                if let Some(window) = app.get_webview_window("main") {
-                    window.open_devtools();
-                }
-            }
-
-
-            // Start the local agent server. Failure is non-fatal —
-            // the editor works without it, the chat panel just shows
-            // as disconnected.
-            server::initialize(app.handle());
-            Ok(())
-        })
-        .on_menu_event(|app, event| {
-            let id = event.id().0.as_str();
-            if let Some(window) = app.get_webview_window("main") {
-                let escaped = id.replace('\\', "\\\\").replace('\'', "\\'");
-                let _ = window.eval(format!(
-                    "window.dispatchEvent(new CustomEvent('sc-code-native-menu', {{ detail: '{escaped}' }}))"
-                ));
-            }
-        })
-        .invoke_handler(tauri::generate_handler![
+    let app_commands = handler(tauri::generate_handler![
+            webview_host_origin,
             // AI Agent
             commands::agent::agent_execute_tool,
             // Local account, providers, and the local agent server
@@ -705,6 +561,8 @@ pub fn run() {
             commands::base64_decode_urlsafe,
             commands::file_hashes,
             commands::terminal_spawn,
+            commands::terminal_ack,
+            commands::get_windows_build_number,
             commands::terminal_write,
             commands::terminal_resize,
             commands::terminal_kill,
@@ -717,6 +575,13 @@ pub fn run() {
             commands::setup_zsh_dotdir,
             commands::search_files,
             commands::search_text,
+            commands::search_text_stream,
+            commands::search_cancel,
+            commands::search_workspace_files,
+            commands::fs_read_binary,
+            commands::fs_write_binary,
+            commands::fs_trash,
+            commands::fs_trash_supported,
             commands::create_window,
             commands::close_window,
             commands::set_window_title,
@@ -747,6 +612,7 @@ pub fn run() {
             commands::storage_set,
             commands::storage_list,
             commands::storage_delete,
+            commands::storage_apply,
             commands::real_ext_host_start,
             commands::real_ext_host_stop,
             // Chat session persistence
@@ -986,7 +852,205 @@ pub fn run() {
             commands::next_gen_tools::checkpoint_create,
             commands::next_gen_tools::checkpoint_rollback,
             commands::next_gen_tools::analyze_error,
-        ])
+    ]);
+
+    tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_shell::init())
+        .manage(webview_host)
+        .manage(AuthState::new())
+        .manage(UpdateManagerState::new())
+        .manage(Arc::new(commands::extensions::MarketplaceClientState::new()))
+        .manage(Arc::new(TerminalStore::new()))
+        .manage(Arc::new(DebugAdapterStore::new()))
+        .manage(Arc::new(DapClientStore::new()))
+        .manage(Arc::new(LspState::new()))
+        .manage(Arc::new(TaskProcessStore::new()))
+        .manage(Arc::new(OrchestrationStore::new()))
+        .manage(Arc::new(WatchStore::new()))
+        .manage(commands::browser::BrowserState::new())
+        .manage(commands::mcp::McpState::new())
+        .manage(commands::hooks::HooksState::default_global())
+        .manage(commands::next_gen_tools::CheckpointStore::new())
+        .manage(Arc::new(IndexStore::new(false)))
+        .manage(ExtensionPlatformSupervisor::new())
+        .manage(Arc::new(
+            commands::real_ext_host::RealExtensionHost::new(),
+        ))
+        .manage(ExtensionDiagnosticsStore::new())
+        .manage(Arc::new(SettingsStore::new()))
+        .manage(Arc::new(sc_code_extension_api::CommandRegistry::new()))
+        .manage(Arc::new(RemoteManagerStore::new()))
+        .manage(Arc::new(
+            WasmExtensionRuntime::new().expect("failed to initialize WASM runtime"),
+        ))
+        .setup(|app| {
+            if let Err(error) = taskbar::install_single_instance(app.handle()) {
+                log::warn!("single-instance forwarding disabled: {error}");
+            }
+            // SC_CODE_HOME tests must never open a real user's WebView database.
+            for config in app.config().app.windows.clone() {
+                if config.label == "main" {
+                    commands::window::build_workbench_window(app.handle(), &config)?;
+                }
+            }
+            let app_data = crate::app_dirs::resolve_app_data_dir();
+            std::fs::create_dir_all(&app_data).ok();
+            // Only extension resources are globally eligible for the browser asset protocol.
+            // Workspace roots/files are added explicitly when opened; never all of HOME/TEMP.
+            for root in [commands::extension_platform::resolve_builtin_extensions_dir(app.handle()),
+                         commands::extension_platform::user_extensions_dir()] {
+                if root.is_dir() {
+                    app.asset_protocol_scope().allow_directory(&root, true)?;
+                }
+            }
+            let db_path = app_data.join("sc_code_storage.db");
+            // Opening failure (locked/corrupt/permissions) is never permission to delete user data.
+            let db_path_str = db_path.to_string_lossy().to_string();
+            let db = StorageDb::new(&db_path_str)
+                .map_err(|e| format!("Cannot open storage database {}: {e}. Data has been preserved; close other instances and back up before recovery.", db_path.display()))?;
+
+            restore_and_show(app, &db);
+
+            // Debug-only: SC_CODE_DEVTOOLS=1 auto-opens devtools to capture boot errors
+            #[cfg(debug_assertions)]
+            if std::env::var("SC_CODE_DEVTOOLS").is_ok() {
+                if let Some(w) = app.get_webview_window("main") {
+                    w.open_devtools();
+                }
+            }
+
+            app.manage(Arc::new(db));
+
+            // Full extension-API dispatcher (ext_api_call), sharing the
+            // already-managed CommandRegistry.
+            {
+                use sc_code_extension_api as ext;
+                let registry = app
+                    .state::<Arc<ext::CommandRegistry>>()
+                    .inner()
+                    .clone();
+                app.manage(Arc::new(ext::ExtensionApiHandler::new(
+                    Arc::new(ext::WindowApi::new()),
+                    Arc::new(ext::WorkspaceApi::new()),
+                    Arc::new(ext::LanguagesApi::new()),
+                    registry,
+                    Arc::new(ext::DebugApi::new()),
+                    Arc::new(ext::TasksApi::new()),
+                    Arc::new(ext::ScmApi::new()),
+                    Arc::new(ext::TestApi::new()),
+                    Arc::new(ext::EnvApi::new()),
+                )));
+            }
+
+            {
+                let settings_store = app.state::<Arc<SettingsStore>>();
+                // [CUSTOM-BEGIN] CUSTOM-20261013-009 - use the same user settings file as the Workbench
+                let user_settings_path = app_data.join("User").join("settings.json");
+                // Always record the path so user-scope updates persist to
+                // disk, even on first launch when the file doesn't exist yet.
+                settings_store.set_user_path(&user_settings_path);
+                if user_settings_path.exists() {
+                    if let Err(e) = settings_store.load_user(&user_settings_path) {
+                        log::warn!("failed to pre-load user settings: {e}");
+                    }
+                }
+                // [CUSTOM-END] CUSTOM-20261013-009
+            }
+
+            let sc_code_db_path = app_data.join("sc_code_state.db");
+            // A damaged state DB is moved aside (never deleted) before a fresh one is created;
+            // if it cannot be moved (e.g. locked), startup fails and the file stays untouched.
+            let sc_code_db = match sc_code_db::Database::open(&sc_code_db_path) {
+                Ok(db) => db,
+                Err(e) => {
+                    let stamp = std::time::SystemTime::now()
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .map(|d| d.as_secs())
+                        .unwrap_or_default();
+                    let preserved = sc_code_db_path.with_extension(format!("db.corrupt-{stamp}"));
+                    std::fs::rename(&sc_code_db_path, &preserved).map_err(|rename_err| {
+                        format!("Cannot open state database {} ({e}) and cannot preserve it ({rename_err}). Data has been kept; close other instances and retry.", sc_code_db_path.display())
+                    })?;
+                    log::error!("state DB open failed ({e}); preserved as {} and recreated", preserved.display());
+                    sc_code_db::Database::open(&sc_code_db_path)
+                        .map_err(|e| format!("failed to initialize sc-code-db state database: {e}"))?
+                }
+            };
+            app.manage(Arc::new(ScCodeDbState::new(sc_code_db)));
+
+            if let Err(err) = commands::updater::initialize(app.handle()) {
+                log::warn!("update manager disabled: {err}");
+            }
+            if let Err(err) = commands::profiles::initialize(app.handle()) {
+                log::warn!("profile storage disabled: {err}");
+            }
+            if let Err(err) = commands::secrets::initialize(app.handle()) {
+                log::warn!("secret storage disabled: {err}");
+            }
+
+            #[cfg(target_os = "macos")]
+            {
+                let menu = build_menu(app.handle())?;
+                app.set_menu(menu)?;
+            }
+
+            if cfg!(debug_assertions) {
+                app.handle().plugin(
+                    tauri_plugin_log::Builder::default()
+                        .level(log::LevelFilter::Info)
+                        .build(),
+                )?;
+            }
+
+            #[allow(unexpected_cfgs)]
+            {
+                #[cfg(feature = "devtools")]
+                if let Some(window) = app.get_webview_window("main") {
+                    window.open_devtools();
+                }
+            }
+
+
+            // Start the local agent server. Failure is non-fatal —
+            // the editor works without it, the chat panel just shows
+            // as disconnected.
+            server::initialize(app.handle());
+            Ok(())
+        })
+        .on_window_event(|window, event| {
+            // Let the workbench confirm unsaved changes before a window really closes.
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                let approved = commands::window::take_close_approval(window.label());
+                log::info!("[close] CloseRequested for '{}' approved={approved}", window.label());
+                if !approved {
+                    api.prevent_close();
+                    if let Some(webview) = window.app_handle().get_webview_window(window.label()) {
+                        let _ = webview.eval(
+                            "window.__sc_code_request_close && window.__sc_code_request_close()",
+                        );
+                    }
+                }
+            }
+        })
+        .on_menu_event(|app, event| {
+            let id = event.id().0.as_str();
+            if let Some(window) = app.get_webview_window("main") {
+                let escaped = id.replace('\\', "\\\\").replace('\'', "\\'");
+                let _ = window.eval(format!(
+                    "window.dispatchEvent(new CustomEvent('sc-code-native-menu', {{ detail: '{escaped}' }}))"
+                ));
+            }
+        })
+        .invoke_handler(move |invoke| {
+            if !ipc_guard::is_trusted_origin(invoke.message.headers(), dev_origin.as_deref()) {
+                let command = invoke.message.command().to_string();
+                log::warn!("rejected IPC command '{command}' from an untrusted origin");
+                invoke.resolver.reject(format!("Command {command} is not available to this origin"));
+                return true;
+            }
+            app_commands(invoke)
+        })
         .build(context)
         .expect("error while running tauri application")
         .run(|app_handle, event| {

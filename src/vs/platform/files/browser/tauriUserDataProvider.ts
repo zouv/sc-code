@@ -9,10 +9,14 @@ import { invoke } from '@tauri-apps/api/core';
 import { URI } from '../../../base/common/uri.js';
 import { isWindows } from '../../../base/common/platform.js';
 import { IDisposable } from '../../../base/common/lifecycle.js';
-import { IWatchOptions } from '../common/files.js';
+import { FileSystemProviderCapabilities, IWatchOptions } from '../common/files.js';
 import { TauriFileSystemProvider } from './tauriFileSystemProvider.js';
 
 export class TauriUserDataProvider extends TauriFileSystemProvider {
+	// Profile data is deleted for real; only workspace files go to the recycle bin.
+	override readonly capabilities: FileSystemProviderCapabilities =
+		FileSystemProviderCapabilities.FileReadWrite | (isWindows ? 0 : FileSystemProviderCapabilities.PathCaseSensitive);
+
 	private _rootPath: string | undefined;
 	private _rootPromise: Promise<string> | undefined;
 
@@ -41,7 +45,7 @@ export class TauriUserDataProvider extends TauriFileSystemProvider {
 		return isWindows ? path.replace(/\\/g, '/') : path;
 	}
 
-	// [CUSTOM-BEGIN] CUSTOM-20261013-006 - watch mapped user-data resources and restore scheme URIs
+	// ScCode: watch mapped user-data resources and restore scheme URIs
 	override watch(resource: URI, opts: IWatchOptions): IDisposable {
 		const fileResourcePromise = this.toFileUri(resource);
 		let disposed = false;
@@ -79,7 +83,6 @@ export class TauriUserDataProvider extends TauriFileSystemProvider {
 			}
 		};
 	}
-	// [CUSTOM-END] CUSTOM-20261013-006
 
 	override async stat(resource: URI) {
 		return super.stat(await this.toFileUri(resource));

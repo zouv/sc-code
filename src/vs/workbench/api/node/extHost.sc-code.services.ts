@@ -26,6 +26,10 @@ import { ExtHostTerminalService } from './extHostTerminalService.js';
 import { ExtensionStoragePaths } from './extHostStoragePaths.js';
 import { NodeExtHostVariableResolverProviderService } from './extHostVariableResolverService.js';
 import { NodeExtHostAuthentication } from './extHostAuthentication.js';
+import { IExtHostDebugService } from '../common/extHostDebugService.js';
+import { ExtHostDebugService } from './extHostDebugService.js';
+import { ISignService } from '../../../platform/sign/common/sign.js';
+import { SignService } from '../../../platform/sign/node/signService.js';
 import { ExtHostLoggerService } from './extHostLoggerService.js';
 
 registerSingleton(IExtHostExtensionService, ExtHostExtensionService, InstantiationType.Eager);
@@ -34,6 +38,10 @@ registerSingleton(ILogService, new SyncDescriptor(ExtHostLogService, [false], tr
 registerSingleton(IExtensionStoragePaths, ExtensionStoragePaths, InstantiationType.Eager);
 registerSingleton(IExtHostTelemetry, new SyncDescriptor(ExtHostTelemetry, [false], true));
 registerSingleton(IExtHostAuthentication, NodeExtHostAuthentication, InstantiationType.Eager);
+registerSingleton(ISignService, SignService, InstantiationType.Delayed);
+// Node debug service: launches `DebugAdapterExecutable` / server / named-pipe adapters
+// (debugpy, cppdbg, delve...). Overrides the worker variant from extHost.common.services.
+registerSingleton(IExtHostDebugService, ExtHostDebugService, InstantiationType.Eager);
 registerSingleton(IExtHostSearch, NativeExtHostSearch, InstantiationType.Eager);
 registerSingleton(IExtHostTask, ExtHostTask, InstantiationType.Eager);
 registerSingleton(IExtHostTerminalService, ExtHostTerminalService, InstantiationType.Eager);

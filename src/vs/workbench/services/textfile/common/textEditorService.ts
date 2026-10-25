@@ -175,9 +175,8 @@ export class TextEditorService extends Disposable implements ITextEditorService 
 				languageId: untitledInput.languageId,
 				initialValue: untitledInput.contents,
 				encoding: untitledInput.encoding,
-				// [CUSTOM-BEGIN] CUSTOM-20261017-006 - 拖入文件的副本以干净状态打开（否则初始内容会被当成未保存修改）
+				// ScCode: 拖入文件的副本以干净状态打开（否则初始内容会被当成未保存修改）
 				initialDirtyState: untitledInput.initialDirtyState
-				// [CUSTOM-END] CUSTOM-20261017-006
 			};
 
 			// Untitled resource: use as hint for an existing untitled editor

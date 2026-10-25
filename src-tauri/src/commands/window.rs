@@ -8,6 +8,50 @@ use crate::taskbar::OpenTarget;
 
 static WORKSPACE_WINDOW_COUNTER: AtomicU64 = AtomicU64::new(1);
 
+/// Windows whose close request was approved by the workbench (unsaved-changes prompt done).
+fn approved_closes() -> &'static std::sync::Mutex<std::collections::HashSet<String>> {
+    static APPROVED: std::sync::OnceLock<std::sync::Mutex<std::collections::HashSet<String>>> =
+        std::sync::OnceLock::new();
+    APPROVED.get_or_init(|| std::sync::Mutex::new(std::collections::HashSet::new()))
+}
+
+pub fn approve_close(label: &str) {
+    if let Ok(mut approved) = approved_closes().lock() {
+        approved.insert(label.to_string());
+    }
+}
+
+/// Consumes one approval; the first `close()` after it goes through, later ones prompt again.
+pub fn take_close_approval(label: &str) -> bool {
+    approved_closes()
+        .lock()
+        .is_ok_and(|mut approved| approved.remove(label))
+}
+
+/// WebView2 user data folder for an isolated `SC_CODE_HOME` profile (WebView2 itself
+/// adds the `EBWebView` child). Window configs cannot carry it: Tauri drops
+/// `dataDirectory` when converting a window config to webview attributes, so every
+/// builder must set it explicitly. The default profile keeps the WebView2 default
+/// location so existing users' browser state is not orphaned.
+pub fn isolated_webview_data_dir() -> Option<std::path::PathBuf> {
+    std::env::var_os("SC_CODE_HOME").map(|_| crate::app_dirs::app_data_dir())
+}
+
+/// Builds a workbench window from a window config, applying the profile's WebView data folder.
+pub fn build_workbench_window<M: Manager<tauri::Wry>>(
+    manager: &M,
+    config: &tauri::utils::config::WindowConfig,
+) -> Result<tauri::WebviewWindow, String> {
+    let mut builder = WebviewWindowBuilder::from_config(manager, config)
+        .map_err(|e| format!("failed to create window '{}': {e}", config.label))?;
+    if let Some(dir) = isolated_webview_data_dir() {
+        builder = builder.data_directory(dir);
+    }
+    builder
+        .build()
+        .map_err(|e| format!("failed to build window '{}': {e}", config.label))
+}
+
 /// Open a new workbench window for a jump-list target. Reusing the main window
 /// would discard the user's current workspace, so recent entries always get
 /// their own window.
@@ -25,11 +69,9 @@ pub fn open_target_window(app: &AppHandle, target: &OpenTarget) -> Result<(), St
     config.url = WebviewUrl::App(target.app_url().into());
     config.visible = true;
     config.focus = true;
+    config.create = true;
 
-    WebviewWindowBuilder::from_config(app, &config)
-        .map_err(|e| format!("failed to create workspace window: {e}"))?
-        .build()
-        .map_err(|e| format!("failed to build workspace window: {e}"))?;
+    build_workbench_window(app, &config)?;
 
     Ok(())
 }
@@ -83,6 +125,8 @@ pub fn close_window(app: AppHandle, label: String) -> Result<(), String> {
         .get_webview_window(&label)
         .ok_or_else(|| format!("Window '{label}' not found"))?;
 
+    // The workbench already ran the unsaved-changes prompt for this close.
+    approve_close(&label);
     window
         .close()
         .map_err(|e| format!("Failed to close window '{label}': {e}"))

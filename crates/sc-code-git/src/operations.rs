@@ -852,81 +852,101 @@ pub fn list_tags(repo_root: &Path) -> GitResult<Vec<TagInfo>> {
     Ok(tags)
 }
 
+/// Flags that make git run external programs, write arbitrary files, or
+/// override configuration. Matched exactly and as `--flag=value`.
 const BLOCKED_GIT_FLAGS: &[&str] = &[
     "-c",
+    "-u",
+    "-o",
+    "-O",
+    "-x",
     "--exec",
     "--upload-pack",
     "--receive-pack",
     "--config",
+    "--config-env",
     "--exec-path",
+    "--output",
+    "--output-directory",
+    "--open-files-in-pager",
+    "--template",
+    "--ext-diff",
+    "--git-dir",
+    "--work-tree",
 ];
 
+/// Generic `run` is reachable from the webview, so it only accepts the
+/// subcommands the workbench needs. Network, history-rewriting and
+/// script-running commands go through dedicated, typed functions instead.
 const ALLOWED_GIT_SUBCOMMANDS: &[&str] = &[
     "add",
-    "am",
-    "apply",
-    "archive",
-    "bisect",
-    "blame",
     "branch",
-    "cat-file",
-    "cherry-pick",
     "checkout",
-    "clean",
-    "clone",
     "commit",
-    "describe",
+    "config",
     "diff",
     "diff-tree",
-    "fetch",
-    "for-each-ref",
-    "format-patch",
-    "gc",
-    "grep",
-    "hash-object",
-    "init",
     "log",
-    "ls-files",
-    "ls-remote",
-    "ls-tree",
-    "merge",
-    "pack-refs",
-    "prune",
-    "pull",
-    "push",
-    "rebase",
-    "reflog",
+    "merge-base",
     "remote",
-    "reset",
-    "revert",
+    "rev-list",
     "rev-parse",
-    "shortlog",
     "show",
     "stash",
     "status",
-    "submodule",
     "tag",
-    "worktree",
 ];
+
+fn git_arg_error(message: String) -> GitError {
+    GitError::Command { message }
+}
 
 fn validate_git_args(args: &[&str]) -> GitResult<()> {
     let subcommand = args.first().copied().unwrap_or("");
     if !ALLOWED_GIT_SUBCOMMANDS.contains(&subcommand) {
-        return Err(GitError::Command {
-            message: format!("git subcommand '{subcommand}' is not allowed"),
-        });
+        return Err(git_arg_error(format!(
+            "git subcommand '{subcommand}' is not allowed"
+        )));
     }
     for arg in args.iter().skip(1) {
-        let lower = arg.to_lowercase();
+        // Short flags are case-sensitive (`-o` vs `-O` differ per subcommand), long flags are not.
+        let candidate = if arg.starts_with("--") {
+            arg.to_lowercase()
+        } else {
+            (*arg).to_string()
+        };
         for blocked in BLOCKED_GIT_FLAGS {
-            if lower == *blocked || lower.starts_with(&format!("{blocked}=")) {
-                return Err(GitError::Command {
-                    message: format!("git flag '{arg}' is not allowed"),
-                });
+            let attached_short = blocked.len() == 2 && candidate.starts_with(blocked) && candidate.len() > 2
+                && !candidate.starts_with("--");
+            if candidate == *blocked || candidate.starts_with(&format!("{blocked}=")) || attached_short {
+                return Err(git_arg_error(format!("git flag '{arg}' is not allowed")));
             }
         }
+        // Transport helpers that execute commands (`ext::sh -c ...`, `fd::`).
+        let lower = arg.to_lowercase();
+        if lower.starts_with("ext::") || lower.starts_with("fd::") {
+            return Err(git_arg_error(format!("git transport '{arg}' is not allowed")));
+        }
     }
-    Ok(())
+    match subcommand {
+        // Reading a single key only; writing config can install hooks/pagers/editors.
+        "config" if !(args.len() == 3 && args[1] == "--get") => Err(git_arg_error(
+            "only `git config --get <key>` is allowed".to_string(),
+        )),
+        "remote" => match args.get(1).copied() {
+            Some("get-url" | "add" | "remove" | "-v") | None => {
+                if args.iter().skip(2).any(|a| a.starts_with('-')) {
+                    Err(git_arg_error("git remote options are not allowed".to_string()))
+                } else {
+                    Ok(())
+                }
+            }
+            Some(other) => Err(git_arg_error(format!(
+                "git remote '{other}' is not allowed"
+            ))),
+        },
+        _ => Ok(()),
+    }
 }
 
 /// Run an arbitrary (validated) git subcommand. Only allowed subcommands are
@@ -1024,6 +1044,50 @@ mod tests {
         assert!(validate_git_args(&["rm", "-rf", "/"]).is_err());
         assert!(validate_git_args(&["status"]).is_ok());
         assert!(validate_git_args(&["log", "--config=x"]).is_err());
+        assert!(validate_git_args(&["log", "--OUTPUT=x"]).is_err());
+        assert!(validate_git_args(&["diff", "--output=C:/x"]).is_err());
+        assert!(validate_git_args(&["show", "-ocfg"]).is_err());
+        for args in [
+            &["bisect", "run", "calc"][..],
+            &["submodule", "foreach", "calc"],
+            &["rebase", "-x", "calc", "HEAD~1"],
+            &["grep", "-Ocalc", "x"],
+            &["clone", "-u", "calc", "x"],
+            &["config", "core.pager", "calc"],
+            &["config", "--global", "--get", "user.name"],
+            &["remote", "add", "x", "ext::sh -c calc"],
+            &["remote", "set-url", "origin", "x"],
+            &["commit", "--template=x"],
+        ] {
+            assert!(validate_git_args(args).is_err(), "{args:?}");
+        }
+    }
+
+    #[test]
+    fn validate_git_args_allows_workbench_calls() {
+        for args in [
+            &["show", "HEAD:src/main.rs"][..],
+            &["remote", "get-url", "origin"],
+            &["remote", "add", "upstream", "https://example.com/r.git"],
+            &["remote", "remove", "upstream"],
+            &["config", "--get", "branch.main.remote"],
+            &["rev-parse", "--abbrev-ref", "main@{upstream}"],
+            &["diff-tree", "--no-commit-id", "-r", "--name-status", "a", "b"],
+            &["merge-base", "a", "b"],
+            &["rev-list", "--left-right", "--count", "HEAD...@{upstream}"],
+            &["checkout", "-b", "feature", "main"],
+            &["checkout", "--detach", "v1"],
+            &["stash", "pop", "stash@{0}"],
+            &["commit", "--amend", "--no-edit"],
+            &["commit", "-m", "message"],
+            &["add", "."],
+            &["branch", "-r", "--sort=-committerdate", "--format=%(refname:short)"],
+            &["tag", "-a", "v1", "-m", "release"],
+            &["tag", "-d", "v1"],
+            &["diff", "--staged"],
+        ] {
+            assert!(validate_git_args(args).is_ok(), "{args:?}");
+        }
     }
 
     #[test]

@@ -66,6 +66,15 @@ pub struct SearchOptions {
     pub max_file_size: Option<u64>,
     /// Number of context lines before/after each match.
     pub context_lines: Option<usize>,
+    /// Search files listed in `.gitignore` / global excludes too (`search.useIgnoreFiles: false`).
+    #[serde(default)]
+    pub disregard_ignore_files: bool,
+    /// Follow symbolic links while walking (`search.followSymlinks`).
+    #[serde(default)]
+    pub follow_symlinks: bool,
+    /// Match include/exclude globs case-insensitively (Windows/macOS file systems).
+    #[serde(default)]
+    pub ignore_glob_case: bool,
 }
 
 /// A single match result.
@@ -106,6 +115,9 @@ pub struct SearchResultGroup {
 
 /// Callback type for streaming search progress.
 pub type SearchProgress = Arc<dyn Fn(&SearchResult) + Send + Sync>;
+
+/// Callback receiving all (possibly truncated) matches of one file at once.
+pub type FileMatchesCallback<'a> = &'a (dyn Fn(&[SearchResult]) + Sync);
 
 /// A previewed replacement edit for a single file.
 #[derive(Debug, Clone, Serialize)]
@@ -148,7 +160,19 @@ impl SearchEngine {
         query: &SearchQuery,
         options: &SearchOptions,
     ) -> WorkspaceResult<Vec<SearchResult>> {
-        Self::search_inner(root, query, options, None)
+        Self::search_inner(root, query, options, None, None, None)
+    }
+
+    /// Search that reports each file's matches as soon as the file is scanned and
+    /// stops early once `cancel` is set. Returns the number of reported matches.
+    pub fn search_streaming(
+        root: &Path,
+        query: &SearchQuery,
+        options: &SearchOptions,
+        on_file: FileMatchesCallback<'_>,
+        cancel: &AtomicBool,
+    ) -> WorkspaceResult<usize> {
+        Self::search_inner(root, query, options, None, Some(on_file), Some(cancel)).map(|r| r.len())
     }
 
     /// Search with a progress callback for streaming results.
@@ -158,7 +182,7 @@ impl SearchEngine {
         options: &SearchOptions,
         progress: SearchProgress,
     ) -> WorkspaceResult<Vec<SearchResult>> {
-        Self::search_inner(root, query, options, Some(progress))
+        Self::search_inner(root, query, options, Some(progress), None, None)
     }
 
     #[allow(clippy::too_many_lines, clippy::needless_pass_by_value)]
@@ -167,7 +191,10 @@ impl SearchEngine {
         query: &SearchQuery,
         options: &SearchOptions,
         progress: Option<SearchProgress>,
+        on_file: Option<FileMatchesCallback<'_>>,
+        cancel: Option<&AtomicBool>,
     ) -> WorkspaceResult<Vec<SearchResult>> {
+        let cancelled = || cancel.is_some_and(|c| c.load(Ordering::Relaxed));
         let max_results = options
             .max_results
             .or(query.max_results)
@@ -207,7 +234,7 @@ impl SearchEngine {
         let batches: Vec<Vec<SearchResult>> = files
             .par_iter()
             .filter_map(|path| {
-                if done.load(Ordering::Relaxed) {
+                if done.load(Ordering::Relaxed) || cancelled() {
                     return None;
                 }
 
@@ -217,6 +244,9 @@ impl SearchEngine {
 
                 if let Some(ref finder) = literal_finder {
                     for (line_idx, line) in content.lines().enumerate() {
+                        if line_idx % 4096 == 0 && cancelled() {
+                            break;
+                        }
                         let bytes = line.as_bytes();
                         let mut start = 0;
                         while let Some(pos) = finder.find(&bytes[start..]) {
@@ -242,6 +272,9 @@ impl SearchEngine {
                     }
                 } else if let Some(ref re) = re {
                     for (line_idx, line) in content.lines().enumerate() {
+                        if line_idx % 4096 == 0 && cancelled() {
+                            break;
+                        }
                         for m in re.find_iter(line) {
                             let result = SearchResult {
                                 path: path_buf.clone(),
@@ -271,6 +304,11 @@ impl SearchEngine {
                     if prev + local.len() >= max_results {
                         done.store(true, Ordering::Relaxed);
                         local.truncate(max_results.saturating_sub(prev));
+                    }
+                    if let Some(on_file) = on_file {
+                        if !local.is_empty() {
+                            on_file(&local);
+                        }
                     }
                     Some(local)
                 }
@@ -499,23 +537,21 @@ fn read_file_lossy(path: &Path) -> Option<String> {
 }
 
 /// Collect searchable files with extended options.
+///
+/// Globs follow VS Code semantics: they match the path relative to `root` (with `/`
+/// separators), and an exclude glob that matches a directory prunes everything below it.
 fn collect_files_with_options(
     root: &Path,
     options: &SearchOptions,
     max_file_size: u64,
 ) -> Vec<PathBuf> {
-    let include_set = build_search_globset(&options.include_patterns);
-    let exclude_set = build_search_globset(&options.exclude_patterns);
+    let include_set = build_search_globset(&options.include_patterns, options.ignore_glob_case);
+    let exclude_set = build_search_globset(&options.exclude_patterns, options.ignore_glob_case);
+    let use_ignore_files = !options.disregard_ignore_files;
 
     let mut files = Vec::new();
 
-    for result in WalkBuilder::new(root)
-        .hidden(false)
-        .git_ignore(true)
-        .git_global(true)
-        .git_exclude(true)
-        .build()
-    {
+    for result in workspace_walker(root, exclude_set.clone(), use_ignore_files, options.follow_symlinks) {
         let Ok(entry) = result else { continue };
 
         if !entry.file_type().is_some_and(|ft| ft.is_file()) {
@@ -529,13 +565,14 @@ fn collect_files_with_options(
             }
         }
 
+        let relative = relative_slash_path(root, path);
         if let Some(ref inc) = include_set {
-            if !inc.is_match(path) {
+            if !inc.is_match(&relative) {
                 continue;
             }
         }
         if let Some(ref exc) = exclude_set {
-            if exc.is_match(path) {
+            if exc.is_match(&relative) {
                 continue;
             }
         }
@@ -550,13 +587,57 @@ fn collect_files_with_options(
     files
 }
 
-fn build_search_globset(patterns: &[String]) -> Option<globset::GlobSet> {
+/// `.gitignore`-aware walker that prunes directories matched by `exclude_set`
+/// (relative-path globs) before descending into them.
+fn workspace_walker(
+    root: &Path,
+    exclude_set: Option<globset::GlobSet>,
+    use_ignore_files: bool,
+    follow_symlinks: bool,
+) -> ignore::Walk {
+    let prune_root = root.to_path_buf();
+    WalkBuilder::new(root)
+        .hidden(false)
+        .git_ignore(use_ignore_files)
+        .git_global(use_ignore_files)
+        .git_exclude(use_ignore_files)
+        .ignore(use_ignore_files)
+        .parents(use_ignore_files)
+        .follow_links(follow_symlinks)
+        .filter_entry(move |entry| {
+            // Never prune the root itself; prune excluded directories before descending.
+            if entry.depth() == 0 || !entry.file_type().is_some_and(|ft| ft.is_dir()) {
+                return true;
+            }
+            exclude_set
+                .as_ref()
+                .is_none_or(|set| !set.is_match(relative_slash_path(&prune_root, entry.path())))
+        })
+        .build()
+}
+
+/// `path` relative to `root` with `/` separators (what VS Code globs are written against).
+fn relative_slash_path(root: &Path, path: &Path) -> String {
+    let relative = path.strip_prefix(root).unwrap_or(path);
+    relative
+        .components()
+        .map(|c| c.as_os_str().to_string_lossy())
+        .collect::<Vec<_>>()
+        .join("/")
+}
+
+fn build_search_globset(patterns: &[String], case_insensitive: bool) -> Option<globset::GlobSet> {
     if patterns.is_empty() {
         return None;
     }
     let mut builder = globset::GlobSetBuilder::new();
     for p in patterns {
-        if let Ok(g) = globset::Glob::new(p) {
+        let pattern = p.trim_start_matches("./");
+        if let Ok(g) = globset::GlobBuilder::new(pattern)
+            .case_insensitive(case_insensitive)
+            .literal_separator(false)
+            .build()
+        {
             builder.add(g);
         }
     }
@@ -1197,11 +1278,141 @@ pub fn search_files(
     scored
 }
 
+/// Options for VS Code-style workspace file listing (Quick Open / file search).
+#[derive(Debug, Clone, Default)]
+pub struct WorkspaceFileQuery {
+    pub include_patterns: Vec<String>,
+    pub exclude_patterns: Vec<String>,
+    pub max_results: Option<usize>,
+    pub disregard_ignore_files: bool,
+    pub follow_symlinks: bool,
+    pub ignore_glob_case: bool,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct WorkspaceFileList {
+    pub files: Vec<FileMatch>,
+    pub limit_hit: bool,
+}
+
+/// Case-insensitive "all characters in order" match of `pattern` against `relative`,
+/// like VS Code's `fuzzyContains`; whitespace in the pattern is ignored.
+fn fuzzy_contains_path(relative: &str, pattern: &str) -> bool {
+    let mut target = relative.chars().flat_map(char::to_lowercase);
+    pattern
+        .chars()
+        .filter(|c| !c.is_whitespace())
+        .map(|c| if c == '\\' { '/' } else { c })
+        .flat_map(char::to_lowercase)
+        .all(|wanted| target.any(|c| c == wanted))
+}
+
+/// Lists files under `root` whose relative path fuzzily contains `pattern`.
+///
+/// Unlike [`search_files`], this follows VS Code semantics: dotfiles are included,
+/// `.gitignore` is respected unless disregarded, globs match relative paths, and
+/// directory names are never skipped implicitly (callers pass `files.exclude`).
+pub fn search_workspace_files(
+    root: &Path,
+    pattern: &str,
+    query: &WorkspaceFileQuery,
+    cancel: &AtomicBool,
+) -> WorkspaceFileList {
+    let max_results = query.max_results.unwrap_or(DEFAULT_MAX_RESULTS);
+    let include_set = build_search_globset(&query.include_patterns, query.ignore_glob_case);
+    let exclude_set = build_search_globset(&query.exclude_patterns, query.ignore_glob_case);
+    let pattern_bytes: Vec<u8> = pattern.bytes().filter(|b| !b.is_ascii_whitespace()).collect();
+
+    let mut matches = Vec::new();
+    for result in workspace_walker(
+        root,
+        exclude_set.clone(),
+        !query.disregard_ignore_files,
+        query.follow_symlinks,
+    ) {
+        if cancel.load(Ordering::Relaxed) {
+            break;
+        }
+        let Ok(entry) = result else { continue };
+        if !entry.file_type().is_some_and(|ft| ft.is_file()) {
+            continue;
+        }
+        let relative = relative_slash_path(root, entry.path());
+        if include_set.as_ref().is_some_and(|inc| !inc.is_match(&relative))
+            || exclude_set.as_ref().is_some_and(|exc| exc.is_match(&relative))
+            || !fuzzy_contains_path(&relative, pattern)
+        {
+            continue;
+        }
+        let name = entry.file_name().to_string_lossy().into_owned();
+        // Only used to choose what survives truncation; the workbench re-scores results.
+        let score = fuzzy_score(&pattern_bytes, &name).unwrap_or(0) * 4
+            - i64::try_from(relative.len()).unwrap_or(i64::MAX).min(500);
+        matches.push(FileMatch {
+            path: entry.path().to_string_lossy().into_owned(),
+            name,
+            score,
+        });
+    }
+
+    let limit_hit = matches.len() > max_results;
+    matches.sort_unstable_by_key(|m| std::cmp::Reverse(m.score));
+    matches.truncate(max_results);
+    WorkspaceFileList {
+        files: matches,
+        limit_hit,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use std::fs;
     use tempfile::TempDir;
+
+    #[test]
+    fn workspace_files_follow_vscode_semantics() {
+        let tmp = TempDir::new().unwrap();
+        fs::create_dir_all(tmp.path().join(".git")).unwrap();
+        fs::create_dir_all(tmp.path().join(".github/workflows")).unwrap();
+        fs::create_dir_all(tmp.path().join("build")).unwrap();
+        fs::create_dir_all(tmp.path().join("src/contrib/search")).unwrap();
+        fs::create_dir_all(tmp.path().join("node_modules/x")).unwrap();
+        fs::write(tmp.path().join(".gitignore"), "generated/\n").unwrap();
+        fs::create_dir_all(tmp.path().join("generated")).unwrap();
+        fs::write(tmp.path().join("generated/out.ts"), "").unwrap();
+        fs::write(tmp.path().join(".github/workflows/ci.yml"), "").unwrap();
+        fs::write(tmp.path().join("build/webpack.config.js"), "").unwrap();
+        fs::write(tmp.path().join("src/contrib/search/searchView.ts"), "").unwrap();
+        fs::write(tmp.path().join("node_modules/x/index.js"), "").unwrap();
+
+        let cancel = AtomicBool::new(false);
+        let query = WorkspaceFileQuery {
+            exclude_patterns: vec!["**/.git".into(), "**/node_modules".into()],
+            ..Default::default()
+        };
+        let names = |pattern: &str| {
+            let mut names: Vec<String> = search_workspace_files(tmp.path(), pattern, &query, &cancel)
+                .files
+                .into_iter()
+                .map(|f| relative_slash_path(tmp.path(), Path::new(&f.path)))
+                .collect();
+            names.sort();
+            names
+        };
+
+        assert_eq!(names("ci.yml"), [".github/workflows/ci.yml"]);
+        assert_eq!(names("webpack"), ["build/webpack.config.js"]);
+        assert_eq!(names("contrib/search view"), ["src/contrib/search/searchView.ts"]);
+        assert_eq!(names("index.js"), Vec::<String>::new());
+        assert_eq!(names("out.ts"), Vec::<String>::new());
+        assert_eq!(names("").len(), 4);
+
+        let limited = WorkspaceFileQuery { max_results: Some(2), ..query.clone() };
+        let list = search_workspace_files(tmp.path(), "", &limited, &cancel);
+        assert_eq!(list.files.len(), 2);
+        assert!(list.limit_hit);
+    }
 
     fn setup() -> TempDir {
         let tmp = TempDir::new().unwrap();
@@ -1273,6 +1484,121 @@ mod tests {
             assert!(edit.replaced.contains("Goodbye"));
             assert!(!edit.replaced.contains("Hello"));
         }
+    }
+
+    #[test]
+    fn globs_match_relative_paths_and_prune_excluded_dirs() {
+        let tmp = TempDir::new().unwrap();
+        fs::create_dir_all(tmp.path().join("node_modules/pkg")).unwrap();
+        fs::create_dir_all(tmp.path().join("src/deep")).unwrap();
+        fs::write(tmp.path().join("node_modules/pkg/index.js"), "needle").unwrap();
+        fs::write(tmp.path().join("src/deep/a.ts"), "needle").unwrap();
+        fs::write(tmp.path().join("src/b.js"), "needle").unwrap();
+        fs::write(tmp.path().join("top.ts"), "needle").unwrap();
+        let query = SearchQuery {
+            pattern: "needle".into(),
+            is_regex: false,
+            case_sensitive: true,
+            whole_word: false,
+            max_results: None,
+        };
+        let names = |options: &SearchOptions| {
+            let mut names: Vec<String> = SearchEngine::search_with_options(tmp.path(), &query, options)
+                .unwrap()
+                .into_iter()
+                .map(|r| relative_slash_path(tmp.path(), &r.path))
+                .collect();
+            names.sort();
+            names
+        };
+
+        let excluded = SearchOptions {
+            exclude_patterns: vec!["**/node_modules".into()],
+            ..Default::default()
+        };
+        assert_eq!(names(&excluded), ["src/b.js", "src/deep/a.ts", "top.ts"]);
+
+        let included = SearchOptions {
+            include_patterns: vec!["src/**/*.ts".into()],
+            ..Default::default()
+        };
+        assert_eq!(names(&included), ["src/deep/a.ts"]);
+
+        let case_insensitive = SearchOptions {
+            include_patterns: vec!["SRC/**".into()],
+            ignore_glob_case: true,
+            ..Default::default()
+        };
+        assert_eq!(names(&case_insensitive), ["src/b.js", "src/deep/a.ts"]);
+    }
+
+    #[test]
+    fn ignore_files_can_be_disregarded() {
+        let tmp = TempDir::new().unwrap();
+        // The ignore crate only applies .gitignore inside a git repository.
+        fs::create_dir_all(tmp.path().join(".git")).unwrap();
+        fs::write(tmp.path().join(".gitignore"), "ignored.txt\n").unwrap();
+        fs::write(tmp.path().join("ignored.txt"), "needle").unwrap();
+        fs::write(tmp.path().join("kept.txt"), "needle").unwrap();
+        let query = SearchQuery {
+            pattern: "needle".into(),
+            is_regex: false,
+            case_sensitive: true,
+            whole_word: false,
+            max_results: None,
+        };
+        let respected = SearchEngine::search_with_options(tmp.path(), &query, &SearchOptions::default()).unwrap();
+        assert_eq!(respected.len(), 1);
+        let disregarded = SearchOptions {
+            disregard_ignore_files: true,
+            ..Default::default()
+        };
+        assert_eq!(SearchEngine::search_with_options(tmp.path(), &query, &disregarded).unwrap().len(), 2);
+    }
+
+    #[test]
+    fn streaming_reports_each_file_once_and_honours_cancel() {
+        let tmp = TempDir::new().unwrap();
+        fs::write(tmp.path().join("a.txt"), "needle\nnope\nneedle needle").unwrap();
+        fs::write(tmp.path().join("b.txt"), "needle").unwrap();
+        let query = SearchQuery {
+            pattern: "needle".into(),
+            is_regex: false,
+            case_sensitive: true,
+            whole_word: false,
+            max_results: None,
+        };
+
+        let files = std::sync::Mutex::new(Vec::new());
+        let cancel = AtomicBool::new(false);
+        let total = SearchEngine::search_streaming(
+            tmp.path(),
+            &query,
+            &SearchOptions::default(),
+            &|matches: &[SearchResult]| files.lock().unwrap().push((matches[0].path.clone(), matches.len())),
+            &cancel,
+        )
+        .unwrap();
+        let mut files = files.into_inner().unwrap();
+        files.sort();
+        assert_eq!(total, 4);
+        assert_eq!(files.len(), 2);
+        assert!(files[0].0.ends_with("a.txt") && files[0].1 == 3);
+
+        cancel.store(true, Ordering::Relaxed);
+        let reported = AtomicUsize::new(0);
+        let total = SearchEngine::search_streaming(
+            tmp.path(),
+            &query,
+            &SearchOptions::default(),
+            &|m: &[SearchResult]| {
+                reported.fetch_add(m.len(), Ordering::Relaxed);
+            },
+            &cancel,
+        )
+        .unwrap();
+        assert_eq!(total, 0);
+        assert_eq!(reported.load(Ordering::Relaxed), 0);
     }
 
     #[test]

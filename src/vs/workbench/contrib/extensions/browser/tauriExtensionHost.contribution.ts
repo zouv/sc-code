@@ -88,9 +88,8 @@ import { IWebviewViewService } from '../../webviewView/browser/webviewViewServic
 import { ExtensionIdentifier } from '../../../../platform/extensions/common/extensions.js';
 import { IWebviewService } from '../../webview/browser/webview.js';
 import { ICodeEditorService } from '../../../../editor/browser/services/codeEditorService.js';
-// [CUSTOM-BEGIN] CUSTOM-20261013-013 - read effective Workbench settings for the independent Node host
+// ScCode: read effective Workbench settings for the independent Node host
 import { IConfigurationService } from '../../../../platform/configuration/common/configuration.js';
-// [CUSTOM-END] CUSTOM-20261013-013
 import type { ICodeEditor } from '../../../../editor/browser/editorBrowser.js';
 
 
@@ -170,19 +169,17 @@ class TauriExtensionHostContribution extends Disposable implements IWorkbenchCon
 	private _tauriWatchListenerPromise: Promise<void> | undefined;
 	private _completionColdStart = true;
 	private _failureBurstLog = new Map<string, number>();
-	// [CUSTOM-BEGIN] CUSTOM-20261013-013 - debounce and serialize full configuration snapshots
+	// ScCode: debounce and serialize full configuration snapshots
 	private _configurationSyncTimer: ReturnType<typeof setTimeout> | undefined;
 	private _configurationSyncPromise: Promise<void> = Promise.resolve();
 	private _configurationChangeVersion = 0;
-	// [CUSTOM-END] CUSTOM-20261013-013
 
 	private _bootstrapExtensions: IExtensionManifestSummary[] = [];
 	private _statusBarItems = new Map<string, IStatusbarEntryAccessor>();
 	private _webviewPanels = new Map<string, WebviewInput>();
 	private _treeViews = new Map<string, TreeView>();
-	// [CUSTOM-BEGIN] CUSTOM-20261015-002 - 宿主 treeItem handle → 前端 ITreeItem 反查（tree provider 桥）
+	// ScCode: 宿主 treeItem handle → 前端 ITreeItem 反查（tree provider 桥）
 	private _treeRemoteHandles: Map<string, ITreeItem> | undefined;
-	// [CUSTOM-END] CUSTOM-20261015-002
 	private _registeredCommands = new Map<string, IDisposable>();
 	private _webviewViewDisposables = new Map<string, IDisposable>();
 
@@ -212,14 +209,12 @@ class TauriExtensionHostContribution extends Disposable implements IWorkbenchCon
 		@IWebviewViewService private readonly webviewViewService: IWebviewViewService,
 		@IWebviewService private readonly webviewService: IWebviewService,
 		@ICodeEditorService private readonly codeEditorService: ICodeEditorService,
-		// [CUSTOM-BEGIN] CUSTOM-20261013-013 - subscribe to effective Workbench configuration
+		// ScCode: subscribe to effective Workbench configuration
 		@IConfigurationService private readonly configurationService: IConfigurationService,
-		// [CUSTOM-END] CUSTOM-20261013-013
 	) {
 		super();
-		// [CUSTOM-BEGIN] CUSTOM-20261013-013 - propagate effective settings changes to the Node host
+		// ScCode: propagate effective settings changes to the Node host
 		this._register(this.configurationService.onDidChangeConfiguration(() => this._scheduleConfigurationSync()));
-		// [CUSTOM-END] CUSTOM-20261013-013
 		this._init();
 	}
 
@@ -831,11 +826,10 @@ class TauriExtensionHostContribution extends Disposable implements IWorkbenchCon
 			case 'commandRegistered':
 				this._onCommandRegistered(msg.commandId);
 				break;
-			// [CUSTOM-BEGIN] CUSTOM-20261017-002 - 宿主重载扩展后撤销旧版本已不存在的命令桥
+			// ScCode: 宿主重载扩展后撤销旧版本已不存在的命令桥
 			case 'commandUnregistered':
 				this._onCommandUnregistered(msg.commandId);
 				break;
-			// [CUSTOM-END] CUSTOM-20261017-002
 			case 'extensionSecretRequest':
 				void this._onExtensionSecretRequest(msg);
 				break;
@@ -950,11 +944,10 @@ class TauriExtensionHostContribution extends Disposable implements IWorkbenchCon
 			case 'treeViewUpdate':
 				this._onTreeViewUpdate(msg.viewId, msg);
 				break;
-			// [CUSTOM-BEGIN] CUSTOM-20261015-002 - tree data provider 跨进程桥（宿主 → 前端刷新）
+			// ScCode: tree data provider 跨进程桥（宿主 → 前端刷新）
 			case 'treeViewInvalidate':
 				this._onTreeViewInvalidate(msg.viewId, msg.elementHandle);
 				break;
-			// [CUSTOM-END] CUSTOM-20261015-002
 			case 'treeViewReveal':
 				this.logService.trace(`[ExtHost] treeViewReveal: ${msg.viewId}`);
 				break;
@@ -1090,7 +1083,7 @@ class TauriExtensionHostContribution extends Disposable implements IWorkbenchCon
 		this._registeredCommands.set(commandId, disposable);
 	}
 
-	// [CUSTOM-BEGIN] CUSTOM-20261017-002 - 宿主重载扩展时撤掉不再存在的命令桥
+	// ScCode: 宿主重载扩展时撤掉不再存在的命令桥
 	// 否则菜单若还引用它，点下去会经宿主再转发回本桥，形成来回转发；撤掉后行为与 VSCode 一致
 	// （未注册的命令 → "command '…' not found"）。
 	private _onCommandUnregistered(commandId: string): void {
@@ -1106,7 +1099,6 @@ class TauriExtensionHostContribution extends Disposable implements IWorkbenchCon
 		}
 		this.logService.info(`[ExtHost] CMD UNREGISTERED: ${commandId}`);
 	}
-	// [CUSTOM-END] CUSTOM-20261017-002
 
 	private _typeOverrideInstalled = false;
 	private _installTypeCommandOverride(): void {
@@ -1318,9 +1310,8 @@ class TauriExtensionHostContribution extends Disposable implements IWorkbenchCon
 		this.logService.info(`[ExtHost] Connected — ${msg.extensionCount} extensions`);
 
 		this._request('resetPanels', {}, { timeoutMs: 3000, allowBeforeHandshake: true }).catch(() => {});
-		// [CUSTOM-BEGIN] CUSTOM-20261013-013 - apply and acknowledge settings before activating any extension
+		// ScCode: apply and acknowledge settings before activating any extension
 		void this._configureAndActivate(msg);
-		// [CUSTOM-END] CUSTOM-20261013-013
 
 		this._syncExtensionState();
 
@@ -2758,7 +2749,7 @@ class TauriExtensionHostContribution extends Disposable implements IWorkbenchCon
 
 	private _extTerminals = new Map<string, any>();
 
-	// [CUSTOM-BEGIN] CUSTOM-20261017-003 - 扩展对话框结果回传宿主（原先整条结果链都是断的）
+	// ScCode: 扩展对话框结果回传宿主（原先整条结果链都是断的）
 	// 三处修正：
 	//   1. 回包必须是 `messageResponse` 形状。原先发的是 `{id: reqId, result}`，server.cjs 对没有
 	//      `type` 的包只会转发给 Node 宿主，宿主落到 handleMessage 的 default 分支返回
@@ -2829,7 +2820,6 @@ class TauriExtensionHostContribution extends Disposable implements IWorkbenchCon
 			this._send({ id: this._nextId(), type: 'messageResponse', params: { requestId: reqId, value: undefined } });
 		}
 	}
-	// [CUSTOM-END] CUSTOM-20261017-003
 
 	private _activeProgressResolvers = new Map<string, () => void>();
 
@@ -3034,10 +3024,9 @@ class TauriExtensionHostContribution extends Disposable implements IWorkbenchCon
 		const viewsRegistry = Registry.as<IViewsRegistry>(ViewExtensions.ViewsRegistry);
 		const existing = viewsRegistry.getView(viewId) as ITreeViewDescriptor | null;
 		if (existing?.treeView) {
-			// [CUSTOM-BEGIN] CUSTOM-20261015-002 - 缓存 contributions.views 声明的 treeView
+			// ScCode: 缓存 contributions.views 声明的 treeView
 			// 否则 _onTreeViewInvalidate 用 _treeViews.get() 拿不到它，refresh 通知不生效（VAC 卡在 loading）。
 			this._treeViews.set(viewId, existing.treeView as unknown as TreeView);
-			// [CUSTOM-END] CUSTOM-20261015-002
 			return existing.treeView as unknown as TreeView;
 		}
 		try {
@@ -3063,11 +3052,10 @@ class TauriExtensionHostContribution extends Disposable implements IWorkbenchCon
 
 	private _onRegisterTreeDataProvider(viewId: string): void {
 		const tv = this._getOrCreateTreeView(viewId);
-		// [CUSTOM-BEGIN] CUSTOM-20261015-002 - 给 TreeView 装远程 dataProvider（此前只建空树 → "no data provider"）
+		// ScCode: 给 TreeView 装远程 dataProvider（此前只建空树 → "no data provider"）
 		if (tv) {
 			tv.dataProvider = this._createRemoteTreeDataProvider(viewId);
 		}
-		// [CUSTOM-END] CUSTOM-20261015-002
 		this._send({ id: this._nextId(), type: 'activateByEvent', params: { event: `onView:${viewId}` } });
 	}
 
@@ -3076,15 +3064,14 @@ class TauriExtensionHostContribution extends Disposable implements IWorkbenchCon
 		if (tv && canSelectMany) {
 			tv.canSelectMany = canSelectMany;
 		}
-		// [CUSTOM-BEGIN] CUSTOM-20261015-002 - 给 TreeView 装远程 dataProvider（VAC 用 createTreeView 注册）
+		// ScCode: 给 TreeView 装远程 dataProvider（VAC 用 createTreeView 注册）
 		if (tv) {
 			tv.dataProvider = this._createRemoteTreeDataProvider(viewId);
 		}
-		// [CUSTOM-END] CUSTOM-20261015-002
 		this._send({ id: this._nextId(), type: 'activateByEvent', params: { event: `onView:${viewId}` } });
 	}
 
-	// [CUSTOM-BEGIN] CUSTOM-20261015-002 - tree data provider 跨进程桥：前端侧
+	// ScCode: tree data provider 跨进程桥：前端侧
 	/** 宿主持有真正的 provider，这里造一个代理 provider，把 getChildren 转发为 WS RPC。 */
 	private _createRemoteTreeDataProvider(viewId: string): ITreeViewDataProvider {
 		if (!this._treeRemoteHandles) {
@@ -3161,7 +3148,6 @@ class TauriExtensionHostContribution extends Disposable implements IWorkbenchCon
 		const element = elementHandle ? this._treeRemoteHandles?.get(elementHandle) : undefined;
 		void tv.refresh(element ? [element] : undefined);
 	}
-	// [CUSTOM-END] CUSTOM-20261015-002
 
 	private _onTreeViewUpdate(viewId: string, msg: any): void {
 		const tv = this._getOrCreateTreeView(viewId);
