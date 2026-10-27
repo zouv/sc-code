@@ -38,17 +38,18 @@ function ignoredPaths(dir, files) {
     .split('\0').filter(Boolean);
 }
 
-test('all imported source destinations remain visible to Git ignore rules', t => {
-  const dir = fixture(t);
-  const manifest = JSON.parse(fs.readFileSync(path.join(root, 'docs/import-manifest.json'), 'utf8'));
-  const files = [...new Set(manifest.files.map(file => file.destination))];
-  assert.deepEqual(ignoredPaths(dir, files), []);
-});
-test('source directories, checked-in runtime assets and reproducible locks are not build output', t => {
+test('source files, checked-in runtime assets and reproducible locks are not build output', t => {
   const dir = fixture(t);
   const files = [
+    'src/main.ts', 'src/vs/base/common/lifecycle.ts',
+    'src/vs/editor/common/editorCommon.ts',
+    'src/vs/workbench/browser/workbench.ts',
+    'src/vs/workbench/api/node/scCodeExtHostMain.ts',
     'src/vs/workbench/contrib/logs/browser/logs.contribution.ts',
-    'src/sc-code/build/index.ts', 'docs/logs/troubleshooting.md',
+    'src/sc-code/build/index.ts',
+    'src-tauri/extension-host/host.cjs', 'crates/sc-code-runtime/src/lib.rs',
+    'docs/icons/README.md', 'docs/images/preview.jpg',
+    'agent/server/go.mod',
     'crates/sc-code-context/src/bin/format_bench.rs',
     'extensions-rust/git-extension/src/lib.rs',
     'extensions-rust/css-language-extension/src/css_data.rs',
@@ -56,9 +57,9 @@ test('source directories, checked-in runtime assets and reproducible locks are n
     'extensions-rust/css-language-extension/css-builtin.json',
     'src/vs/workbench/contrib/terminal/common/scripts/psreadline/Microsoft.PowerShell.PSReadLine.dll',
     'public/onig.wasm', 'public/sc-code.svg', 'src-tauri/icons/icon.ico',
-    'scripts/bin/xattr', 'Cargo.lock', 'src-tauri/Cargo.lock', 'package-lock.json',
+    'scripts/bin/xattr', 'Cargo.lock', 'package-lock.json',
     '.env.example', '.env.development.example', '.claude/skills/init-docs/SKILL.md',
-    '.codex/skills/shared/SKILL.md', 'infrastructure/marketplace-proxy/wrangler.toml',
+    'infrastructure/marketplace-proxy/wrangler.toml',
   ];
   assert.deepEqual(ignoredPaths(dir, files), []);
 });

@@ -1,7 +1,7 @@
 //! Release manifest schema and platform resolution.
 //!
-//! The feed is expected to produce JSON matching the shape currently used by
-//! Siden (and compatible with the Tauri updater v1/v2 schemas), e.g.:
+//! The feed is expected to produce JSON compatible with the Tauri updater
+//! v1/v2 schemas, e.g.:
 //!
 //! ```json
 //! {

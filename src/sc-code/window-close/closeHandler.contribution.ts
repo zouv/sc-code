@@ -77,6 +77,15 @@ class ScCodeCloseHandler extends Disposable implements IWorkbenchContribution {
 					if (!saved.success) {
 						return; // A save failed; stay open so nothing is lost silently.
 					}
+				} else {
+					// Don't Save: discard dirty editor state, including untitled editors.
+					// Reverting unregisters their working copies so backups and serialized
+					// layout entries do not bring them back on the next launch.
+					try {
+						await this.editorService.revertAll({ includeUntitled: true });
+					} catch (error) {
+						this.logService.error('[ScCode] Failed to discard unsaved editors:', error);
+					}
 				}
 			}
 

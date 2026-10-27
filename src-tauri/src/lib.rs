@@ -945,7 +945,7 @@ pub fn run() {
 
             {
                 let settings_store = app.state::<Arc<SettingsStore>>();
-                // [CUSTOM-BEGIN] CUSTOM-20261013-009 - use the same user settings file as the Workbench
+                // use the same user settings file as the Workbench
                 let user_settings_path = app_data.join("User").join("settings.json");
                 // Always record the path so user-scope updates persist to
                 // disk, even on first launch when the file doesn't exist yet.
@@ -955,7 +955,6 @@ pub fn run() {
                         log::warn!("failed to pre-load user settings: {e}");
                     }
                 }
-                // [CUSTOM-END] CUSTOM-20261013-009
             }
 
             let sc_code_db_path = app_data.join("sc_code_state.db");

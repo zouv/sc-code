@@ -16,7 +16,6 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci --ignore-scripts --no-audit --no-fund
-      - run: npm run verify:import
       - run: npm test
       - run: npm run test:transport
       - run: npm run typecheck

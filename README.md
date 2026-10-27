@@ -19,7 +19,7 @@ ScCode 是一个从 VS Code workbench 迁移、并独立演进的桌面编辑器
 工作台、编辑器、终端与扩展 UI；原生层用 **Rust + Tauri 2** 替代 Electron；内置 Agent
 由**受监督的 Go 进程**提供本地模型调用与工具执行；扩展可由 **Node 扩展宿主**运行。
 
-> 当前为 **0.2.0 开发验收版本**，Windows x64 产物可本地打包并上传 GitHub Release。
+> 当前为 **0.4.0 开发验收版本**，Windows x64 产物可本地打包并上传 GitHub Release。
 > 未签名；源码完整迁移不等于全部行为验收完成，第三方扩展矩阵仍在验收中。
 
 ## 特性
@@ -92,7 +92,7 @@ ScCode 是一个从 VS Code workbench 迁移、并独立演进的桌面编辑器
 | `build.bat [Debug或Release]` | 只编译桌面程序，不生成成品包；默认 Debug                                             |
 | `package.bat`                | 一次生成 Debug zip + Release setup、未压缩 unpack 目录与 unpack zip，不自动签名/发布 |
 | `test.bat`                   | Node/transport/TS + 选定原生模块和桌面 lib 回归                                      |
-| `verify.bat`                 | 测试 + 来源清单/runtime/真实本地服务/文档检查                                        |
+| `verify.bat`                 | 测试 + runtime/真实本地服务/文档检查                                                 |
 | `clean.bat`                  | 清理生成输出；保留 dist/、工具缓存、node_modules 与用户配置，并清理旧 packages/      |
 
 ```powershell
@@ -148,7 +148,7 @@ agent/                    # Go Agent 服务（server）、独立 Rust agent-core
 src-wasm/                 # WASM 模块（hash / scroll / tfidf）
 extensions-rust/          # Rust → WASM 内置扩展
 dist/                     # 本地打包产物（不纳入版本管理）
-docs/                     # 来源清单与截图资源
+docs/                     # 开发文档、图标源包与截图资源
 ```
 
 ## 技术栈
@@ -192,7 +192,6 @@ cargo test -p sc-code-runtime -p sc-code-auth -p sc-code-workspace -p sc-code-se
 cargo test -p sc-code --lib
 npm run runtime:prepare -- --test-go
 npm run test:server
-npm run verify:import
 # Git Bash
 bash check-docs.sh
 ```
@@ -242,7 +241,7 @@ npm run desktop:dev
 | [`ROADMAP.md`](ROADMAP.md)                               | 要做什么、做到哪了                              |
 | [`CHANGELOG.md`](CHANGELOG.md)                           | 每个版本的变化                                  |
 | [`HANDOFF.md`](HANDOFF.md)                               | 当前会话接力与待办                              |
-| [`docs/import-manifest.json`](docs/import-manifest.json) | 来源文件清单与哈希校验                          |
+| [`docs/icons/README.md`](docs/icons/README.md)           | 图标源包与导出说明                              |
 
 ## 许可
 

@@ -134,10 +134,10 @@ async function boot() {
 
 	// ScCode: About 对话框显示 ScCode 版本号（而非 VSCode 1.110.0）
 	// ⚠️ productConfiguration.version 必须保持 '1.110.0'：它同时用于扩展 engines.vscode 兼容性校验
-	//（webExtensionsScannerService → validateExtensionManifest），改成 0.1.3-custom.4 会让
+	//（webExtensionsScannerService → validateExtensionManifest），改成其它版本会让
 	// VAC(^1.85.0)/Claude Code(^1.94.0) 被判 DisabledByInvalidExtension，扩展视图全部失效。
 	// 真正的 ScCode 版本号放到全局 __SC_CODE_VERSION__，由 About 对话框读取。
-	let scCodeVersion = '0.3.0';
+	let scCodeVersion = '0.4.0';
 	if ((globalThis as any).__SC_CODE_TAURI__) {
 		try {
 			const { getVersion } = await import('@tauri-apps/api/app');

@@ -223,7 +223,7 @@ if (isScCodeTauri) {
 }
 
 /**
- * 拖放（**HTML5 `drop`**，不是 Tauri 原生拖放）——CUSTOM-20261017-001 / CUSTOM-20261017-005
+ * 拖放（**HTML5 `drop`**，不是 Tauri 原生拖放）
  *
  * `tauri.conf.json` 的 `dragDropEnabled` 已改为 `false`（Windows 下 Tauri 原生接管会吞掉 webview 内
  * 全部 HTML5 拖拽，见 pitfalls #15），于是 Tauri `onDragDropEvent` 不再触发，拖放全走 HTML5。

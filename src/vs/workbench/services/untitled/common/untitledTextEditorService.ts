@@ -258,7 +258,7 @@ export class UntitledTextEditorService extends Disposable implements IUntitledTe
 		// Take over encoding and initial value
 		massagedOptions.encoding = options.encoding;
 		massagedOptions.initialValue = options.initialValue;
-		massagedOptions.initialDirtyState = options.initialDirtyState; // [CUSTOM-20261017-006]
+		massagedOptions.initialDirtyState = options.initialDirtyState;
 
 		return massagedOptions;
 	}
@@ -280,7 +280,7 @@ export class UntitledTextEditorService extends Disposable implements IUntitledTe
 			untitledResource,
 			!!options.associatedResource,
 			options.initialValue,
-			options.initialDirtyState, // [CUSTOM-20261017-006]
+			options.initialDirtyState,
 			options.languageId,
 			options.encoding
 		);

@@ -843,7 +843,7 @@ class TauriExtensionHostContribution extends Disposable implements IWorkbenchCon
 				this._onApplyEdit(msg.edits);
 				break;
 			case 'showMessage':
-				this.logService.info(`[ExtHost] ${msg.severity}: ${msg.message}`);
+				this._showExtensionMessage(msg.severity, msg.message);
 				break;
 			case 'showTextDocument':
 				this._onShowTextDocument(msg.uri, msg.options);
@@ -2575,20 +2575,38 @@ class TauriExtensionHostContribution extends Disposable implements IWorkbenchCon
 		}
 	}
 
-	private async _onShowMessageRequest(requestId: number, severity: string, message: string, items: string[]): Promise<void> {
+	private _showExtensionMessage(severity: string, message: string): void {
+		switch (severity) {
+			case 'error':
+				this.notificationService.error(message);
+				break;
+			case 'warning':
+				this.notificationService.warn(message);
+				break;
+			default:
+				this.notificationService.info(message);
+		}
+	}
+
+	private _onShowMessageRequest(requestId: number, severity: string, message: string, items: string[]): void {
 		if (!items?.length) {
+			this._send({ id: this._nextId(), type: 'messageResponse', params: { requestId, value: undefined } });
 			return;
 		}
-		try {
-			const picked = await this.quickInputService.pick(
-				items.map(label => ({ label })),
-				{ placeHolder: message },
-			);
-			const value = picked ? (Array.isArray(picked) ? picked[0]?.label : picked.label) : undefined;
+		let responded = false;
+		const respond = (value?: string) => {
+			if (responded) {
+				return;
+			}
+			responded = true;
 			this._send({ id: this._nextId(), type: 'messageResponse', params: { requestId, value } });
-		} catch {
-			this._send({ id: this._nextId(), type: 'messageResponse', params: { requestId, value: undefined } });
-		}
+		};
+		this.notificationService.prompt(
+			severity === 'error' ? _Severity.Error : severity === 'warning' ? _Severity.Warning : _Severity.Info,
+			message,
+			items.map(label => ({ label, run: () => respond(label) })),
+			{ onCancel: () => respond(undefined) },
+		);
 	}
 
 

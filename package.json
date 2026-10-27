@@ -1,6 +1,6 @@
 {
   "name": "sc-code",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "type": "module",
   "scripts": {
     "setup": "node scripts/generate-extension-meta.js",
@@ -11,8 +11,6 @@
     "postbuild": "node scripts/postbuild.js",
     "preview": "vite preview",
     "tauri": "tauri",
-    "dev:custom": "npm run desktop:dev",
-    "build:custom": "npm run desktop:build",
     "lint": "eslint 'src/**/*.ts'",
     "lint:fix": "eslint --fix 'src/**/*.ts'",
     "format": "prettier --write 'src/**/*.{ts,tsx,js,json}'",
@@ -24,7 +22,6 @@
     "typecheck": "tsc --noEmit --pretty false",
     "perf:baseline": "node scripts/perf-baseline.cjs",
     "test": "node --test --test-concurrency=1 tests/*.test.cjs src-tauri/extension-host/*.test.cjs",
-    "verify:import": "node scripts/verify-import.cjs",
     "desktop:dev": "node scripts/dev-desktop.cjs",
     "desktop:build": "node scripts/build-desktop.cjs",
     "runtime:prepare": "node scripts/build-ext-host.cjs && node scripts/prepare-desktop-runtime.cjs",

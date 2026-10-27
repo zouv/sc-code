@@ -5944,7 +5944,7 @@ dependencies = [
 
 [[package]]
 name = "sc-code"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "arboard",
@@ -6024,7 +6024,7 @@ dependencies = [
 
 [[package]]
 name = "sc-code-agent"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "globset",
@@ -6046,7 +6046,7 @@ dependencies = [
 
 [[package]]
 name = "sc-code-auth"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "keyring",
@@ -6061,7 +6061,7 @@ dependencies = [
 
 [[package]]
 name = "sc-code-context"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "ignore",
@@ -6093,7 +6093,7 @@ dependencies = [
 
 [[package]]
 name = "sc-code-dap"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "log",
@@ -6105,7 +6105,7 @@ dependencies = [
 
 [[package]]
 name = "sc-code-db"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "dirs 5.0.1",
@@ -6119,7 +6119,7 @@ dependencies = [
 
 [[package]]
 name = "sc-code-extension-api"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "log",
@@ -6139,7 +6139,7 @@ dependencies = [
 
 [[package]]
 name = "sc-code-extensions"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "chrono",
@@ -6160,7 +6160,7 @@ dependencies = [
 
 [[package]]
 name = "sc-code-git"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "log",
@@ -6172,7 +6172,7 @@ dependencies = [
 
 [[package]]
 name = "sc-code-keymap"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "log",
@@ -6184,7 +6184,7 @@ dependencies = [
 
 [[package]]
 name = "sc-code-lsp"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "log",
@@ -6198,7 +6198,7 @@ dependencies = [
 
 [[package]]
 name = "sc-code-profiles"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "serde",
@@ -6208,7 +6208,7 @@ dependencies = [
 
 [[package]]
 name = "sc-code-remote"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -6239,7 +6239,7 @@ dependencies = [
 
 [[package]]
 name = "sc-code-settings"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "log",
@@ -6251,7 +6251,7 @@ dependencies = [
 
 [[package]]
 name = "sc-code-syntax"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "bitflags 2.11.1",
  "fancy-regex",
@@ -6270,7 +6270,7 @@ dependencies = [
 
 [[package]]
 name = "sc-code-tasks"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "log",
@@ -6283,7 +6283,7 @@ dependencies = [
 
 [[package]]
 name = "sc-code-text"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "memchr",
  "regex",
@@ -6296,7 +6296,7 @@ dependencies = [
 
 [[package]]
 name = "sc-code-textmate"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "log",
@@ -6313,7 +6313,7 @@ dependencies = [
 
 [[package]]
 name = "sc-code-theme"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "log",
@@ -6324,7 +6324,7 @@ dependencies = [
 
 [[package]]
 name = "sc-code-update"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "base64 0.22.1",
@@ -6346,7 +6346,7 @@ dependencies = [
 
 [[package]]
 name = "sc-code-workspace"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "dashmap",

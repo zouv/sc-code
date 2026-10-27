@@ -1,5 +1,19 @@
 # 变更记录 · ScCode
 
+## [0.4.0] - 2026-10-27
+
+### 变更
+- `docs/` 明确为开发文档与资源目录：构建、测试与运行时不再依赖它；图标尺寸校验改为检查实际交付的 `src-tauri/icons`。
+- 更新应用图标样式：控制台窗口铺满画布、保留圆角，圆角外透明；同步 `public/sc-code.svg`、`src-tauri/icons/` 的 PNG/ICO/ICNS 与 Windows 磁贴资源。
+
+### 修复
+- 启动时不再自动打开历史遗留的未保存 `CLAUDE.md` 标签：关闭窗口选择「不保存」时会一并丢弃 untitled 工作副本及其备份，避免下次启动再次恢复。
+- 扩展消息改为 VS Code 风格的右下角通知 toast；带按钮的消息使用通知面板的操作按钮，不再弹出顶部 QuickPick，也不再重复提示。
+
+### 移除
+- 移除迁移期来源清单 `docs/import-manifest.json` 及其校验脚本、测试与 `verify:import` 入口（含 CI、日常脚本与 `manager.sh` 调用）。
+- 清理迁移期残留：删除未参与构建的 `src-tauri/Cargo.lock` 与 `scripts/vendor-ext-host-node.cjs`，移除源码中的 `CUSTOM-*` 标记注释、过时 `.gitignore` 规则及未使用的 `dev:custom`/`build:custom` 别名。
+
 ## [0.3.0] - 2026-10-25
 
 ### 新增

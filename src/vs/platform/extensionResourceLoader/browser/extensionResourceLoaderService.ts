@@ -44,7 +44,7 @@ class ExtensionResourceLoaderService extends AbstractExtensionResourceLoaderServ
 	async readExtensionResource(uri: URI): Promise<string> {
 		// ScCode: ScCode(Tauri)：file:// 必须直接走 IFileService
 		// 根因：FileAccess.uriToBrowserUri 在 Tauri 下会把 file:// 改写成供 <img src>/fetch 用的
-		// 资源 URL（见 base/common/network.ts；CUSTOM-20261015-001 起为 Tauri 官方 asset 协议
+		// 资源 URL（见 base/common/network.ts；现为 Tauri 官方 asset 协议
 		// https://asset.localhost/<enc>，此前为自造的 sc-code-asset://）。但本方法紧接着按 scheme 分派，
 		// 改写后的 URL 不属预期分支 → 读磁盘上扩展的 package.json/nls 会走错通道（先前 sc-code-asset
 		// 无 IFileService provider 必失败，报 "Cannot find a valid extension from the location file:///..."，

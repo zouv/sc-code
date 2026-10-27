@@ -98,7 +98,7 @@ function help() {
   build.bat [Debug|Release] [tauri args...]  Compile only (no packages)
   package.bat              Build Debug zip + Release setup/unpack/zip (local only)
   test.bat                Node, transport, TypeScript and selected native regressions
-  verify.bat              test + import + runtime preflight + server smoke + docs
+  verify.bat              test + runtime preflight + server smoke + docs
   clean.bat               Delete allowlisted generated output (incl. legacy packages/), not dist/ or profiles
   Any script --help / --dry-run: explain/preview without installing, building or launching.
 Packages: dist/dev (Debug unpack dir + zip), dist/release (Release setup exe + unpack dir + zip).
@@ -168,7 +168,7 @@ function main(action, args) {
       build('Release', ['--bundles', 'nsis'], true);
       break;
     case 'test': test(); break;
-    case 'verify': test(); npm('run', 'verify:import'); prepare(); npm('run', 'test:server');
+    case 'verify': test(); prepare(); npm('run', 'test:server');
       run('C:\\Program Files\\Git\\bin\\bash.exe', [path.join(root, 'check-docs.sh')]); break;
   }
 }

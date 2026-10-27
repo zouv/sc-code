@@ -1,8 +1,7 @@
 # 会话接力 · ScCode
 
-- 快照：2026-10-25；分支 `main`；**无进行中任务**（S18–S22 已完成，成果见 `CHANGELOG.md` 未发布区与 `ROADMAP.md`）。
-- 本轮验证：`npm run typecheck`、`npm test`（77/77）、`npm run ext-host:build`、`cargo test --offline -p sc-code -p sc-code-workspace -p sc-code-git --lib`（98+25+156 通过，1 个 `#[ignore]` 回收站真机用例）全部通过；S18–S21 均在隔离 `SC_CODE_HOME` 下用 CDP 实跑验证。
-- 本轮实跑环境备注：`.runtime/s18-smoke`、`s19`、`s20`、`s21`、`s21b`、`s21c` 为测试目录（不入库）；曾有一个无法结束的 `ScCode.exe` 僵尸进程（PID 82180，HandleCount=0）锁住 `.runtime/target/debug/ScCode.exe`，改用 `CARGO_TARGET_DIR=.runtime/target-s21` 完成构建与验证；重启机器后建议确认该进程已消失。
+- 快照：2026-10-27；分支 `main`；**无进行中任务**（迁移期残留清理、扩展通知改右下角 toast、关窗丢弃 untitled 备份、图标样式更新均已完成，见 `CHANGELOG.md` 未发布区）。
+- 本轮验证：`npm test`（74/74，含扩展消息路由新用例）、`npm run typecheck`、`cargo check --offline -p sc-code`、`sh check-docs.sh` 全部通过。
 - 当前版本：**0.3.0**（已打包并发布为 GitHub prerelease）。
 - 最新发布：[v0.3.0](https://github.com/zouv/sc-code/releases/tag/v0.3.0)（GitHub prerelease）：
   - `ScCode_0.3.0_x64-setup.exe`（68,791,143 B）
@@ -12,7 +11,7 @@
 - 最新发布：[v0.2.0](https://github.com/zouv/sc-code/releases/tag/v0.2.0)（GitHub prerelease）：
   - `ScCode_0.2.0_x64-setup.exe`（68,699,528 B）
   - `ScCode_0.2.0_x64-unpack.zip`（94,455,573 B）
-- 仓库边界不变：源码/文档/脚本/锁文件入库；`.runtime/`、`dist/`、`node_modules/`、Tauri 生成物、用户 profile 不入库。上游来源仓库只读。
+- 仓库边界不变：源码/文档/脚本/锁文件入库；`.runtime/`、`dist/`、`node_modules/`、Tauri 生成物、用户 profile 不入库。
 
 ## 下一步（未排期）
 
@@ -24,20 +23,18 @@
 6. 真实宿主 `MainThread*` 覆盖补齐：comments/timeline/browserView/externalUriOpener 尚未移植。
 7. 多窗口宿主隔离：`real_ext_host_start` 目前是应用级单进程。
 8. ESM 扩展热重载不完整；宿主随窗口 reload 重建后需验证。
-9. 其他协作者/克隆需重新拉取或 `git reset --hard origin/main`；旧历史 SHA 已失效。
 
 ## 最近验证（2026-10-22）
 
 - 发布：`v0.2.0` 已创建 tag，GitHub Release 为 prerelease；安装包与 unpack zip 两个资产均已上传。
 - 打包：`npm run desktop:package` exit 0；Debug zip 与 Release setup/unpack zip 均生成。
 - 冒烟：Release unpack 解压到隔离目录，`SC_CODE_HOME` 隔离启动 25 秒正常，profile 生成 SQLite 数据。
-- 通过：`npm test`（77/77）、`npm run typecheck`、`node scripts/verify-import.cjs`（0 errors）、`sh check-docs.sh`。
+- 通过：`npm test`（77/77）、`npm run typecheck`、`sh check-docs.sh`。
 - 通过：D 版图标的 PNG 尺寸、七帧 ICO、ICNS 头与 RGBA 透明圆角检查；Release `ScCode.exe` ProductVersion/FileVersion 为 `0.2.0`。
 - 通过：`cargo check --offline -p sc-code --bin ScCode`。
-- 已清理仓库正文本机路径：README 示例路径、`vendor-ext-host-node.cjs` 默认作者本机路径；README 截图迁移至 `docs/images/preview.jpg` 并同步来源清单。
+- 已清理仓库正文本机路径：README 示例路径；README 截图位于 `docs/images/preview.jpg`。
 - Git 历史已重写：10 个历史提交的作者/提交者统一为 `zouv <zouv@163.com>`，9 处 `Co-Authored-By` 已移除；`origin/main` 与 `v0.1.1`/`v0.1.2` 标签已 force-push，本地 `user.name/user.email` 同步更新。
 - 已复查工作树与全部 Git 引用：无真实姓名、邮箱、本机路径、设备标识残留；`AGENTS.md` 新增 §3.1「个人信息与仓库卫生」铁律与提交前自检流程。
-- `src-tauri/Cargo.lock` 是导入来源锁文件，不参与当前 workspace 构建，仍保留原始导入版本 0.1.2。
 
 ## 前次验证（2026-10-21）
 

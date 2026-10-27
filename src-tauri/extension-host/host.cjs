@@ -1,8 +1,7 @@
 'use strict';
 
-// [CUSTOM-BEGIN] CUSTOM-20261013-013 - bridge Workbench configuration into the Node extension host
+// bridge Workbench configuration into the Node extension host
 const { ActivationGate, ConfigurationStore, createWorkspaceConfiguration } = require('./configuration.cjs');
-// [CUSTOM-END] CUSTOM-20261013-013
 const { profileHome, extensionStoragePaths, migrateLegacyStorage, createMemento, disabledExtension, createSecretStorage } = require('./storage.cjs');
 const fs = require('fs');
 const path = require('path');
@@ -162,19 +161,17 @@ class ExtensionHost extends EventEmitter {
     this._workspaceFolders = [];
     this._workspaceIdentity = undefined;
     this._secretRequests = new Map();
-    // [CUSTOM-BEGIN] CUSTOM-20261013-013 - gate extension activation on the initial Workbench configuration snapshot
+    // gate extension activation on the initial Workbench configuration snapshot
     this._configurationReady = false;
     this._activationGate = new ActivationGate();
     this._configuration = new ConfigurationStore((changedKeys) => this._fireConfigurationChanged(changedKeys));
-    // [CUSTOM-END] CUSTOM-20261013-013
     this._languageConfigurations = new Map();
     this._fileWatchers = new Map();
     this._nextWatcherId = 1;
     this._activationPromises = new Map();
     this._failedExtensions = new Set();
-    // [CUSTOM-BEGIN] CUSTOM-20261017-002 - 每个扩展注册过的命令，供磁盘代码变化时撤销/重载
+    // 每个扩展注册过的命令，供磁盘代码变化时撤销/重载
     this._extensionCommands = new Map();
-    // [CUSTOM-END] CUSTOM-20261017-002
   }
 
   initialize() {
@@ -292,12 +289,11 @@ class ExtensionHost extends EventEmitter {
         return this._handleGetDiagnostics(id, params);
       case 'setConfiguration':
         return this._handleSetConfiguration(id, params);
-      // [CUSTOM-BEGIN] CUSTOM-20261013-013 - gate extension activation until every connection syncs settings
+      // gate extension activation until every connection syncs settings
       case 'beginConfigurationSync':
         this._activationGate.close();
         return { id, result: true };
-      // [CUSTOM-END] CUSTOM-20261013-013
-      // [CUSTOM-BEGIN] CUSTOM-20261013-013 - open activation only after Workbench acknowledged the snapshot
+      // open activation only after Workbench acknowledged the snapshot
       case 'releaseExtensionActivation':
         if (!this._configurationReady) {
           return { id, error: 'cannot activate extensions before the initial configuration snapshot' };
@@ -309,7 +305,6 @@ class ExtensionHost extends EventEmitter {
         this._deferredConfigurationActivations?.clear();
         log('extension activation released after configuration acknowledgement');
         return { id, result: true };
-      // [CUSTOM-END] CUSTOM-20261013-013
       case 'getProviderCapabilities':
         return this._handleGetProviderCapabilities(id);
       case 'getExtensionState':
@@ -334,10 +329,9 @@ class ExtensionHost extends EventEmitter {
         return { id, result: true };
       case 'resolveWebviewView':
         return this._handleResolveWebviewView(id, params);
-      // [CUSTOM-BEGIN] CUSTOM-20261015-002 - tree data provider 跨进程桥（取子节点）
+      // tree data provider 跨进程桥（取子节点）
       case 'getTreeChildren':
         return this._handleGetTreeChildren(id, params);
-      // [CUSTOM-END] CUSTOM-20261015-002
       case 'webviewViewMessage':
         return this._handleWebviewViewMessage(id, params);
       case 'webviewViewVisible':
@@ -457,7 +451,7 @@ class ExtensionHost extends EventEmitter {
       if (disabledExtension(manifest.id)) throw new Error(`Extension is explicitly disabled: ${manifest.id}`);
       const existing = this._extensions.get(manifest.id);
       if (existing && existing.activated) {
-        // [CUSTOM-BEGIN] CUSTOM-20261017-002 - 磁盘上的扩展被更新（重装/覆盖）时不能报 alreadyActive，
+        // 磁盘上的扩展被更新（重装/覆盖）时不能报 alreadyActive，
         // 否则宿主永远跑旧代码，而 Workbench 已经按新的 package.json 渲染菜单
         // （VAC 1.3.0 新增编辑区标签栏按钮 → 点它报 "command 'vac.openChatFromEditorTab' not found"）
         if (this._extensionChanged(existing)) {
@@ -465,7 +459,6 @@ class ExtensionHost extends EventEmitter {
           existing.manifest = manifest;
           return { id, result: { extensionId: manifest.id, name: manifest.name, alreadyActive: false, reloaded: true } };
         }
-        // [CUSTOM-END] CUSTOM-20261017-002
         return { id, result: { extensionId: manifest.id, name: manifest.name, alreadyActive: true } };
       }
       this._extensions.set(manifest.id, {
@@ -482,7 +475,7 @@ class ExtensionHost extends EventEmitter {
     }
   }
 
-  // [CUSTOM-BEGIN] CUSTOM-20261017-002 - 扩展磁盘代码指纹 / 重载
+  // 扩展磁盘代码指纹 / 重载
   /**
    * 扩展「代码指纹」：package.json + main 入口 + 入口同目录下的 js 产物（mtime+size）。
    * 刻意**不**递归整个扩展目录——`.storage` / `.global-storage` 由扩展自己反复写，
@@ -611,7 +604,6 @@ class ExtensionHost extends EventEmitter {
     }
     owned.add(commandId);
   }
-  // [CUSTOM-END] CUSTOM-20261017-002
 
   async _handleActivateExtension(id, params) {
     if (!this._configurationReady) {
@@ -1084,13 +1076,12 @@ class ExtensionHost extends EventEmitter {
       return { id, error: 'configuration snapshot must be an object' };
     }
 
-    // [CUSTOM-BEGIN] CUSTOM-20261013-013 - replace the effective Workbench layer and release startup activation
+    // replace the effective Workbench layer and release startup activation
     const changedKeys = this._configuration.replaceWorkbench(settings);
     this._configurationReady = true;
     const agents = settings['vac.agents'];
     const models = settings['vac.customModels'];
     log(`configuration snapshot applied (keys=${Object.keys(settings).length}, agents=${agents && typeof agents === 'object' ? Object.keys(agents).length : 0}, customModels=${Array.isArray(models) ? models.length : 0}, changed=${changedKeys.length})`);
-    // [CUSTOM-END] CUSTOM-20261013-013
     return { id, result: { applied: true, changed: changedKeys.length } };
   }
 
@@ -1247,7 +1238,7 @@ class ExtensionHost extends EventEmitter {
     return { id, result: true };
   }
 
-  // [CUSTOM-BEGIN] CUSTOM-20261015-002 - tree data provider 跨进程桥：宿主侧
+  // tree data provider 跨进程桥：宿主侧
   // 订阅扩展 provider 的 onDidChangeTreeData，转发给前端触发对应 TreeView 刷新。
   _hookTreeDataChange(viewId, provider) {
     try {
@@ -1356,7 +1347,6 @@ class ExtensionHost extends EventEmitter {
       return { id, error: String(e.message || e) };
     }
   }
-  // [CUSTOM-END] CUSTOM-20261015-002
 
   _handleResolveWebviewView(id, params) {
     const { viewId, webviewHandle } = params;
@@ -1433,14 +1423,13 @@ class ExtensionHost extends EventEmitter {
         disposeEmitter.on('dispose', listener);
         return { dispose() { disposeEmitter.removeListener('dispose', listener); } };
       },
-      // [CUSTOM-BEGIN] CUSTOM-20261015-002 - VSCode WebviewView 正确 API 名是 onDidDispose
+      // VSCode WebviewView 正确 API 名是 onDidDispose
       // （此前只有 onDispose，VAC dashboard 的 resolveWebviewView 调 e.onDidDispose 直接抛
       // "e.onDidDispose is not a function"，导致 setVisible/refresh 全不执行 → 永远 Loading）
       onDidDispose: (listener) => {
         disposeEmitter.on('dispose', listener);
         return { dispose() { disposeEmitter.removeListener('dispose', listener); } };
       },
-      // [CUSTOM-END] CUSTOM-20261015-002
       dispose() { disposeEmitter.emit('dispose'); },
       show(preserveFocus) {
         host.emit('event', { type: 'webviewViewShow', webviewHandle, preserveFocus });
@@ -1866,26 +1855,24 @@ class ExtensionHost extends EventEmitter {
   }
 
   async _activateExtension(extensionId) {
-    // [CUSTOM-BEGIN] CUSTOM-20261013-013 - all activation paths wait for Workbench configuration
+    // all activation paths wait for Workbench configuration
     await this._activationGate.wait();
-    // [CUSTOM-END] CUSTOM-20261013-013
     if (disabledExtension(extensionId)) throw new Error(`Extension is explicitly disabled: ${extensionId}`);
     const ext = this._extensions.get(extensionId);
     if (!ext) return null;
-    // [CUSTOM-BEGIN] CUSTOM-20261017-002 - 已激活但磁盘代码变了（扩展被覆盖/重装）就先重载。
+    // 已激活但磁盘代码变了（扩展被覆盖/重装）就先重载。
     // Workbench 每次握手都会对每个扩展调 activateExtension，这里是最自然的检查点。
     if (ext.activated && this._extensionChanged(ext)) {
       const manifest = this._readManifest(ext.extensionPath);
       this._reloadExtension(ext);
       ext.manifest = manifest;
     }
-    // [CUSTOM-END] CUSTOM-20261017-002
     if (ext.activated) return ext.exports;
     if (this._activationPromises.has(extensionId)) return this._activationPromises.get(extensionId);
     if (this._failedExtensions.has(extensionId)) return null;
     if (!ext.manifest.main) {
       ext.activated = true;
-      ext.stamp = this._extensionStamp(ext.extensionPath, ext.manifest); // [CUSTOM-20261017-002]
+      ext.stamp = this._extensionStamp(ext.extensionPath, ext.manifest);
       return;
     }
 
@@ -1893,7 +1880,7 @@ class ExtensionHost extends EventEmitter {
     if (!fs.existsSync(mainPath) && !fs.existsSync(mainPath + '.js')) {
       log(`main not found: ${mainPath}`);
       ext.activated = true;
-      ext.stamp = this._extensionStamp(ext.extensionPath, ext.manifest); // [CUSTOM-20261017-002]
+      ext.stamp = this._extensionStamp(ext.extensionPath, ext.manifest);
       return;
     }
 
@@ -1915,7 +1902,7 @@ class ExtensionHost extends EventEmitter {
           ext.exports = mod;
         }
         ext.activated = true;
-        ext.stamp = this._extensionStamp(ext.extensionPath, ext.manifest); // [CUSTOM-20261017-002]
+        ext.stamp = this._extensionStamp(ext.extensionPath, ext.manifest);
         this._failedExtensions.delete(extensionId);
         log(`activated ${extensionId}`);
         this.emit('event', { type: 'extensionActivated', extensionId });
@@ -3050,9 +3037,8 @@ function createVscodeShim() {
   const commands = {
     registerCommand(id, handler, thisArg) {
       host._commands.set(id, thisArg ? handler.bind(thisArg) : handler);
-      // [CUSTOM-BEGIN] CUSTOM-20261017-002 - 记录归属，扩展重载时可撤销旧命令
+      // 记录归属，扩展重载时可撤销旧命令
       host._trackExtensionCommand(id);
-      // [CUSTOM-END] CUSTOM-20261017-002
       host.emit('event', { type: 'commandRegistered', commandId: id });
       return {
         dispose() {
@@ -3062,9 +3048,7 @@ function createVscodeShim() {
     },
     registerTextEditorCommand(id, handler) {
       host._commands.set(id, handler);
-      // [CUSTOM-BEGIN] CUSTOM-20261017-002
       host._trackExtensionCommand(id);
-      // [CUSTOM-END] CUSTOM-20261017-002
       return {
         dispose() {
           host._commands.delete(id);
@@ -3139,9 +3123,8 @@ function createVscodeShim() {
       return p;
     },
     getConfiguration(section, scope) {
-      // [CUSTOM-BEGIN] CUSTOM-20261013-013 - resolve dotted keys and nested sections from effective config layers
+      // resolve dotted keys and nested sections from effective config layers
       return createWorkspaceConfiguration(host._configuration, section);
-      // [CUSTOM-END] CUSTOM-20261013-013
     },
     onDidChangeConfiguration: (listener, thisArg, disposables) =>
       host._onConfigChangeEvent.event(listener, thisArg, disposables),
@@ -3330,7 +3313,6 @@ function createVscodeShim() {
   const window = {
     showInformationMessage(msg, ...rest) {
       log(`[info] ${msg}`);
-      host.emit('event', { type: 'showMessage', severity: 'info', message: msg });
       const items = rest.filter((r) => typeof r === 'string' || (typeof r === 'object' && r !== null));
       if (items.length) {
         return new Promise((resolve) => {
@@ -3351,11 +3333,11 @@ function createVscodeShim() {
           }, 30000);
         });
       }
+      host.emit('event', { type: 'showMessage', severity: 'info', message: msg });
       return Promise.resolve(undefined);
     },
     showWarningMessage(msg, ...rest) {
       log(`[warn] ${msg}`);
-      host.emit('event', { type: 'showMessage', severity: 'warning', message: msg });
       const items = rest.filter((r) => typeof r === 'string' || (typeof r === 'object' && r !== null));
       if (items.length) {
         return new Promise((resolve) => {
@@ -3376,11 +3358,11 @@ function createVscodeShim() {
           }, 30000);
         });
       }
+      host.emit('event', { type: 'showMessage', severity: 'warning', message: msg });
       return Promise.resolve(undefined);
     },
     showErrorMessage(msg, ...rest) {
       log(`[error] ${msg}`);
-      host.emit('event', { type: 'showMessage', severity: 'error', message: msg });
       const items = rest.filter((r) => typeof r === 'string' || (typeof r === 'object' && r !== null));
       if (items.length) {
         return new Promise((resolve) => {
@@ -3401,6 +3383,7 @@ function createVscodeShim() {
           }, 30000);
         });
       }
+      host.emit('event', { type: 'showMessage', severity: 'error', message: msg });
       return Promise.resolve(undefined);
     },
     createOutputChannel(name, opts) {
@@ -3548,7 +3531,7 @@ function createVscodeShim() {
     showOpenDialog: (options) => {
       return new Promise((resolve) => {
         const reqId = ++host._reqId;
-        // [CUSTOM-BEGIN] CUSTOM-20261017-003 - Workbench 回传的是文件系统路径字符串，扩展要的是 Uri 对象
+        // Workbench 回传的是文件系统路径字符串，扩展要的是 Uri 对象
         // （扩展侧普遍写 `picked?.[0]?.fsPath`，直接给字符串会得到 undefined）
         host._pendingRequests.set(reqId, (value) => {
           if (!Array.isArray(value)) {
@@ -3557,7 +3540,6 @@ function createVscodeShim() {
           }
           resolve(value.map((p) => VscUri.file(String(p))));
         });
-        // [CUSTOM-END] CUSTOM-20261017-003
         host.emit('event', { type: 'showOpenDialog', id: reqId, options: options || {} });
         setTimeout(() => {
           if (host._pendingRequests.has(reqId)) {
@@ -3570,11 +3552,10 @@ function createVscodeShim() {
     showSaveDialog: (options) => {
       return new Promise((resolve) => {
         const reqId = ++host._reqId;
-        // [CUSTOM-BEGIN] CUSTOM-20261017-003 - 同上：保存对话框回传单个路径字符串
+        // 同上：保存对话框回传单个路径字符串
         host._pendingRequests.set(reqId, (value) => {
           resolve(value ? VscUri.file(String(value)) : undefined);
         });
-        // [CUSTOM-END] CUSTOM-20261017-003
         host.emit('event', { type: 'showSaveDialog', id: reqId, options: options || {} });
         setTimeout(() => {
           if (host._pendingRequests.has(reqId)) {
@@ -3719,18 +3700,16 @@ function createVscodeShim() {
       host.emit('event', { type: 'registerTreeDataProvider', viewId });
       if (!host._treeProviders) host._treeProviders = new Map();
       host._treeProviders.set(viewId, provider);
-      // [CUSTOM-BEGIN] CUSTOM-20261015-002 - 桥接 onDidChangeTreeData → 前端 refresh
+      // 桥接 onDidChangeTreeData → 前端 refresh
       host._hookTreeDataChange(viewId, provider);
-      // [CUSTOM-END] CUSTOM-20261015-002
       return { dispose() { host._treeProviders?.delete(viewId); } };
     },
     createTreeView: (viewId, options) => {
       const provider = options.treeDataProvider;
       if (!host._treeProviders) host._treeProviders = new Map();
       host._treeProviders.set(viewId, provider);
-      // [CUSTOM-BEGIN] CUSTOM-20261015-002 - 桥接 onDidChangeTreeData → 前端 refresh
+      // 桥接 onDidChangeTreeData → 前端 refresh
       host._hookTreeDataChange(viewId, provider);
-      // [CUSTOM-END] CUSTOM-20261015-002
       const selectionEmitter = new VscEventEmitter();
       const visibilityEmitter = new VscEventEmitter();
       const expandEmitter = new VscEventEmitter();
@@ -5376,10 +5355,9 @@ if (process.env.SC_CODE_EXTENSION_HOST === 'true' && process.send) {
           activationEvents.includes('*') ||
           activationEvents.length === 0
         ) {
-          // [CUSTOM-BEGIN] CUSTOM-20261013-013 - defer manifest auto-activation until configuration sync is acknowledged
+          // defer manifest auto-activation until configuration sync is acknowledged
           if (!host._deferredConfigurationActivations) host._deferredConfigurationActivations = new Set();
           host._deferredConfigurationActivations.add(manifest.id);
-          // [CUSTOM-END] CUSTOM-20261013-013
         }
       } catch (e) {
         log(`load extension failed ${extPath}: ${e.message}`);

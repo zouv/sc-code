@@ -6,7 +6,7 @@
 ## 0.5 作用域路由
 | 任务 | 读取入口 | 忽略 |
 |---|---|---|
-| 自有功能与移植 | src/main.ts、src/sc-code/、docs/import-manifest.json | agent 内部 |
+| 自有功能与移植 | src/main.ts、src/sc-code/ | agent 内部 |
 | 品牌与图标 | public/sc-code.svg、docs/icons/README.md、index.html、src/bootstrap-globals.ts、src-tauri/tauri.conf.json、src-tauri/icons/、tests/branding.test.cjs | SVG紫灰/淡紫，平台图标同步；ScBrowser只读，profile/协议 ID 不可盲改 |
 | 关于/标题栏布局 | src/vs/workbench/browser/parts/dialogs/dialogHandler.ts、src/vs/base/browser/ui/dialog/{dialog.ts,dialog.css}、src/vs/workbench/browser/parts/titlebar/{titlebarPart.ts,media/titlebarpart.css} | 对话框通用按钮/输入逻辑、窗口状态恢复 |
 | 任务栏跳转列表 | src-tauri/src/taskbar.rs、src/sc-code/taskbar/recentJumpList.contribution.ts、src-tauri/src/lib.rs、src-tauri/capabilities/default.json、src-tauri/src/commands/window.rs | Jump List 之外的 shell 集成、真实宿主 |
@@ -19,16 +19,16 @@
 | 聊天与本地鉴权 | src/vs/workbench/contrib/scCodeChat/browser/{scCodeChatService,localServer}.ts、src-tauri/src/server.rs、agent/server/internal/auth/local_transport.go | 扩展视图 |
 | 文件与回滚 | crates/sc-code-runtime/src/、crates/sc-code-workspace/src/file_ops.rs、agent/server/internal/tools/ | UI themes |
 | 日常脚本/运行输出 | *.bat、scripts/{daily,build-desktop,package-output,unpack-output}.cjs、.cargo/config.toml、vite.config.ts | 真实用户 profile 与 dist/ 成品包不清理；旧 packages/ 由 clean 清理 |
-| 仓库布局/忽略规则 | .gitignore、.gitattributes、嵌套.gitignore、tests/repository-layout.test.cjs、docs/import-manifest.json | .runtime/ 与 dist/ 成品包、用户状态不可入库；生产DLL/WASM/图标不可整类忽略 |
+| 仓库布局/忽略规则 | .gitignore、.gitattributes、嵌套.gitignore、tests/repository-layout.test.cjs | .runtime/ 与 dist/ 成品包、用户状态不可入库；生产DLL/WASM/图标不可整类忽略 |
 | 打包验证 | scripts/desktop-runtime.cjs、scripts/prepare-desktop-runtime.cjs、scripts/build-desktop.cjs、scripts/smoke-local-server.cjs、tests/、.github/workflows/ | 历史 workflow |
-| 真实扩展宿主 | src/vs/workbench/api/node/{scCodeExtHostMain,extHost.sc-code.services}.ts、src/vs/workbench/services/extensions/browser/tauriProcessExtensionHost.ts、src-tauri/src/commands/real_ext_host.rs、scripts/{build-ext-host,vendor-ext-host-node}.cjs | 旧 host.cjs 逻辑 |
+| 真实扩展宿主 | src/vs/workbench/api/node/{scCodeExtHostMain,extHost.sc-code.services}.ts、src/vs/workbench/services/extensions/browser/tauriProcessExtensionHost.ts、src-tauri/src/commands/real_ext_host.rs、scripts/build-ext-host.cjs | 旧 host.cjs 逻辑 |
 | 工作台存储 | src/vs/workbench/services/storage/browser/{storageService,tauriStorageDatabase}.ts、src-tauri/src/commands/storage.rs | 用户 profile 数据 |
 | 文件系统/搜索/终端/监听 IPC | src/vs/platform/files/browser/tauriFileSystemProvider.ts、src/vs/workbench/services/search/browser/tauriSearchService.ts、src/vs/workbench/contrib/terminal/browser/tauriTerminalBackend.ts、src-tauri/src/commands/{fs,search,terminal,watch}.rs、src-tauri/src/recycle_bin.rs、crates/sc-code-workspace/src/search.rs | process.rs/sc_code_terminal.rs 的另两套终端（未接入工作台） |
 | 性能基线 | scripts/perf-baseline.cjs、vite.config.ts（分包/sourcemap） | 业务逻辑 |
 
 ## 1. 文件职责
 - public/sc-code.svg：无字体依赖的 SC/编辑器矢量品牌源；Tauri icon 派生 src-tauri/icons/ 的 PNG/ICO/ICNS；index.html favicon 与 titlebarpart.css 共用矢量。tests/branding.test.cjs 验证显示名、资产接入与尺寸。
-- docs/icons/：用户选定 D 版图标资源包，也是应用图标导出源（sc-code.svg、16–1024px PNG、七帧 ICO 与 README）；public/sc-code.svg 与 src-tauri/icons/ 已由该包替换。
+- docs/icons/：用户选定 D 版图标资源包，也是应用图标导出源（sc-code.svg、16–1024px PNG、七帧 ICO 与 README）；public/sc-code.svg 与 src-tauri/icons/ 已由该包替换。docs/ 只作为开发文档与资源目录，构建和测试不读取；测试校验实际交付的 src-tauri/icons。
 - src-tauri/src/taskbar.rs：Windows 任务栏 Jump List（最近文件夹/工作区）与单实例转发；仅接受 file: URI，参数用 base64 URL-safe 编码；Win32 COM/窗口代码集中在 windows_impl / windows_single_instance。
 - src/sc-code/taskbar/recentJumpList.contribution.ts：监听 IWorkspacesService 最近列表，去抖后调用 taskbar_update_jump_list；仅 Tauri 环境注册，非 Windows 后端 no-op。
 - src/sc-code/：VSIX 安装/拖拽、accessibility 服务、profile 扩展同步；普通功能模块，不走 Custom overlay。
@@ -50,14 +50,13 @@
 - scripts/unpack-output.cjs：validateUnpack校验已构建profile内Node/Go/5CJS逐文件hash、扩展treeHash/94项清单；prepareUnpack复制EXE+运行资源+同级DLL+许可证至.runtime/package-staging（Debug另含PDB），exportUnpacked用partial目录校验后替换`dist/<mode>/unpack`，archiveUnpack用scripts/zip-writer.cjs（纯Node deflate/读取校验，无系统zip/tar依赖）以unpack目录为源生成根目录无版本子目录的zip，随后删除暂存目录。Release zip不含Cargo缓存/PDB/用户文件；拒绝链接与测试模块。tests/unpack-output.test.cjs与unpack-fixture.cjs验证资源契约、源码搬离、dev/release命名与内容、zip根条目、失败保护。
 - .cargo/config.toml / vite.config.ts / scripts/dev-desktop.cjs：Cargo 输出 .runtime/target，前端 .runtime/dist、public，开发扩展 URL 指向 .runtime/desktop/extensions；runtime overlay .runtime/tauri.runtime.conf.json。
 - scripts/runtime-lock.json：固定 Windows Node/内置扩展下载与 SHA256；生成资源不纳入版本管理。
-- docs/import-manifest.json + scripts/verify-import.cjs：3664 项保留来源校验，允许独立修改但不许遗漏；7 个重复 shell-integration 以 consolidated-source 指向已有同 hash 终端源，只有一个 canonical 条目且 hash 相同才允许目标复用。
 
-- .gitignore / .gitattributes / tests/repository-layout.test.cjs：根级生成目录与源码分离；临时Git仓库复制全部忽略规则，用--no-index核验来源清单可见性、源码资源/锁文件保留、本地状态排除和Bash/BAT行尾，不受真实index或全局忽略掩盖。
+- .gitignore / .gitattributes / tests/repository-layout.test.cjs：根级生成目录与源码分离；临时Git仓库复制全部忽略规则，用--no-index核验源码资源可见性、源码资源/锁文件保留、本地状态排除和Bash/BAT行尾，不受真实index或全局忽略掩盖。
 
 ## 2. 任务定位（函数名优先，源码为准）
 | 任务 | 文件 / 函数 |
 |---|---|
-| 忽略规则/干净检出完整性 | tests/repository-layout.test.cjs / fixture、ignoredPaths；scripts/verify-import.cjs / verifyImport |
+| 忽略规则/干净检出完整性 | tests/repository-layout.test.cjs / fixture、ignoredPaths |
 | 日常操作/安全清理 | scripts/daily.cjs / main、launch、sourceFingerprint、cleanTargets、clean |
 | 成品包分类/安全导出 | scripts/build-desktop.cjs / buildDesktop → scripts/package-output.cjs / buildPaths、installerSnapshot、freshInstallers、exportPackages、assertLocalPath |
 | 免安装完整性/发布 | scripts/unpack-output.cjs / validateUnpack、prepareUnpack、exportUnpacked、archiveUnpack、exportUnpack、removeStage；scripts/zip-writer.cjs / writeZip、readZipEntries、readZipEntry |
@@ -82,6 +81,7 @@
 | 扩展 profile 路径 | crates/sc-code-extensions/src/paths.rs / sc_code_config_dir、extensions_base_dir |
 | 状态/禁用策略 | src-tauri/extension-host/storage.cjs / extensionStoragePaths、workspaceKey、createMemento、withStateLock、atomicState、disabledExtension |
 | 宿主配置门/工作区/重载 | src-tauri/extension-host/host.cjs / _handleInitialize、_handleLoadExtension、_activateExtension、_reloadExtension、_loadExtensionModule、_createExtensionContext |
+| 扩展消息通知 | src-tauri/extension-host/host.cjs / showInformationMessage、showWarningMessage、showErrorMessage；tauriExtensionHost.contribution.ts / _showExtensionMessage、_onShowMessageRequest；经 INotificationService 渲染为右下角 toast（带按钮的消息用通知操作按钮，不走 QuickPick） |
 | 扩展密钥链路 | storage.cjs / createSecretStorage → host.cjs / _requestExtensionSecret → tauriExtensionHost.contribution.ts / _onExtensionSecretRequest → secrets.rs / extension_secret、extension_secret_key |
 | Provider 纯逻辑与安全测试 | src-tauri/src/commands/providers.rs / resolve_direct_with_key；不以明文降级替代测试依赖注入 |
 | Go 端口/凭据 | src-tauri/src/server.rs / ServerEndpoint、ServerProc |
@@ -89,7 +89,7 @@
 | 原生 agent WS | src-tauri/src/commands/orchestrate.rs / run_agent_session |
 | 本地接口安全 | agent/server/internal/auth/local_transport.go / LocalTransportMiddleware |
 | 准备与真实侧车验收 | scripts/prepare-desktop-runtime.cjs；scripts/desktop-runtime.cjs / assertPrepared；scripts/smoke-local-server.cjs / smoke、request |
-| 真实扩展宿主构建 | scripts/build-ext-host.cjs（esbuild → `.runtime/ext-host/extensionHost.cjs`）；scripts/vendor-ext-host-node.cjs 从 VSCode 1.110.1 补齐 `src/vs/**/node`；入口 src/vs/workbench/api/node/scCodeExtHostMain.ts |
+| 真实扩展宿主构建 | scripts/build-ext-host.cjs（esbuild → `.runtime/ext-host/extensionHost.cjs`）；入口 src/vs/workbench/api/node/scCodeExtHostMain.ts |
 | 真实宿主连接 | src/vs/workbench/services/extensions/browser/tauriProcessExtensionHost.ts / start、_createExtHostInitData、isRealExtensionHostEnabled；src-tauri/src/commands/real_ext_host.rs / real_ext_host_start、strip_verbatim、read_endpoint |
 | 真实宿主开关与注册 | src/vs/workbench/services/extensions/browser/extensionService.ts / _scanWebExtensions、_registerDiskExtensions、ScCodeExtensionHostKindPicker；extensionSync.contribution.ts 在真实宿主下让路 |
 | 工作台存储 | storageService.ts / createTauriOrIndexedDbStorage（首次从 IndexedDB 迁移）；tauriStorageDatabase.ts / updateItems → storage.rs / storage_apply、StorageDb::apply（单事务） |
@@ -97,7 +97,7 @@
 | 文本/文件搜索 | tauriSearchService.ts / textSearch、fileSearch、folderExcludes、unconditionalGlobs → search.rs / search_text_stream、search_workspace_files、search_cancel、to_text_match → crate search.rs / search_streaming、search_workspace_files、collect_files_with_options、workspace_walker、relative_slash_path |
 | 终端 IO | tauriTerminalBackend.ts / TauriPty.start、acknowledgeDataEvent → terminal.rs / terminal_spawn（Channel<TerminalEvent>、退出等待线程）、terminal_ack、FlowControl、Utf8Stream；os.rs / get_windows_build_number |
 | 文件监听 | tauriFileSystemProvider.ts / watchMapped（每 watch 一条 Channel）→ watch.rs / watch_start(on_batch)、WatchSink、coalesce_events、event_kind_to_string |
-| 自定义编辑器 | src/vs/workbench/contrib/customEditor/**（上游恢复）、workbench.common.main.ts、tauriExtensionHost.contribution.ts（registerCustomEditorProvider 仅记录） |
+| 自定义编辑器 | src/vs/workbench/contrib/customEditor/**（VS Code 原生实现）、workbench.common.main.ts、tauriExtensionHost.contribution.ts（registerCustomEditorProvider 仅记录） |
 | 真实宿主 Node 服务 | src/vs/workbench/api/node/extHost.sc-code.services.ts、extHostDebugService.ts、platform/sign/**、workbench/contrib/debug/node/**、platform/externalTerminal/node/**；scripts/build-ext-host.cjs（external: @vscode/windows-process-tree） |
 | 扩展宿主进程管道 | src-tauri/src/commands/real_ext_host.rs / read_handshake（握手后继续排空 stdout）、stderr 排空线程 |
 | 关窗确认 | src/sc-code/window-close/closeHandler.contribution.ts、src-tauri/src/lib.rs（on_window_event）、src-tauri/src/commands/window.rs（approve_close/take_close_approval）|
@@ -119,12 +119,12 @@
 11. ESM shim 写 profile/runtime 而非安装目录；file URL 用 pathToFileURL，顶层 await 触发 ERR_REQUIRE_ASYNC_MODULE 时转 import。
 12. 数据损坏/锁占用必须可见报错并保留文件，禁止删除 DB 后假恢复。
 
-13. Git边界：logs/dist/out/build规则限定根目录，不按“扩展未完成”忽略源码；.runtime/与dist/始终排除。来源清单物理文件校验与Gitignore回归必须同时通过；首次提交还需从index干净导出核验完整性。Bash入口固定LF并保留可执行位，BAT保持CRLF。
+13. Git边界：logs/dist/out/build规则限定根目录，不按“扩展未完成”忽略源码；.runtime/与dist/始终排除。Gitignore回归与源码文件可见性校验必须通过；首次提交还需从index干净导出核验完整性。Bash入口固定LF并保留可执行位，BAT保持CRLF。
 
 14. 任务栏最近记录：WorkspacesService 持久化最近文件夹/工作区 → 贡献点监听 onDidChangeRecentlyOpened 去抖 → invoke taskbar_update_jump_list(entries) → Rust 过滤非 file: URI/去重/限 10 条 → Windows ICustomDestinationList 写“Recent Folders / Recent Workspaces”分类。条目命令为 `ScCode.exe --open-folder=<base64>` 或 `--open-workspace=<base64>`。
 15. 单实例：进程启动先按 profile 数据目录 hash 创建命名 mutex；已有实例则通过隐藏窗口 WM_COPYDATA 转发 argv 后退出。首个实例在 setup 创建隐藏窗口，收到参数后 `run_on_main_thread` 打开带 `?folder=`/`?workspace=` 的新窗口；无目标参数时聚焦 main。禁止两个进程同时打开同一 profile 的 SQLite。
 16. webview 隔离：工作台 → iframe `http://127.0.0.1:<port>/index.html`（webview_host）→ 同源内层 fake.html 承载扩展内容；SW 在真实 HTTP 上注册。Windows 上 wry 把 Tauri IPC 脚本（含 invoke key）注入**所有** frame，Tauri 对无 ACL 清单的应用命令不查来源、且把任何自定义协议都视作本地——所以：①webview 不得用自定义协议承载（会被视为本地且 SW 主脚本抓取失败）；②应用命令靠 ipc_guard 校验自定义协议 IPC 的 Origin（浏览器设置、不可伪造）；③postMessage 回退的 headers 可伪造，安全前提是 wry 只订阅顶层 WebMessageReceived、子 frame 消息到不了 Tauri。升级 wry/Tauri 后须用 CDP 复验（WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=--remote-debugging-port=<p>：webview frame 内 invoke 应被拒、劫持 fetch 取 key 后经 `window.ipc.postMessage` 伪造 Origin 写文件应无效果、主页面对照应成功）。
-18. 关窗：原生 CloseRequested 未被 approve 时 prevent_close 并 eval `window.__sc_code_request_close()`；前端用 `IEditorService.editors.filter(isDirty)` 判断（`IWorkingCopyService.modifiedWorkingCopies` 在本移植里不填充），三按钮 prompt 后：取消/保存失败→不关；保存→`saveAll` 成功后调 close_window；不保存→直接 close_window。`close_window` 先写 approve 标记再 close，标记一次性消费。
+18. 关窗：原生 CloseRequested 未被 approve 时 prevent_close 并 eval `window.__sc_code_request_close()`；前端用 `IEditorService.editors.filter(isDirty)` 判断（`IWorkingCopyService.modifiedWorkingCopies` 在本移植里不填充），三按钮 prompt 后：取消/保存失败→不关；保存→`saveAll` 成功后调 close_window；不保存→先 `revertAll({ includeUntitled: true })` 丢弃 untitled 工作副本与备份，再 close_window。`close_window` 先写 approve 标记再 close，标记一次性消费。
 19. 命令行：argv[1..] 里找第一个存在的绝对路径（目录→folder，文件→file），`-g/--goto` 或 `路径:行[:列]` 带位置；URL `index.html?file=<uri>&line=&column=`；main.ts 用父目录作为工作区并在命令服务就绪后 `_workbench.open`（options 走 `[column, options]`，`vscode.open` 会丢弃 options）。
 17. 文件/搜索/终端 IPC：重活一律 `#[tauri::command(async)]` 或 async+spawn_blocking（同步命令跑在主线程）；对调用顺序敏感的命令（终端写入、设置、聊天会话）保持同步。文件内容走 `tauri::ipc::Response`/raw body，禁止 `Vec<u8>`↔`number[]`。搜索列号一律 UTF-16（Rust 侧转换），glob 按工作区相对 `/` 路径匹配、排除目录在遍历时剪枝；文本搜索必须经 SearchModel 的 notebook 段，notebook 空桩不得缺方法。终端输出 = 每终端 Channel（data…exit 有序），按 UTF-16 字符计流控（高 10 万/低 5 千，最长暂停 5s）；Windows ConPTY 退出靠等待线程 try_wait→记录退出码→释放 PTY，不能等读端 EOF。监听事件按路径合并：add+change=add、add+remove=无、remove+add=change。
 
@@ -164,7 +164,7 @@
 
 ## 4. 接口契约与边界
 - buildPaths = {mode,targetRoot,build,bundle,dist}；unpack-manifest.json={format:1,product:ScCode,mode,platform,builtinCount,createdAt,files:[{path,size,sha256}]}，路径为包内相对路径。成品只支持准备好的Windows x64；免安装不改变SC_CODE_HOME/profile/WebView2前提。`dist/dev/`含`unpack/`未压缩目录与`ScCode_<version>_x64-unpack-debug.zip`；`dist/release/`含`unpack/`未压缩目录、setup exe与`ScCode_<version>_x64-unpack.zip`；zip条目直接位于根目录（无`ScCode_<version>_x64-unpack[-debug]/`外壳），包含unpack-manifest.json与全部运行资源，Release不含Cargo缓存/PDB/用户profile，Debug含PDB。打包顺序为先导出unpack目录、再以其为源生成zip，prepare/zip校验完成后才导出安装包；zip写入失败保留旧zip与安装包，不宣称跨文件事务。
-- 产品 0.3.0 与 VS Code API 1.110.0 分离；command/settings IDs 使用 sc-code 前缀。
+- 产品 0.4.0 与 VS Code API 1.110.0 分离；command/settings IDs 使用 sc-code 前缀。
 - taskbar_update_jump_list 入参 `entries=[{kind:'folder'|'workspace', uri:'file:...', label}]`；仅 Windows 写入 Jump List，其他平台 no-op；空列表清除自定义分类。
 - Jump List 启动参数 `--open-folder=<base64url(file URI)>` / `--open-workspace=<base64url(file URI)>`；单实例转发只接受这两个前缀且只打开 file: URI。新窗口 label 为 `workspace-<n>`，capabilities 用 `workspace-*` 覆盖。
 - About 对话框通过 `ICustomDialogOptions.imageIcon/imageIconAlt` 渲染 `/sc-code.svg`；`imageIcon` 存在时自动使用垂直布局，图标与标题居中、说明文字左对齐。

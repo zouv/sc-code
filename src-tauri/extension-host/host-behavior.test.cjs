@@ -127,4 +127,18 @@ export function activate(c){c.subscriptions.push(commands.registerCommand('scSmo
   assert.equal(result.app,'ScCode');assert.equal(result.mode,1);assert.ok(result.global.startsWith(f.home));
   assert.ok(fs.existsSync(path.join(f.home,'runtime/extension-host/node_modules/vscode/index.mjs')));
   assert.ok(!fs.existsSync(path.join(f.host,'node_modules')));
+});test('extension messages surface as one notification event and button choices round-trip',{timeout:10000},async t=>{
+  const f=fixture(t);extension(f);
+  fs.writeFileSync(path.join(f.extension,'extension.cjs'),`const vscode=require('vscode');
+exports.activate=c=>{
+c.subscriptions.push(vscode.commands.registerCommand('scSmoke.plain',()=>vscode.window.showInformationMessage('plain-message')));
+c.subscriptions.push(vscode.commands.registerCommand('scSmoke.choice',()=>vscode.window.showWarningMessage('choice-message','A','B')));
+};`);
+  const host=await start(t,f);await configure(host,f);
+  await host.request('executeCommand',{command:'scSmoke.plain',args:[]});
+  assert.equal(host.events.filter(e=>e.type==='showMessage'&&e.message==='plain-message').length,1);
+  host.setDialogResult('showMessageRequest','B');
+  assert.equal(await host.request('executeCommand',{command:'scSmoke.choice',args:[]}),'B');
+  assert.equal(host.events.filter(e=>e.type==='showMessage'&&e.message==='choice-message').length,0);
+  assert.equal(host.events.filter(e=>e.type==='showMessageRequest'&&e.message==='choice-message').length,1);
 });

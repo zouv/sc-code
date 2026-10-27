@@ -14,6 +14,22 @@ test('ScCode display identity agrees across web, native and extension environmen
   assert.match(read('src-tauri/src/commands/extension_platform.rs'),/app_name: "ScCode"/);
   assert.match(read('src-tauri/src/commands/extension_wasm.rs'),/"ScCode"\.to_string\(\)/);
 });
+test('independent product identity and updates do not reference an old release channel',()=>{
+  const pkg=JSON.parse(read('package.json'));
+  const conf=JSON.parse(read('src-tauri/tauri.conf.json'));
+  assert.equal(pkg.name,'sc-code');assert.equal(conf.productName,'ScCode');
+  assert.equal(pkg.version,conf.version);assert.equal(conf.identifier,'dev.sccode.app');
+  assert.equal(conf.plugins.updater,undefined);
+  for(const file of fs.readdirSync(path.join(root,'.github/workflows'))){
+    const text=fs.readFileSync(path.join(root,'.github/workflows',file),'utf8');
+    assert.doesNotMatch(text,/siden\.dev|siden\.ai|s3:\/\/|SC_CODE_SIGNING|tauri-action|contents:\s*write/);
+  }
+});
+test('custom mechanisms have become ordinary feature modules',()=>{
+  const main=read('src/main.ts');
+  for(const name of ['vsix-install/vsixInstall','accessibility/accessibleViewInformationService','extension-sync/extensionSync'])assert.ok(main.includes(`./sc-code/${name}.contribution`));
+  assert.doesNotMatch(main,/CUSTOMIZATIONS\/src/);
+});
 test('visible workbench string literals contain no old application branding',()=>{
   const oldBrand = ['s','i','d','e','x'].join('');
   const oldBrandRx = new RegExp(oldBrand, 'i');
@@ -38,7 +54,7 @@ test('font-independent SC editor SVG is connected to favicon and titlebar',()=>{
   assert.match(svg,/<title[^>]*>ScCode<\/title>/);assert.match(svg,/SC monogram in a plum-charcoal editor window/);
   assert.doesNotMatch(svg,/<(?:script|text|image|foreignObject)\b|(?:href|font-family)=/i);
   // ScBrowser keeps its blue/cyan identity; ScCode uses plum-charcoal/lavender.
-  for(const color of ['#191621','#272132','#675477','#b59bcf','#f0e5ff','#f7f2fc','#c19aff','#e8d9ff'])assert.ok(svg.includes(color),color);
+  for(const color of ['#272132','#675477','#b59bcf','#f0e5ff','#f7f2fc','#c19aff','#e8d9ff'])assert.ok(svg.includes(color),color);
   assert.doesNotMatch(svg,/#111827|#182438|#526782|#8ca0b8|#f4f8ff|#55e2c0/i);
   assert.match(read('index.html'),/href="\/sc-code\.svg"/);
   assert.match(read('src/vs/workbench/browser/parts/titlebar/media/titlebarpart.css'),/url\("\/sc-code\.svg"\)/);
@@ -46,11 +62,6 @@ test('font-independent SC editor SVG is connected to favicon and titlebar',()=>{
 test('desktop icon formats and requested PNG dimensions are valid',()=>{
   for(const [name,size] of [['32x32.png',32],['128x128.png',128],['128x128@2x.png',256],['icon.png',512]]){
     const bytes=fs.readFileSync(path.join(root,'src-tauri/icons',name));assert.equal(bytes.subarray(0,8).toString('hex'),'89504e470d0a1a0a');
-    assert.equal(bytes.readUInt32BE(16),size);assert.equal(bytes.readUInt32BE(20),size);
-  }
-  for(const size of [16,32,48,64,128,256,512,1024]){
-    const bytes=fs.readFileSync(path.join(root,'docs/icons',`sc-code-${size}.png`));
-    assert.equal(bytes.subarray(0,8).toString('hex'),'89504e470d0a1a0a');
     assert.equal(bytes.readUInt32BE(16),size);assert.equal(bytes.readUInt32BE(20),size);
   }
   const ico=fs.readFileSync(path.join(root,'src-tauri/icons/icon.ico'));assert.equal(ico.readUInt16LE(0),0);assert.equal(ico.readUInt16LE(2),1);

@@ -5,7 +5,7 @@ function fixture(t) { const root=fs.mkdtempSync(path.join(os.tmpdir(),'sc-runtim
 function builtins(root) {
  for(const name of ['json','typescript','git']) { const p=path.join(root,name);fs.mkdirSync(p);fs.writeFileSync(path.join(p,'package.json'),JSON.stringify({name,publisher:'vscode',version:'1',engines:{vscode:'*'}})); }
 }
-test('desktop main entry is valid even when upstream web artifact is not shipped',t=>{
+test('desktop main entry is valid even when prebuilt web artifact is not shipped',t=>{
  const root=fixture(t);builtins(root);const p=path.join(root,'git');fs.writeFileSync(path.join(p,'main.js'),'module.exports={}');
  fs.writeFileSync(path.join(p,'package.json'),JSON.stringify({name:'git',publisher:'vscode',version:'1',engines:{vscode:'*'},main:'./main',browser:'./missing-web.js'}));
  assert.equal(validateExtensions(root).length,3);

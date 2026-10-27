@@ -167,7 +167,7 @@ export async function extractEditorsAndFilesDropData(
 				editors.push({
 					resource: fileData.resource,
 					contents: fileData.contents?.toString(),
-					// [CUSTOM-20261017-006] 快照副本以干净状态打开
+					// 快照副本以干净状态打开
 					initialDirtyState: fileData.initialDirtyState,
 					isExternal: true,
 					allowWorkspaceOpen: fileData.isDirectory
@@ -257,7 +257,7 @@ export async function extractFileListData(accessor: ServicesAccessor, files: Fil
 					resource: URI.from({ scheme: Schemas.untitled, path: name }),
 					contents:
 						typeof loadResult === 'string' ? VSBuffer.fromString(loadResult) : VSBuffer.wrap(new Uint8Array(loadResult)),
-					// [CUSTOM-20261017-006] 拖入文件的快照：初始干净，编辑后才标脏
+					// 拖入文件的快照：初始干净，编辑后才标脏
 					initialDirtyState: false
 				});
 			};

@@ -23,7 +23,6 @@ node_modules/
 # ── Cargo.lock for library crates ───────────────────────────────────────────
 # Library lock files should not be committed (Cargo best practice).
 # The workspace application lock (/Cargo.lock) IS committed.
-# Keep src-tauri/Cargo.lock as imported provenance; it is not the workspace lock.
 sc-code-extension-sdk/Cargo.lock
 extensions-rust/Cargo.lock
 examples/**/Cargo.lock
@@ -68,17 +67,11 @@ coverage/
 .nyc_output/
 *.lcov
 
-# ── Local scratch / source reconstruction (never ship) ───────────────────────
+# ── Python ───────────────────────────────────────────────────────────────────
 __pycache__/
 *.py[cod]
 .venv/
 venv/
-/scratchtmp/
-/recover_sources.py
-/recovered/
-/reconstruct/
-/reconstruct_sources.py
-/recover_*.py
 
 # ── Misc ─────────────────────────────────────────────────────────────────────
 *.tgz
@@ -104,14 +97,13 @@ MEMORY.md
 *.partial
 *.dmp
 *.stackdump
-/src-tauri/shell-integration/
 # Transitional output locations from previous versions (never commit)
 /src-tauri/tauri.runtime.conf.json
 /src-tauri/runtime/
 /extensions-meta.json
 /public/builtin-extensions.js
 
-# Other local scratch/report state (source manifests and lockfiles remain tracked)
+# Other local scratch/report state (dependency manifests and lockfiles remain tracked)
 /artifacts/
 /.runtime-*.log
 *.tmp

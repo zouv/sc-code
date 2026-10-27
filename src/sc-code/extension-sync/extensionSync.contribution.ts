@@ -9,8 +9,8 @@
  *  origin 的记录。因此在 dev 里安装的扩展，装到 release 包后看不到。
  *
  *  本模块在启动时读 Rust 的 list_installed_extensions（磁盘真实安装），把当前 profile
- *  尚未登记的扩展经 installFromLocation 幂等补登记 —— 复用 VSIX 安装链路
- *  （CUSTOM-20261013-001），让 dev / release 之间切换保持一致。
+ *  尚未登记的扩展经 installFromLocation 幂等补登记 —— 复用 VSIX 安装链路，
+ *  让 dev / release 之间切换保持一致。
  *--------------------------------------------------------------------------------------------*/
 
 import { URI } from 'vs/base/common/uri.js';
