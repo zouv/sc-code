@@ -15,6 +15,7 @@
 2026-10-22：v0.2.0 已打包并上传 GitHub Release（prerelease）：`ScCode_0.2.0_x64-setup.exe` + `ScCode_0.2.0_x64-unpack.zip`；Release unpack 隔离 profile 冒烟通过。
 2026-10-25：完成 S18–S22（安全加固、性能与正确性、真实宿主前置、体验补齐、收敛）；v0.3.0 已打包并上传 GitHub Release（prerelease）：`ScCode_0.3.0_x64-setup.exe` + `ScCode_0.3.0_x64-unpack.zip`；Release 包内验证搜索/终端/webview 隔离/CLI 定位/隔离 profile。
 2026-10-27：移除迁移期来源清单与验证链，`docs/` 只保留开发文档与资源、不再被测试读取；清理残留 CUSTOM 标记、未参与构建的锁文件与 vendor 脚本。
+2026-10-27：v0.4.0 已打包并上传 GitHub Release（prerelease）：`ScCode_0.4.0_x64-setup.exe` + `ScCode_0.4.0_x64-unpack.zip`；Release 包隔离 profile 启动冒烟通过。
 
 ## 开发大纲
 | 编号 | 优先级 | 任务 | 状态 |

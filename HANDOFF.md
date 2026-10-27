@@ -1,21 +1,18 @@
 # 会话接力 · ScCode
 
-- 快照：2026-10-27；分支 `main`；**无进行中任务**（迁移期残留清理、扩展通知改右下角 toast、关窗丢弃 untitled 备份、图标样式更新均已完成，见 `CHANGELOG.md` 未发布区）。
+- 快照：2026-10-27；分支 `main`；**无进行中任务**（迁移期残留清理、扩展通知改右下角 toast、关窗丢弃 untitled 备份、图标样式更新与 v0.4.0 发布均已完成，见 `CHANGELOG.md` 0.4.0 小节）。
 - 本轮验证：`npm test`（74/74，含扩展消息路由新用例）、`npm run typecheck`、`cargo check --offline -p sc-code`、`sh check-docs.sh` 全部通过。
-- 当前版本：**0.3.0**（已打包并发布为 GitHub prerelease）。
-- 最新发布：[v0.3.0](https://github.com/zouv/sc-code/releases/tag/v0.3.0)（GitHub prerelease）：
-  - `ScCode_0.3.0_x64-setup.exe`（68,791,143 B）
-  - `ScCode_0.3.0_x64-unpack.zip`（94,574,333 B）
-- 本轮发布冒烟（Release 包解压 + 隔离 `SC_CODE_HOME`）：搜索命中、终端可启动、Markdown 预览 webview 来自 `http://127.0.0.1:<端口>` 且 `window.parent` 被拒、webview 内 `stat` 被 IPC 守卫拒、`ScCode.exe -g <文件>:1:3` 定位到 `Ln 1, Col 3`、profile 落在 `SC_CODE_HOME` 内。
-- 打包：`npm run desktop:package` exit 0；`dist/dev/ScCode_0.3.0_x64-unpack-debug.zip`（含 PDB）、`dist/release/unpack/`、setup exe、unpack zip 均生成。
-- 最新发布：[v0.2.0](https://github.com/zouv/sc-code/releases/tag/v0.2.0)（GitHub prerelease）：
-  - `ScCode_0.2.0_x64-setup.exe`（68,699,528 B）
-  - `ScCode_0.2.0_x64-unpack.zip`（94,455,573 B）
+- 当前版本：**0.4.0**（已打包并发布为 GitHub prerelease）。
+- 最新发布：[v0.4.0](https://github.com/zouv/sc-code/releases/tag/v0.4.0)（GitHub prerelease）：
+  - `ScCode_0.4.0_x64-setup.exe`（68,815,933 B）
+  - `ScCode_0.4.0_x64-unpack.zip`（94,600,187 B）
+- 本轮发布冒烟（Release 包解压 + 隔离 `SC_CODE_HOME`）：启动 30s 未退出，隔离 profile 正常生成 `sc_code_state.db` / `sc_code_storage.db` 与 `User`/`extensions`/`logs` 目录，进程已清理；搜索/终端/webview/CLI 的完整 GUI 冒烟仍待执行。
+- 打包：`npm run desktop:package` exit 0；`dist/dev/ScCode_0.4.0_x64-unpack-debug.zip`（含 PDB）、`dist/release/unpack/`、setup exe、unpack zip 均生成。
 - 仓库边界不变：源码/文档/脚本/锁文件入库；`.runtime/`、`dist/`、`node_modules/`、Tauri 生成物、用户 profile 不入库。
 
 ## 下一步（未排期）
 
-1. **打包冒烟**：`npm run desktop:package` 后按 `scripts/smoke-dist.cjs` 与隔离 profile 验证 Release 包内的 webview 隔离、搜索、终端、关窗询问、CLI `-g`（本轮只在 dev 构建里验证过）。
+1. **完整 GUI 冒烟**：本轮仅完成 Release 包启动与隔离 profile 冒烟；搜索、终端、webview 隔离、关窗询问、CLI `-g` 仍待逐项复验（参考 `scripts/smoke-dist.cjs`）。
 2. 真实宿主（S10b）：扩展贡献命令在真实宿主下 MISSING（typescript/emmet/json 等），旧宿主同样缺；需先修扩展注册/激活链路，再验自定义编辑器与 Node 调试适配器。
 3. 剩余体验缺口：Explorer 的 Outline 视图面板（`contrib/outline` 未移植，面包屑已可用）、`--wait`（git `core.editor`）、`IWorkingCopyService.modifiedWorkingCopies` 在本移植中为空（关窗判断改用编辑器脏状态绕开）。
 4. 手工验收 S16 桌面壳体验：关于对话框图标；Windows 任务栏右键“Recent Folders / Recent Workspaces”；运行中点击跳转列表应转发到已运行实例并新开窗口；冷启动点击应直接以目标文件夹/工作区启动。
