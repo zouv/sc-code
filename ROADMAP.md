@@ -93,6 +93,10 @@
 6. Tab补全、多Agent DAG/验证器/记忆和长期恢复另做能力矩阵，不承诺ACP可一键替代；安全/事务P0仍需要独立完成。
 
 ## 已交付里程碑
+- ✅ 2026-11-02：~~v0.4.2 CSP 样式回归修复与发布~~ — [GitHub Release](https://github.com/zouv/sc-code/releases/tag/v0.4.2)，未签名 Windows x64 prerelease（非 draft）；tag `v0.4.2` 指向 `8950484`，修复 0.4.1 因 Tauri style nonce 导致的工作台图标/菜单/主题样式丢失。
+  - ScCode_0.4.2_x64-setup.exe：68,840,253 bytes；SHA-256 `53a0f7c7f304af359d0dd96cff72aa78f5b69c77804e206a735e698e3e940e0f`。
+  - ScCode_0.4.2_x64-unpack.zip：94,639,283 bytes；SHA-256 `067ddaac5f3cdd497016d3294a3f5ecf3265e66f8101d80e541035506ff7d424`；zip 829 个条目，包脚本逐文件 size/SHA-256 校验通过。
+  - Release ZIP 解压后的隔离 WebView2 冒烟 10/10（新增主题/codicon 运行时样式断言）；Debug unpack zip（246,490,919 bytes，含 PDB）已生成但不上传。
 - ✅ 2026-11-02：~~v0.4.1 打包与发布~~ — [GitHub Release](https://github.com/zouv/sc-code/releases/tag/v0.4.1)，未签名 Windows x64 prerelease（非 draft）；tag `v0.4.1` 指向 `001413d`，发布代码 [CI 41372567720](https://github.com/zouv/sc-code/actions/runs/41372567720) 六个任务全部通过（frontend/native/agent 与 Windows/Linux/macOS runtime）。
   - ScCode_0.4.1_x64-setup.exe：68,847,226 bytes；SHA-256 `ffbdac20a615d39cd1a39f11d8044b383ec25ad29d6fc5b34887515a0ab485f9`。
   - ScCode_0.4.1_x64-unpack.zip：94,638,208 bytes；SHA-256 `2473446a0c6f4709061aef9aea1fdf54318c2065023f943ec56f6b99cb904b0b`。
@@ -100,14 +104,15 @@
   - 本地 Debug unpack 与 `ScCode_0.4.1_x64-unpack-debug.zip`（247,040,685 bytes）已生成并通过清单验证，含 PDB，不上传；两通道未压缩目录位于 `dist/dev/unpack` 与 `dist/release/unpack`。远端两资产的大小/SHA-256 与本地一致，正文来自 CHANGELOG 0.4.1。
 - ✅ 2026-11-02：~~S23 项目审查及安全后续修复~~ — 前端/Go/Rust、生产 CSP 工作台、隔离 WebView2 双窗/信任/宿主/PTY/frame/CLI 与本地真实 SSH 专项通过，npm 审计 0；已随 v0.4.1 预发布交付，不代替第三方扩展、付费模型、私有服务与真 keyring 验收。
 - ✅ 2026-10-22：~~D 版图标接入与 0.2.0 发布~~ — `docs/icons/` 资源已替换应用图标；`v0.2.0` setup + unpack zip 已上传 GitHub prerelease，Release unpack 隔离 profile 冒烟通过。
-以上 ✅ 为实现里程碑；最新 v0.4.1 的 Windows x64 安装包与 unpack ZIP 已上传 GitHub prerelease。自动化测试通过不代表所有 GUI、用户数据或第三方扩展都兼容。
+以上 ✅ 为实现里程碑；最新 v0.4.2 的 Windows x64 安装包与 unpack ZIP 已上传 GitHub prerelease。自动化测试通过不代表所有 GUI、用户数据或第三方扩展都兼容。
 
 ## 回归缺口复验（2026-11-02）
 - crates/sc-code-agent/src/tools/shell.rs / timeout_terminates_long_running_child：本轮原 7 秒上限断言通过，未放宽；历史 88 秒异常不能由一次环境复验判定根因已解决，取消/逃逸子进程清理仍需专项验收。
 - crates/sc-code-terminal/src/link_detection.rs：旧 crate 已加入当前 Cargo workspace 和跨平台 CI，88 项通过，含多路径/Unicode 前缀/Windows+Unix 识别；未接入工作台，不等于替换生产终端。
 - crates/sc-code-remote/src/ssh.rs：已对齐依赖公开 API，真实 loopback russh 握手在认证前拒绝未知/变更密钥，已知非标准端口成功，exec 正确返回 stdout/stderr/退出码（含 EOF 后状态）。临时内存密钥/合成密码，不触碰用户私钥；用户服务器、多跳与转发仍未验。
 
-## 当前验证与性能边界（2026-11-02，0.4.1）
+## 当前验证与性能边界（2026-11-02，0.4.1/0.4.2）
+- 0.4.2 复验：前端 npm test 99/99；typecheck/lint、生产 build + smoke:dist 通过；Release ZIP 解压后隔离 WebView2 冒烟 10/10（含主题/codicon 运行时样式断言）。本轮未改 Rust/Go 代码，下列 Rust/Go 数据沿用同日 0.4.1 全量回归。
 - 前端 npm test 97/97；transport 20/20；真实 Node 宿主进程 smoke 2/2；自有 TS lint 105 个文件零告警与 typecheck 通过。
 - Rust workspace 1797 passed / 2 原有 ignored；Go fts5 全包通过；独立真实 Go 侧车 10 项 REST/WS 本地鉴权通过。
 - 生产 frontend build 与 CSP smoke 通过；native Debug/Release 均已用当前资源重建，Release ZIP 解压后的隔离 WebView2 核心集成 9/9（含 restricted 搜索 Channel、双窗宿主、PTY、跨源 frame 与单实例 CLI）。信任状态通过程序性 IPC 验证，尚未实际点击授权 UI 验证工作台自动恢复全部扩展。
