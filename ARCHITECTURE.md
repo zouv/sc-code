@@ -51,7 +51,7 @@
 - src-tauri/src/recycle_bin.rs：move_to_trash（Windows SHFileOperationW+FOF_ALLOWUNDO，unsafe 仅限 windows_impl）；其它平台返回不支持。
 - src-tauri/src/ipc_guard.rs：按 IPC 请求浏览器设置的 Origin 放行工作台来源（tauri.localhost；`tauri dev` 下加 devUrl），其余拒绝。
 - src-tauri/src/app_dirs.rs：独立 profile 与隔离测试环境。
-- crates/sc-code-runtime/：冲突保护 checkpoint；当前为内存单文件边界。
+- crates/sc-code-runtime/：冲突保护 checkpoint；当前为内存单文件边界。checkpoint.rs 与 sc-code-agent/src/tests.rs 的 test_dir 仅在 Unix 解析临时根目录的系统别名，生产路径仍拒绝链接；symlink_targets_and_ancestors_remain_rejected 覆盖目标/祖先链接及未创建文件。
 - crates/sc-code-settings/：JSONC 和分层设置；crates/sc-code-auth/：OS keyring 与非秘密元数据。
 - crates/sc-code-extensions/src/paths.rs：扩展安装/profile/globalStorage 路径；tests/profile_paths.rs 以子进程验证 SC_CODE_HOME。
 - src-tauri/extension-host/：5 个生产 CJS 文件，带本地会话 token；storage.cjs 专管 profile 路径、持久 Memento、旧存储只复制、显式禁用和 secret 请求接口。

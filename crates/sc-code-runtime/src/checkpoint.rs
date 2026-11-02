@@ -162,9 +162,19 @@ impl Journal {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn test_dir() -> tempfile::TempDir {
+        // macOS temp roots may contain system symlinks. Resolve only the
+        // trusted fixture root; production path checks must remain strict.
+        #[cfg(unix)]
+        let root = std::env::temp_dir().canonicalize().unwrap();
+        #[cfg(not(unix))]
+        let root = std::env::temp_dir();
+        tempfile::tempdir_in(root).unwrap()
+    }
     #[test]
     fn binary_restore_and_created_file_removal() {
-        let tmp = tempfile::tempdir().unwrap(); let path = tmp.path().join("binary"); let new = tmp.path().join("new");
+        let tmp = test_dir(); let path = tmp.path().join("binary"); let new = tmp.path().join("new");
         std::fs::write(&path, [255, 0, 128]).unwrap();
         let mut journal = Journal::default(); journal.create("A", "turn1").unwrap();
         journal.write("A", &path, b"edited").unwrap(); journal.write("A", &new, b"new").unwrap();
@@ -173,7 +183,7 @@ mod tests {
     }
     #[test]
     fn external_change_blocks_all_restore_and_preserves_journal() {
-        let tmp = tempfile::tempdir().unwrap(); let a = tmp.path().join("a"); let b = tmp.path().join("b");
+        let tmp = test_dir(); let a = tmp.path().join("a"); let b = tmp.path().join("b");
         let mut journal = Journal::default(); journal.create("A", "t").unwrap();
         journal.write("A", &a, b"agent").unwrap(); journal.write("A", &b, b"agent").unwrap();
         std::fs::write(&b, b"user").unwrap();
@@ -183,20 +193,20 @@ mod tests {
     }
     #[test]
     fn older_turn_captures_files_first_edited_in_later_turn() {
-        let tmp = tempfile::tempdir().unwrap(); let path = tmp.path().join("later");
+        let tmp = test_dir(); let path = tmp.path().join("later");
         let mut journal = Journal::default(); journal.create("A", "one").unwrap(); journal.create("A", "two").unwrap();
         journal.write("A", &path, b"later").unwrap(); journal.rollback("A", Some("one")).unwrap(); assert!(!path.exists());
     }
     #[test]
     fn scopes_and_missing_checkpoints_are_isolated() {
-        let tmp = tempfile::tempdir().unwrap(); let a = tmp.path().join("a"); let b = tmp.path().join("b");
+        let tmp = test_dir(); let a = tmp.path().join("a"); let b = tmp.path().join("b");
         let mut journal = Journal::default(); journal.create("A", "same").unwrap(); journal.create("B", "same").unwrap();
         journal.write("A", &a, b"A").unwrap(); journal.write("B", &b, b"B").unwrap(); journal.rollback("A", None).unwrap();
         assert!(b.exists()); assert!(matches!(journal.rollback("A", None), Err(Error::Missing(_)))); journal.rollback("B", None).unwrap();
     }
     #[test]
     fn oversized_snapshot_never_becomes_created_file() {
-        let tmp = tempfile::tempdir().unwrap(); let path = tmp.path().join("large");
+        let tmp = test_dir(); let path = tmp.path().join("large");
         std::fs::write(&path, vec![0u8; MAX_FILE_BYTES as usize + 1]).unwrap();
         let mut journal = Journal::default(); journal.create("A", "t").unwrap();
         assert!(matches!(journal.write("A", &path, b"danger"), Err(Error::SizeLimit)));
@@ -204,13 +214,13 @@ mod tests {
     }
     #[test]
     fn nonlegacy_write_requires_live_checkpoint() {
-        let tmp = tempfile::tempdir().unwrap(); let path = tmp.path().join("file");
+        let tmp = test_dir(); let path = tmp.path().join("file");
         assert!(matches!(Journal::default().write("session", &path, b"x"), Err(Error::Missing(_))));
         assert!(!path.exists());
     }
     #[test]
     fn projected_postimages_are_bounded_before_write() {
-        let tmp = tempfile::tempdir().unwrap(); let path = tmp.path().join("large");
+        let tmp = test_dir(); let path = tmp.path().join("large");
         let mut journal = Journal::default();
         for i in 0..MAX_ENTRIES { journal.create("A", &format!("t{i}")).unwrap(); }
         journal.write("A", &path, &vec![0; MAX_FILE_BYTES as usize]).unwrap();
@@ -220,7 +230,31 @@ mod tests {
     }
     #[test]
     fn directory_and_duplicate_label_are_rejected() {
-        let tmp = tempfile::tempdir().unwrap(); let mut journal = Journal::default(); journal.create("A", "t").unwrap();
+        let tmp = test_dir(); let mut journal = Journal::default(); journal.create("A", "t").unwrap();
         assert!(journal.create("A", "t").is_err()); assert!(journal.track_before("A", tmp.path()).is_err());
+    }
+    #[cfg(unix)]
+    #[test]
+    fn symlink_targets_and_ancestors_remain_rejected() {
+        use std::os::unix::fs::symlink;
+        let tmp = test_dir();
+        let target = tmp.path().join("target");
+        std::fs::create_dir(&target).unwrap();
+        let file = target.join("file");
+        std::fs::write(&file, b"original").unwrap();
+        let file_link = tmp.path().join("file-link");
+        let dir_link = tmp.path().join("dir-link");
+        symlink(&file, &file_link).unwrap();
+        symlink(&target, &dir_link).unwrap();
+        for path in [file_link, dir_link.join("file"), dir_link.join("new")] {
+            assert!(matches!(atomic_write(&path, b"changed"), Err(Error::Io(error))
+                if error.kind() == io::ErrorKind::PermissionDenied));
+            let mut journal = Journal::default();
+            journal.create("A", "turn").unwrap();
+            assert!(matches!(journal.write("A", &path, b"changed"), Err(Error::Io(error))
+                if error.kind() == io::ErrorKind::PermissionDenied));
+        }
+        assert_eq!(std::fs::read(file).unwrap(), b"original");
+        assert!(!target.join("new").exists());
     }
 }

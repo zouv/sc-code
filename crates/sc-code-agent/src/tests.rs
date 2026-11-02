@@ -3,6 +3,16 @@ mod tests {
     use crate::{execute, ToolContext, ToolRequest};
     use std::fs;
 
+    fn test_dir() -> tempfile::TempDir {
+        // macOS temp roots may contain system symlinks. Resolve only the
+        // trusted fixture root; production path checks must remain strict.
+        #[cfg(unix)]
+        let root = std::env::temp_dir().canonicalize().unwrap();
+        #[cfg(not(unix))]
+        let root = std::env::temp_dir();
+        tempfile::tempdir_in(root).unwrap()
+    }
+
     fn ctx(dir: &std::path::Path) -> ToolContext {
         ToolContext {
             cwd: dir.display().to_string(),
@@ -20,7 +30,7 @@ mod tests {
 
     #[test]
     fn test_cwd() {
-        let dir = tempfile::tempdir().unwrap();
+        let dir = test_dir();
         let resp = execute(&req("cwd", "{}"), &ctx(dir.path()));
         assert!(resp.error.is_empty(), "error: {}", resp.error);
         assert!(resp.output.contains("cwd:"), "output: {}", resp.output);
@@ -29,7 +39,7 @@ mod tests {
 
     #[test]
     fn test_read_write_file() {
-        let dir = tempfile::tempdir().unwrap();
+        let dir = test_dir();
         let c = ctx(dir.path());
 
         let resp = execute(
@@ -48,7 +58,7 @@ mod tests {
 
     #[test]
     fn test_edit_file() {
-        let dir = tempfile::tempdir().unwrap();
+        let dir = test_dir();
         let c = ctx(dir.path());
         let path = dir.path().join("test.txt");
         fs::write(&path, "hello world").unwrap();
@@ -68,7 +78,7 @@ mod tests {
 
     #[test]
     fn test_edit_file_not_found() {
-        let dir = tempfile::tempdir().unwrap();
+        let dir = test_dir();
         let c = ctx(dir.path());
         fs::write(dir.path().join("f.txt"), "abc").unwrap();
 
@@ -85,7 +95,7 @@ mod tests {
 
     #[test]
     fn test_list_dir() {
-        let dir = tempfile::tempdir().unwrap();
+        let dir = test_dir();
         fs::write(dir.path().join("a.txt"), "A").unwrap();
         fs::create_dir(dir.path().join("sub")).unwrap();
 
@@ -97,7 +107,7 @@ mod tests {
 
     #[test]
     fn test_tree() {
-        let dir = tempfile::tempdir().unwrap();
+        let dir = test_dir();
         fs::create_dir_all(dir.path().join("a/b")).unwrap();
         fs::write(dir.path().join("a/b/c.txt"), "x").unwrap();
 
@@ -108,7 +118,7 @@ mod tests {
 
     #[test]
     fn test_shell() {
-        let dir = tempfile::tempdir().unwrap();
+        let dir = test_dir();
         let resp = execute(
             &req("shell", r#"{"command":"echo hello-sc-code"}"#),
             &ctx(dir.path()),
@@ -135,7 +145,7 @@ mod tests {
 
     #[test]
     fn test_file_info() {
-        let dir = tempfile::tempdir().unwrap();
+        let dir = test_dir();
         fs::write(dir.path().join("f.txt"), "hello").unwrap();
         let resp = execute(&req("file_info", r#"{"path":"f.txt"}"#), &ctx(dir.path()));
         assert!(resp.error.is_empty(), "{}", resp.error);
@@ -144,7 +154,7 @@ mod tests {
 
     #[test]
     fn test_multi_edit() {
-        let dir = tempfile::tempdir().unwrap();
+        let dir = test_dir();
         let c = ctx(dir.path());
         let path = dir.path().join("m.txt");
         fs::write(&path, "alpha beta gamma").unwrap();
@@ -162,7 +172,7 @@ mod tests {
 
     #[test]
     fn multi_edit_is_all_or_nothing_and_rejects_ambiguity() {
-        let dir = tempfile::tempdir().unwrap();
+        let dir = test_dir();
         let path = dir.path().join("m.txt");
         for edits in [
             r#"[{"old":"alpha","new":"A"},{"old":"missing","new":"B"}]"#,
@@ -179,7 +189,7 @@ mod tests {
 
     #[test]
     fn multi_edit_can_reference_previous_edit() {
-        let dir = tempfile::tempdir().unwrap();
+        let dir = test_dir();
         fs::write(dir.path().join("m.txt"), "alpha").unwrap();
         let result = execute(
             &req(
@@ -197,7 +207,7 @@ mod tests {
 
     #[test]
     fn test_glob() {
-        let dir = tempfile::tempdir().unwrap();
+        let dir = test_dir();
         fs::write(dir.path().join("a.rs"), "").unwrap();
         fs::write(dir.path().join("b.txt"), "").unwrap();
 
@@ -209,7 +219,7 @@ mod tests {
 
     #[test]
     fn test_batch_read() {
-        let dir = tempfile::tempdir().unwrap();
+        let dir = test_dir();
         fs::write(dir.path().join("x.txt"), "hello").unwrap();
         fs::write(dir.path().join("y.txt"), "world").unwrap();
 
@@ -224,7 +234,7 @@ mod tests {
 
     #[test]
     fn test_empty_args() {
-        let dir = tempfile::tempdir().unwrap();
+        let dir = test_dir();
         let resp = execute(&req("cwd", ""), &ctx(dir.path()));
         assert!(
             resp.error.is_empty(),
@@ -248,7 +258,7 @@ mod tests {
 
     #[test]
     fn test_read_file_with_offset_limit() {
-        let dir = tempfile::tempdir().unwrap();
+        let dir = test_dir();
         fs::write(dir.path().join("lines.txt"), "a\nb\nc\nd\ne").unwrap();
 
         let resp = execute(
@@ -264,7 +274,7 @@ mod tests {
 
     #[test]
     fn test_image_read() {
-        let dir = tempfile::tempdir().unwrap();
+        let dir = test_dir();
         #[rustfmt::skip]
         let png_data: Vec<u8> = vec![
             0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A,

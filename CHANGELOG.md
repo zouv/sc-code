@@ -16,7 +16,7 @@
 - 修复终端关停流控通知竞态与高/低水位滞回；线程同步回归不再依赖固定 sleep 或线程启动耗时。
 - 修复上下文搜索的重复长度归一化、增量评分不一致与 Windows 文件路径关键词缺失；保留原检索质量断言，新增跨平台与全量/增量评分一致性回归。
 - HTTP proxy 每跳检查目标，限制分块响应大小；DNS 解析的全部地址须为允许的公网地址，将同批已验证地址用于实际连接，拒绝混合公私答案和重绑定至私网。renderer fetch/proxy 现在直连，不再使用系统/环境代理；Agent/provider 独立代理行为不变。
-- 修复 remote/syntax/lsp 测试兼容与 Windows remote shell 选择；常规 lint 使用跨平台脚本并明确区分上游全量基线，CI 增加相关 Rust crate 与 lint 回归，并补齐 Linux keyring 所需 D-Bus 编译依赖。
+- 修复 remote/syntax/lsp 测试兼容与 Windows remote shell 选择；常规 lint 使用跨平台脚本并明确区分上游全量基线，CI 增加相关 Rust crate 与 lint 回归，并补齐 Linux keyring 所需 D-Bus 编译依赖；macOS 临时目录测试显式解析系统目录别名，同时保留生产路径链接拒绝规则与专项回归。
 
 - 原生非交互命令输出有界，并将 stdout/stderr 排空纳入超时，避免继承管道使 IPC 长期挂起；超时返回已捕获的部分输出。
 - 新窗口沿用隔离 WebView 数据目录和主窗口 HTTPS 协议；窗口创建及单实例 CLI 目标转发移出同步回调，修复 Windows 多窗口卡死。debug 日志也遵循 SC_CODE_HOME，避免隔离 profile 启动失败。
