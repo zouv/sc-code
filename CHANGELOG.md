@@ -2,6 +2,11 @@
 
 ## [未发布]
 
+## [0.4.2] - 2026-11-02
+
+### 修复
+- 修复 0.4.1 严格 CSP 下工作台图标全部消失、菜单快捷键换行错位、主题控件退回浏览器默认样式：Tauri 给静态 `<style>` 注入的 nonce 会使 `style-src 'unsafe-inline'` 失效，导致 VS Code 运行时注入的主题与 codicon 样式被拦截；现仅对 `style-src` 关闭 Tauri 的 nonce/hash 自动注入，`script-src` 等防护保持不变。
+
 ## [0.4.1] - 2026-11-02
 
 ### 修复

@@ -1,6 +1,6 @@
 [package]
 name = "sc-code"
-version = "0.4.1"
+version = "0.4.2"
 description = "ScCode - A fast, open-source code editor"
 authors = ["ScCode contributors", "Siden Technologies Inc (original portions)"]
 license = "MIT"

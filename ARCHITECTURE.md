@@ -29,7 +29,7 @@
 | 上下文关键词搜索 | crates/sc-code-context/src/search/bm25.rs / tokenize、Bm25Index::search；同 crate tests/integration.rs | 模型/向量服务 |
 | 网络代理 | src-tauri/src/commands/proxy.rs / validate_url、validate_redirect、PublicDns::resolve、validate_public_ip、get_client、append_body_chunk | renderer proxy 直连；Agent/provider 独立代理不在这条边界内 |
 | 工作区信任/原生执行权限 | src/sc-code/security/workspaceTrust.contribution.ts、src-tauri/src/workspace_permissions.rs、lib.rs / invoke_handler | 不是 Node/文件系统沙箱；顶层 renderer 控制授权 |
-| CSP/WASM/桌面验收 | src-tauri/tauri.conf.json、index.html、public/workbench-globals.js、base/common/{hashWasm,tfIdfWasm}.ts、scripts/{smoke-dist,smoke-desktop}.cjs | smoke 使用临时 profile/合成工作区，不触碰真实凭据 |
+| CSP/WASM/桌面验收 | src-tauri/tauri.conf.json、index.html、public/workbench-globals.js、base/common/{hashWasm,tfIdfWasm}.ts、scripts/{smoke-dist,smoke-desktop}.cjs、tests/csp-style.test.cjs | smoke 使用临时 profile/合成工作区，不触碰真实凭据 |
 | 性能基线 | scripts/perf-baseline.cjs、vite.config.ts（分包/sourcemap） | 窗口句柄非交互就绪；debug 非 Release 数据 |
 
 ## 1. 文件职责
@@ -37,6 +37,7 @@
 - src/sc-code/security/workspaceTrust.contribution.ts：工作台信任→native 递增版本同步；canonical workspaceResolved 后释放启动 barrier，避免 remote resolver 与 final trust 等待循环；授信任时按最新 generation 恢复真实宿主。
 - public/workbench-globals.js：同源同步启动全局变量；index 不含内联脚本。hashWasm/tfIdfWasm 直接导入同源 glue，缺资产保留 JS fallback。
 - scripts/smoke-desktop.cjs：fresh Windows 二进制/WebView2 隔离集成，限时 native IPC、双窗权限/宿主、PTY/跨源 frame 和单实例 CLI；stdout/报告/截图仅 .runtime/logs。
+- tests/csp-style.test.cjs：CSP 配置守卫；style-src 必须保留 `'unsafe-inline'`，且只对 style-src 关闭 Tauri nonce/hash 注入（否则运行时主题/codicon/菜单样式被整体拦截）；script-src 保持无 unsafe-inline。
 - scripts/perf-baseline.cjs：仅隔离 SC_CODE_HOME，白名单 OS env，无窗口/进程提前退出/采样失败则报错，finally 清自己的进程树；仅窗口句柄与进程树 working set，不证明扩展交互就绪。
 - src/vs/workbench/contrib/scCodeChat/browser/chatPersistence.ts：每会话保存队列/稳定消息 ID/有限重试/失败提示；创建确认丢失可由幂等 session_create 重试。
 - scripts/lint-project.cjs：跨平台 ESLint Node API，常规 lint 只检查 ScCode-owned TS；lint:all 显式检查全部上游源码基线。
@@ -209,7 +210,7 @@
 - fs_write_binary：body=原始字节，头 `sc-path`=encodeURIComponent(路径)、`sc-create`/`sc-overwrite`=`1|0`；fs_read_binary → ArrayBuffer。fs_trash(path)；Trash capability 仅 Windows 的 file 提供者声明。
 - storage_apply(inserts: [key,value][], deletes: key[])：单事务，超限条目跳过并在错误中列出，其余提交。
 - terminal_spawn(..., onEvent: Channel<{kind:'data',data}|{kind:'exit',exitCode}>) → id；terminal_ack(terminalId, charCount)。watch_start(paths, options, onBatch?: Channel)：不传 onBatch 时仍广播全局 `watch-batch`（扩展宿主桥在用）。
-- CSP 从 null 改为 default-src 'none'；脚本仅 self + wasm-unsafe-eval，无 script unsafe-inline/eval/blob。同步 globals 外置；同源 WASM glue 导入不再 Blob/import，缺资产使用 JS fallback。style unsafe-inline、必要 HTTP(S)/WS/frame/blob worker 能力保留，不宣称所有出站流量隔离。当前构建 WASM 资产 0，不代表实际 WASM 加速已启用。
+- CSP 从 null 改为 default-src 'none'；脚本仅 self + wasm-unsafe-eval，无 script unsafe-inline/eval/blob。同步 globals 外置；同源 WASM glue 导入不再 Blob/import，缺资产使用 JS fallback。style unsafe-inline、必要 HTTP(S)/WS/frame/blob worker 能力保留，不宣称所有出站流量隔离。**Tauri 会给静态 `<style>` 注入 nonce 并追加进 `style-src`，而 CSP 规定 nonce/hash 会使 `'unsafe-inline'` 失效；VS Code 的主题变量、codicon 字形与菜单控件样式全部由运行时无 nonce `<style>` 注入（`workbenchThemeService._applyRules`、`iconsStyleSheet`、`createStyleSheet`），因此 `dangerousDisableAssetCspModification: ["style-src"]` 只关闭 style-src 的自动 nonce/hash 注入，script-src 等仍由 Tauri 加固。** 当前构建 WASM 资产 0，不代表实际 WASM 加速已启用。
 - workspace trust 默认启用：创建工作台前 reset session；未知 window/session fail closed；窗口级递增 revision 拒绝晚到 grant，revoke/reset 同步停止对应真实宿主，关闭移除状态。高风险 Git/进程/PTY write/debug/task/LSP/两套宿主/Agent/remote/MCP/hooks/browser/secrets/env 命令需信任，普通文件编辑/搜索/设置/chat/cleanup 允许。顶层 renderer 控制授权，不防被攻陷的顶层页，也不是 Node/文件系统沙箱；不承诺停止所有已运行后台活动。
 - trust 启动 barrier 等 workspaceResolved 后完成 native 同步，不能等可能依赖 remote resolver 扩展的最终 workspaceTrustInitialized；最终 trust 再精化同步。真实宿主授信任后按最新 generation 重建启动 promise，迟到注册与撤权不误恢复。
 - native exec：timeout 包含 child wait 与两流 drain，各保留最多 100000 bytes 但持续排空；无 detached reader，超时回部分输出/marker，root kill_on_drop + 已有树清理。不是全 escaped descendant cleanup，也不证明 Agent shell 历史 88s 异常根因解决。

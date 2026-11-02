@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "ScCode",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "identifier": "dev.sccode.app",
   "build": {
     "frontendDist": "../.runtime/dist",
@@ -42,6 +42,7 @@
         "worker-src": "'self' blob:",
         "media-src": "'self' asset: https: http: data: blob:"
       },
+      "dangerousDisableAssetCspModification": ["style-src"],
       "assetProtocol": {
         "enable": true,
         "scope": []
@@ -81,7 +82,7 @@
         "type": "downloadBootstrapper"
       },
       "wix": {
-        "version": "0.4.1.0"
+        "version": "0.4.2.0"
       }
     },
     "linux": {

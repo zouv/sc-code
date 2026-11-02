@@ -30,6 +30,7 @@ export default defineConfig({
   publicDir: '.runtime/public',
   plugins: [nlsPlugin(), quietMissingSourceMaps()],
   server: {
+    // Tauri 官方模板默认端口；本机其它 Tauri 项目（如 git-extensions）不要复用 1420。
     port: 1420,
     strictPort: true,
     watch: {

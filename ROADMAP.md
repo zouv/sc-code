@@ -18,6 +18,7 @@
 2026-10-27：v0.4.0 已打包并上传 GitHub Release（prerelease）：`ScCode_0.4.0_x64-setup.exe` + `ScCode_0.4.0_x64-unpack.zip`；Release 包隔离 profile 启动冒烟通过。
 
 2026-11-02：完成项目审查与安全后续修复：数据迁移/原子编辑、聊天/补全、DNS 连接地址校验、CSP、窗口级原生执行信任、SSH 执行协议、终端回归、多窗/CLI 与隔离日志；全量/生产 npm 审计 0。0.4.1 已完成 Windows x64 Debug/Release 打包，Release ZIP 隔离 WebView2 冒烟 9/9，setup 与 unpack ZIP 均已上传 GitHub prerelease。
+2026-11-02：修复 0.4.1 的 CSP 回归（Tauri 给静态 `<style>` 注入的 nonce 使 `style-src 'unsafe-inline'` 失效，运行时主题/codicon/菜单样式被拦截，图标与排版异常）：仅对 style-src 关闭 Tauri 自动 nonce/hash 注入，并新增配置回归与真实桌面主题/图标冒烟断言。
 
 ## 开发大纲
 | 编号 | 优先级 | 任务 | 状态 |
@@ -27,7 +28,7 @@
 | S1a | P0 | ~~独立身份、固定资源打包~~ | ✅ 2026-10-18 |
 | S1b | P0 | 安装/升级与历史 WebView 状态验收 | GUI 输入/截图受阻 |
 | S2a | P0 | ~~本地 transport 鉴权、密钥禁明文降级、单文件冲突保护~~ | ✅ 2026-10-18 |
-| S2b | P0 | CSP/workspace trust、扩展/工具权限边界 | 2026-11-02：CSP 与窗口级高风险原生命令信任已实现并回归；细粒度扩展/Agent 授权与 Node 沙箱仍待开发 |
+| S2b | P0 | CSP/workspace trust、扩展/工具权限边界 | 2026-11-02：CSP 与窗口级高风险原生命令信任已实现并回归；style-src 需关闭 Tauri nonce 注入以保留 VS Code 运行时样式（见 ARCHITECTURE §4）；细粒度扩展/Agent 授权与 Node 沙箱仍待开发 |
 | S2c | P0 | 持久恢复 journal、多文件事务、状态锁崩溃恢复 | 待开发；现有 checkpoint 仅单文件内存 |
 | S3a | P1 | ~~Node/TS/Rust/Go 回归、真实宿主/侧车 smoke、最新 debug NSIS~~ | ✅ 2026-10-18 |
 | S3b | P1 | 干净机器、正式 release/签名和 CI 实际运行 | 待验收 |

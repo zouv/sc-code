@@ -45,7 +45,7 @@ async function started(page) {
 async function main() {
   assert.equal(process.platform, 'win32', 'This smoke requires Windows/WebView2');
   assert.ok(fs.existsSync(exe), 'Build the current native executable first');
-  for (const file of ['src-tauri/src/lib.rs', 'src-tauri/src/workspace_permissions.rs', 'src-tauri/src/commands/window.rs', 'src-tauri/src/commands/process.rs', 'crates/sc-code-remote/src/ssh.rs', 'src-tauri/src/taskbar.rs', '.runtime/dist/index.html']) {
+  for (const file of ['src-tauri/src/lib.rs', 'src-tauri/src/workspace_permissions.rs', 'src-tauri/src/commands/window.rs', 'src-tauri/src/commands/process.rs', 'crates/sc-code-remote/src/ssh.rs', 'src-tauri/src/taskbar.rs', 'src-tauri/tauri.conf.json', '.runtime/dist/index.html']) {
     assert.ok(fs.statSync(exe).mtimeMs >= fs.statSync(path.join(root, file)).mtimeMs, `Native binary is stale for ${file}`);
   }
   assert.ok(!fs.existsSync(path.join(root, '.env')), 'Native smoke refuses repository .env credentials');
@@ -90,6 +90,34 @@ async function main() {
     assert.ok(page, `Native workbench page missing; pages=${context.pages().map(p => p.url()).join(', ')}; app=${output.slice(-2000)}`);
     await started(page);
     check('fresh WebView2 workbench starts with isolated folder/profile');
+    // VS Code injects theme variables, codicon glyph rules and menu/widget CSS at
+    // runtime through non-nonced <style> elements. A CSP style-src nonce (Tauri
+    // auto-injection) makes 'unsafe-inline' ineffective and blanks the whole UI.
+    await page.waitForSelector('.monaco-workbench .codicon', { state: 'attached', timeout: 10_000 });
+    const uiStyles = await page.evaluate(() => {
+      const probeStyle = document.createElement('style');
+      probeStyle.textContent = '#smoke-runtime-style { color: rgb(1, 2, 3); }';
+      document.head.appendChild(probeStyle);
+      const probe = document.createElement('div');
+      probe.id = 'smoke-runtime-style';
+      document.body.appendChild(probe);
+      const probeColor = getComputedStyle(probe).color;
+      const probeRules = probeStyle.sheet ? probeStyle.sheet.cssRules.length : 0;
+      probeStyle.remove(); probe.remove();
+      const workbench = document.querySelector('.monaco-workbench');
+      const icon = document.querySelector('.codicon[class*="codicon-"]');
+      return {
+        probeColor,
+        probeRules,
+        themeBackground: workbench ? getComputedStyle(workbench).getPropertyValue('--vscode-editor-background').trim() : '',
+        glyph: icon ? getComputedStyle(icon, '::before').content : '',
+      };
+    });
+    assert.equal(uiStyles.probeColor, 'rgb(1, 2, 3)', `runtime <style> blocked by CSP: ${JSON.stringify(uiStyles)}`);
+    assert.ok(uiStyles.probeRules > 0, `runtime <style> has no rules (CSP?): ${JSON.stringify(uiStyles)}`);
+    assert.ok(uiStyles.themeBackground, `workbench theme CSS missing (runtime styles blocked by CSP?): ${JSON.stringify(uiStyles)}`);
+    assert.ok(uiStyles.glyph && !['none', 'normal', '""'].includes(uiStyles.glyph), `codicon glyph CSS missing (runtime styles blocked by CSP?): ${JSON.stringify(uiStyles)}`);
+    check('workbench theme and codicon styles apply under production CSP');
     const session = await invoke(page, 'workspace_reset_trust');
     const execArgs = { command: 'cmd.exe', args: ['/d', '/c', 'echo SC_NATIVE_EXEC_OK'], cwd: workspace, timeoutMs: 5000 };
     await denied(page, 'exec', execArgs);
