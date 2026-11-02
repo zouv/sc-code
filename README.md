@@ -19,7 +19,7 @@ ScCode 是一个从 VS Code workbench 迁移、并独立演进的桌面编辑器
 工作台、编辑器、终端与扩展 UI；原生层用 **Rust + Tauri 2** 替代 Electron；内置 Agent
 由**受监督的 Go 进程**提供本地模型调用与工具执行；扩展可由 **Node 扩展宿主**运行。
 
-> 当前为 **0.4.0 开发验收版本**，Windows x64 产物可本地打包并上传 GitHub Release。
+> 当前为 **0.4.1 开发验收版本**，Windows x64 安装包与免安装 ZIP 已上传 [GitHub Release](https://github.com/zouv/sc-code/releases/tag/v0.4.1)（未签名 prerelease）。
 > 未签名；源码完整迁移不等于全部行为验收完成，第三方扩展矩阵仍在验收中。
 
 ## 特性

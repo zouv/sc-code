@@ -17,7 +17,7 @@
 2026-10-27：移除迁移期来源清单与验证链，`docs/` 只保留开发文档与资源、不再被测试读取；清理残留 CUSTOM 标记、未参与构建的锁文件与 vendor 脚本。
 2026-10-27：v0.4.0 已打包并上传 GitHub Release（prerelease）：`ScCode_0.4.0_x64-setup.exe` + `ScCode_0.4.0_x64-unpack.zip`；Release 包隔离 profile 启动冒烟通过。
 
-2026-11-02：完成项目审查与安全后续修复：数据迁移/原子编辑、聊天/补全、DNS 连接地址校验、CSP、窗口级原生执行信任、SSH 执行协议、终端回归、多窗/CLI 与隔离日志；全量/生产 npm 审计 0。仅构建验证当前 debug 程序，未制作安装器或发布新版本。
+2026-11-02：完成项目审查与安全后续修复：数据迁移/原子编辑、聊天/补全、DNS 连接地址校验、CSP、窗口级原生执行信任、SSH 执行协议、终端回归、多窗/CLI 与隔离日志；全量/生产 npm 审计 0。0.4.1 已完成 Windows x64 Debug/Release 打包，Release ZIP 隔离 WebView2 冒烟 9/9，setup 与 unpack ZIP 均已上传 GitHub prerelease。
 
 ## 开发大纲
 | 编号 | 优先级 | 任务 | 状态 |
@@ -57,7 +57,7 @@
 | S19 | P1 | ~~性能快修：重活命令移出主线程、文件二进制 IPC、搜索正确性与取消、存储批量写、事件定向~~ | ✅ 2026-10-25；另修复全局搜索失效、终端乱码/退出码、监听丢新建、回收站；dev 实跑验证 |
 | S20 | P0 | ~~真实宿主转正前置：`ICustomEditorService`、Node 调试服务（executable 适配器）~~ | ✅ 2026-10-25；宿主 stdio 排空修复；扩展注册缺口归 S10b |
 | S21 | P1 | ~~体验缺口：保存参与者、面包屑/Outline 服务、关窗拦截、CLI 打开路径~~ | ✅ 2026-10-25；Explorer 的 Outline 面板与 `--wait` 未做 |
-| S23 | P0 | ~~项目审查修复：DB/chat、SSH、原子编辑、补全协议、跨窗宿主/搜索、文件元数据、DNS/CSP/trust、依赖与构建测试~~ | ✅ 2026-11-02；自动化及隔离 WebView2 核心链路通过，完整扩展/真实服务仍待验收，未重新打包发布 |
+| S23 | P0 | ~~项目审查修复：DB/chat、SSH、原子编辑、补全协议、跨窗宿主/搜索、文件元数据、DNS/CSP/trust、依赖与构建测试~~ | ✅ 2026-11-02；自动化及隔离 WebView2 核心链路通过，完整扩展/真实服务仍待验收，已完成 v0.4.1 打包与预发布 |
 | S22 | P2 | ~~收敛：无消费者的 scCode 桥接服务加载、CUSTOM 标记~~ | ✅ 2026-10-27；CUSTOM 标记与不必要桥接已清理 |
 
 ## 移植验收矩阵
@@ -92,9 +92,14 @@
 6. Tab补全、多Agent DAG/验证器/记忆和长期恢复另做能力矩阵，不承诺ACP可一键替代；安全/事务P0仍需要独立完成。
 
 ## 已交付里程碑
-- ✅ 2026-11-02：~~S23 项目审查及安全后续修复~~ — 前端/Go/Rust、生产 CSP 工作台、隔离 WebView2 双窗/信任/宿主/PTY/frame/CLI 与本地真实 SSH 专项通过，npm 审计 0；未发布，不代替第三方扩展、付费模型、私有服务与真 keyring 验收。
+- ✅ 2026-11-02：~~v0.4.1 打包与发布~~ — [GitHub Release](https://github.com/zouv/sc-code/releases/tag/v0.4.1)，未签名 Windows x64 prerelease（非 draft）；tag `v0.4.1` 指向 `001413d`，发布代码 [CI 41372567720](https://github.com/zouv/sc-code/actions/runs/41372567720) 六个任务全部通过（frontend/native/agent 与 Windows/Linux/macOS runtime）。
+  - ScCode_0.4.1_x64-setup.exe：68,847,226 bytes；SHA-256 `ffbdac20a615d39cd1a39f11d8044b383ec25ad29d6fc5b34887515a0ab485f9`。
+  - ScCode_0.4.1_x64-unpack.zip：94,638,208 bytes；SHA-256 `2473446a0c6f4709061aef9aea1fdf54318c2065023f943ec56f6b99cb904b0b`。
+  - Release ZIP 829 个条目、828 个清单文件逐一校验 size/SHA-256，通过 94 个内置扩展与运行资源 hash 检查；EXE ProductVersion/FileVersion 均为 0.4.1，解压后的真实 WebView2 隔离冒烟 9/9；没有执行安装器。
+  - 本地 Debug unpack 与 `ScCode_0.4.1_x64-unpack-debug.zip`（247,040,685 bytes）已生成并通过清单验证，含 PDB，不上传；两通道未压缩目录位于 `dist/dev/unpack` 与 `dist/release/unpack`。远端两资产的大小/SHA-256 与本地一致，正文来自 CHANGELOG 0.4.1。
+- ✅ 2026-11-02：~~S23 项目审查及安全后续修复~~ — 前端/Go/Rust、生产 CSP 工作台、隔离 WebView2 双窗/信任/宿主/PTY/frame/CLI 与本地真实 SSH 专项通过，npm 审计 0；已随 v0.4.1 预发布交付，不代替第三方扩展、付费模型、私有服务与真 keyring 验收。
 - ✅ 2026-10-22：~~D 版图标接入与 0.2.0 发布~~ — `docs/icons/` 资源已替换应用图标；`v0.2.0` setup + unpack zip 已上传 GitHub prerelease，Release unpack 隔离 profile 冒烟通过。
-以上 ✅ 为实现里程碑；v0.2.0 的 Windows x64 安装包与 unpack zip 已上传 GitHub prerelease。自动化测试通过不代表所有 GUI、用户数据或第三方扩展都兼容。
+以上 ✅ 为实现里程碑；最新 v0.4.1 的 Windows x64 安装包与 unpack ZIP 已上传 GitHub prerelease。自动化测试通过不代表所有 GUI、用户数据或第三方扩展都兼容。
 
 ## 回归缺口复验（2026-11-02）
 - crates/sc-code-agent/src/tools/shell.rs / timeout_terminates_long_running_child：本轮原 7 秒上限断言通过，未放宽；历史 88 秒异常不能由一次环境复验判定根因已解决，取消/逃逸子进程清理仍需专项验收。
@@ -104,7 +109,7 @@
 ## 当前验证与性能边界（2026-11-02，0.4.1）
 - 前端 npm test 97/97；transport 20/20；真实 Node 宿主进程 smoke 2/2；自有 TS lint 105 个文件零告警与 typecheck 通过。
 - Rust workspace 1797 passed / 2 原有 ignored；Go fts5 全包通过；独立真实 Go 侧车 10 项 REST/WS 本地鉴权通过。
-- 生产 frontend build 与 CSP smoke 通过；native debug 已用当前资源重建，隔离 WebView2 核心集成 9/9（含 restricted 搜索 Channel、双窗宿主、PTY、跨源 frame 与单实例 CLI）。信任状态通过程序性 IPC 验证，尚未实际点击授权 UI 验证工作台自动恢复全部扩展。
+- 生产 frontend build 与 CSP smoke 通过；native Debug/Release 均已用当前资源重建，Release ZIP 解压后的隔离 WebView2 核心集成 9/9（含 restricted 搜索 Channel、双窗宿主、PTY、跨源 frame 与单实例 CLI）。信任状态通过程序性 IPC 验证，尚未实际点击授权 UI 验证工作台自动恢复全部扩展。
 - npm audit 全量/生产均 0；Rust 遗留 warnings 未清零，不能把测试通过写成 strict clippy/fmt 全仓通过。
 - 构建统计：JS 12.21 MB / CSS 642 kB / 总计 12.96 MB / WASM 资产 0。保留现有 chunk，未盲拆 core/platform/editor，循环 chunk/混合静态动态导入告警仍待有行为证据的专项优化。
 - 隔离 debug 空工作区开发基线：窗口句柄 1.446 s；进程树 11 个进程，约 6.3/16.1/31.2 s 的 working set 为 639/612/592 MiB。仅一次开发测量，不当 Release 指标或 workbench 交互就绪时间；高内存与包体需以相同环境的后续基线专项优化。

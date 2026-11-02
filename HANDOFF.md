@@ -1,9 +1,8 @@
 # 会话接力 · ScCode
 
 ## 当前状态
-- 快照：2026-11-02；分支 main；当前进行中：0.4.1 打包、commit/push、GitHub 预发布。
-- 版本已同步为 0.4.1；用户已明确授权 commit/push、打包与上传。当前包尚未生成/验收，上传前必须确认新 setup 与 unpack ZIP 同时存在，不复用旧产物。
-- 已验收状态见 ROADMAP「当前验证与性能边界」；实现变化见 CHANGELOG「0.4.1」，不在此重复完成清单。
+- 快照：2026-11-02；分支 main；版本 0.4.1；当前无进行中的发布任务。
+- 用户授权的 commit/push、Debug/Release 打包与 GitHub prerelease 上传已完成；最新发布为 v0.4.1。发布地址、资产/摘要、标签与 CI/验收结果见 ROADMAP「已交付里程碑」，实现变化见 CHANGELOG「0.4.1」。
 
 ## 尚需真实环境验收
 1. 工作台 trust：实际授权 UI 后确认全部扩展自动恢复；当前程序性 IPC 与合成服务测试不能替代此项。顶层 renderer 控制授权，执行 guard 不是 Node/文件系统沙箱，也不保证终止全部在途后台活动；细粒度授权/强隔离见 ROADMAP。
@@ -23,7 +22,7 @@
 - 证据在忽略的 .runtime/logs/all-* 与 perf-*.json；不入库、不作为发行包。
 
 ## 不变边界
-- 本轮仅为用户授权的 0.4.1 commit/push/打包/预发布；无新的明确要求时不再发布其他版本；.runtime/、dist/、node_modules/、Tauri 生成物与用户状态不入库。新 helper/tests/scripts 是源码，不能漏掉。
+- 0.4.1 已按用户授权预发布；无新的明确要求时不再提交、推送或发布其他版本；.runtime/、dist/、node_modules/、Tauri 生成物与用户状态不入库。新 helper/tests/scripts 是源码，不能漏掉。
 - 不访问真实 profile、keyring、私钥、回收站，不调用付费模型；SC_CODE_HOME 同时隔离应用数据/日志/各窗口 WebView2。
 - renderer fetch/proxy 每跳 URL/DNS 公网检查并钉住解析结果，直连且不使用环境/系统代理；Agent/provider 的独立网络栈未改，不能泛化为全应用防 SSRF。
 - core/platform/editor 不盲拆 chunk（TDZ 黑屏风险）；数据库升级失败保留原库，不自动改名建空库。长期能力规划见 ROADMAP，不借审查擅自移除 Agent 或扩展功能。
