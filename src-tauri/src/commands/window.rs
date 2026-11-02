@@ -88,7 +88,8 @@ pub struct MonitorInfo {
 
 #[allow(clippy::needless_pass_by_value)]
 #[tauri::command]
-pub fn create_window(
+// WebView2 creation must not block the main-thread IPC callback.
+pub async fn create_window(
     app: AppHandle,
     label: String,
     title: String,
@@ -99,9 +100,14 @@ pub fn create_window(
         None => WebviewUrl::default(),
     };
 
-    let builder = WebviewWindowBuilder::new(&app, &label, webview_url)
+    let mut builder = WebviewWindowBuilder::new(&app, &label, webview_url)
         .title(&title)
+        // Dynamic windows must register the same app origin as the main window.
+        .use_https_scheme(app.config().app.windows.first().is_some_and(|config| config.use_https_scheme))
         .inner_size(1200.0, 800.0);
+    if let Some(dir) = isolated_webview_data_dir() {
+        builder = builder.data_directory(dir);
+    }
 
     #[cfg(target_os = "macos")]
     let builder = builder

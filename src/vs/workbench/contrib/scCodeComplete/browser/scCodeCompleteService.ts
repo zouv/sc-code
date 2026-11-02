@@ -1,11 +1,11 @@
 /*---------------------------------------------------------------------------------------------
- *  ScCode Complete — Calls vLLM directly with FIM prompt formatting.
+ *  ScCode Complete — Agent prefix/suffix contract or external OpenAI FIM adapter.
  *  All requests go through the Tauri proxy to avoid CORS / mixed-content
  *  browser restrictions.
  *--------------------------------------------------------------------------------------------*/
 
 import { invoke, isTauri } from '../../../../scCodeBridge.js';
-import { localServerHeaders } from '../../scCodeChat/browser/localServer.js';
+import { getServerEndpoint, localServerHeaders } from '../../scCodeChat/browser/localServer.js';
 import { ICompletionContext } from './contextEngine.js';
 
 export interface ICompletionRequest {
@@ -40,7 +40,16 @@ export class ScCodeCompleteService {
 	 */
 	constructor(private readonly _baseUrl: () => Promise<string>) { }
 
+	private _usesAgent(url: string): boolean {
+		return new URL(url).origin === new URL(getServerEndpoint().httpUrl).origin;
+	}
+
+	private _agentBody(request: ICompletionRequest): string {
+		return JSON.stringify({ prefix: request.prefix, suffix: request.suffix, file_path: request.filePath, language: request.language });
+	}
+
 	private async _proxyPost(url: string, body: string, signal?: AbortSignal): Promise<string | null> {
+		if (signal?.aborted) { return null; }
 		if (isTauri()) {
 			try {
 				const result = await invoke<string>('proxy_request', {
@@ -49,7 +58,7 @@ export class ScCodeCompleteService {
 					headers: { 'Content-Type': 'application/json', ...localServerHeaders(url) },
 					body,
 				});
-				return result;
+				return signal?.aborted ? null : result;
 			} catch (e) {
 				console.warn('[sc-code-complete] Tauri proxy failed, falling back to fetch:', e);
 			}
@@ -73,14 +82,14 @@ export class ScCodeCompleteService {
 		const controller = new AbortController();
 		const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
-		if (signal) {
-			signal.addEventListener('abort', () => controller.abort(), { once: true });
-		}
+		const abort = () => controller.abort();
+		if (signal?.aborted) { controller.abort(); }
+		signal?.addEventListener('abort', abort, { once: true });
 
 		try {
 			const prompt = this._buildFimPrompt(request);
 			const url = `${await this._baseUrl()}/v1/completions`;
-			const body = JSON.stringify({
+			const body = this._usesAgent(url) ? this._agentBody(request) : JSON.stringify({
 				model: 'sc-code-complete',
 				prompt,
 				max_tokens: request.maxTokens,
@@ -95,14 +104,13 @@ export class ScCodeCompleteService {
 			}
 
 			const data = JSON.parse(rawJson);
-			console.log('[sc-code-complete] parsed response:', JSON.stringify(data).slice(0, 300));
-			console.log('[sc-code-complete] choice text:', data?.choices?.[0]?.text?.slice(0, 100));
 
 			return this._parseNonStreamingResponse(data);
 		} catch {
 			return null;
 		} finally {
 			clearTimeout(timeoutId);
+			signal?.removeEventListener('abort', abort);
 		}
 	}
 
@@ -114,13 +122,21 @@ export class ScCodeCompleteService {
 		const controller = new AbortController();
 		const timeoutId = setTimeout(() => controller.abort(), STREAM_TIMEOUT_MS);
 
-		if (signal) {
-			signal.addEventListener('abort', () => controller.abort(), { once: true });
-		}
+		const abort = () => controller.abort();
+		if (signal?.aborted) { controller.abort(); }
+		signal?.addEventListener('abort', abort, { once: true });
 
 		try {
 			const prompt = this._buildFimPrompt(request);
 			const url = `${await this._baseUrl()}/v1/completions`;
+
+			// The agent returns a single non-streaming completion, not OpenAI SSE.
+			if (this._usesAgent(url)) {
+				const raw = await this._proxyPost(url, this._agentBody(request), controller.signal);
+				const result = raw ? this._parseNonStreamingResponse(JSON.parse(raw)) : null;
+				if (result) { callback.onToken(result.text); }
+				return result;
+			}
 
 			const bodyPayload = JSON.stringify({
 				model: 'sc-code-complete',
@@ -253,17 +269,19 @@ export class ScCodeCompleteService {
 			return null;
 		} finally {
 			clearTimeout(timeoutId);
+			signal?.removeEventListener('abort', abort);
 		}
 	}
 
 	private _parseNonStreamingResponse(data: {
+		completion?: string;
 		choices?: Array<{
 			text?: string;
 			finish_reason?: string;
 			logprobs?: { token_logprobs?: number[] };
 		}>;
 	}): ICompletionResponse | null {
-		const choice = data.choices?.[0];
+		const choice = data.choices?.[0] ?? (typeof data.completion === 'string' ? { text: data.completion, finish_reason: 'stop', logprobs: undefined } : undefined);
 		if (!choice?.text) {
 			return null;
 		}

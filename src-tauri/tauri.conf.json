@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "ScCode",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "identifier": "dev.sccode.app",
   "build": {
     "frontendDist": "../.runtime/dist",
@@ -28,7 +28,20 @@
       }
     ],
     "security": {
-      "csp": null,
+      "csp": {
+        "default-src": "'none'",
+        "base-uri": "'self'",
+        "object-src": "'none'",
+        "form-action": "'none'",
+        "script-src": "'self' 'wasm-unsafe-eval'",
+        "style-src": "'self' 'unsafe-inline'",
+        "img-src": "'self' asset: https: http: data: blob:",
+        "font-src": "'self' https: data:",
+        "connect-src": "'self' ipc: http://ipc.localhost https://ipc.localhost http: https: ws: wss:",
+        "frame-src": "'self' http://127.0.0.1:* http://localhost:* https:",
+        "worker-src": "'self' blob:",
+        "media-src": "'self' asset: https: http: data: blob:"
+      },
       "assetProtocol": {
         "enable": true,
         "scope": []
@@ -68,7 +81,7 @@
         "type": "downloadBootstrapper"
       },
       "wix": {
-        "version": "0.4.0.0"
+        "version": "0.4.1.0"
       }
     },
     "linux": {

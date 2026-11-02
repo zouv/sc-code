@@ -3,6 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { whenNativeWorkspaceTrustReady, registerNativeExtensionHostRecovery } from '../../../../../sc-code/security/workspaceTrust.contribution.js';
 import { mainWindow } from '../../../../base/browser/window.js';
 import { Schemas } from '../../../../base/common/network.js';
 import { IConfigurationService } from '../../../../platform/configuration/common/configuration.js';
@@ -116,6 +117,10 @@ export class ExtensionService extends AbstractExtensionService implements IExten
 			await this._initializeIfNeeded();
 		});
 
+		this._register(registerNativeExtensionHostRecovery(
+			this._workspaceTrustManagementService, this, this._logService, isRealExtensionHostEnabled
+		));
+
 		this._initFetchFileSystem();
 	}
 
@@ -126,6 +131,7 @@ export class ExtensionService extends AbstractExtensionService implements IExten
 	}
 
 	protected override async _initialize(): Promise<void> {
+		await whenNativeWorkspaceTrustReady;
 		await this._userDataInitializationService.initializeInstalledExtensions(this._instantiationService);
 		await super._initialize();
 	}

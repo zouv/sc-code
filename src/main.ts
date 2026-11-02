@@ -23,6 +23,7 @@ import './sc-code/taskbar/recentJumpList.contribution.js';
 
 // Confirm unsaved changes before a window closes (native CloseRequested asks this hook).
 import './sc-code/window-close/closeHandler.contribution.js';
+import './sc-code/security/workspaceTrust.contribution.js';
 
 async function scCodeOpenFolder() {
 	try {
@@ -137,7 +138,7 @@ async function boot() {
 	//（webExtensionsScannerService → validateExtensionManifest），改成其它版本会让
 	// VAC(^1.85.0)/Claude Code(^1.94.0) 被判 DisabledByInvalidExtension，扩展视图全部失效。
 	// 真正的 ScCode 版本号放到全局 __SC_CODE_VERSION__，由 About 对话框读取。
-	let scCodeVersion = '0.4.0';
+	let scCodeVersion = '0.4.1';
 	if ((globalThis as any).__SC_CODE_TAURI__) {
 		try {
 			const { getVersion } = await import('@tauri-apps/api/app');
@@ -154,6 +155,8 @@ async function boot() {
 	if ((globalThis as any).__SC_CODE_TAURI__) {
 		try {
 			const { invoke } = await import('@tauri-apps/api/core');
+			// Reload/new workspaces start restricted even if the window label is reused.
+			(globalThis as any).__SC_CODE_TRUST_SESSION__ = await invoke<string>('workspace_reset_trust');
 			(globalThis as any).__SC_CODE_WEBVIEW_ORIGIN__ = await invoke<string>('webview_host_origin');
 		} catch (error) {
 			console.error('[ScCode] Isolated webview host unavailable; extension webviews are disabled:', error);
@@ -161,6 +164,7 @@ async function boot() {
 	}
 
 	const options: any = {
+		enableWorkspaceTrust: true,
 		initialColorTheme: {
 			themeType: 'dark'
 		},
@@ -170,7 +174,6 @@ async function boot() {
 		// The workspace provider tells VSCode what folder/workspace to open
 		workspaceProvider: {
 			workspace,
-			trusted: true,
 			open: async (_workspace: any, _options: any) => {
 				// ScCode: provider 可重载打开 .code-workspace
 				if (_workspace && 'folderUri' in _workspace) {
@@ -269,9 +272,9 @@ async function boot() {
 			'editor.occurrencesHighlight': 'singleFile',
 			'workbench.editor.highlightModifiedTabs': true,
 			'workbench.tree.renderIndentGuides': 'always',
-			'security.workspace.trust.startupPrompt': 'never',
-			'security.workspace.trust.banner': 'never',
-			'security.workspace.trust.enabled': false
+			'security.workspace.trust.startupPrompt': 'once',
+			'security.workspace.trust.banner': 'untilDismissed',
+			'security.workspace.trust.enabled': true
 		}
 	};
 

@@ -674,16 +674,18 @@ mod windows_single_instance {
     fn dispatch(app: &AppHandle, args: &[String]) {
         let target = super::parse_open_target(args);
         let app_for_task = app.clone();
-        let _ = app.run_on_main_thread(move || {
-            if let Some(target) = target {
+        if let Some(target) = target {
+            // Building a WebView on the Win32 event/main thread deadlocks on Windows.
+            tauri::async_runtime::spawn_blocking(move || {
                 if let Err(error) =
                     crate::commands::window::open_target_window(&app_for_task, &target)
                 {
                     log::warn!("failed to open jump list target: {error}");
                 }
-                return;
-            }
-
+            });
+            return;
+        }
+        let _ = app.run_on_main_thread(move || {
             if let Some(window) = app_for_task.get_webview_window("main") {
                 let _ = window.unminimize();
                 let _ = window.show();

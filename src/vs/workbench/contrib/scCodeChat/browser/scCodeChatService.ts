@@ -2,6 +2,7 @@
  *  ScCode Chat Service — WebSocket client for sc-code-agent with full workspace context
  *--------------------------------------------------------------------------------------------*/
 
+import { ChatSessionPersistence } from './chatPersistence.js';
 import { Emitter, Event } from '../../../../base/common/event.js';
 import { Disposable } from '../../../../base/common/lifecycle.js';
 import { createDecorator } from '../../../../platform/instantiation/common/instantiation.js';
@@ -212,8 +213,8 @@ export class ScCodeChatService extends Disposable implements IScCodeChatService 
 	private _contextIndexing = false;
 	private _cachedSessions: Array<{ id: string; title: string; date: string; messageCount: number; pinned?: boolean; archived?: boolean }> = [];
 	private _dbSessionCreated = false;
-	private _msgCounter = 0;
-	private readonly _persistedMessages = new Set<IChatMessage>();
+	private _chatPersistence: ChatSessionPersistence | null = null;
+	private _sessionLoadGeneration = 0;
 
 	private readonly _onDidReceiveChunk = this._register(new Emitter<IStreamChunk>());
 	readonly onDidReceiveChunk = this._onDidReceiveChunk.event;
@@ -552,7 +553,6 @@ export class ScCodeChatService extends Disposable implements IScCodeChatService 
 			return;
 		}
 		let finished = false;
-		let timeout: ReturnType<typeof setTimeout> | undefined;
 		const disposable = this._onDidChangeConnectionState.event((state) => {
 			if (state === 'connected') { send(); }
 		});
@@ -570,7 +570,7 @@ export class ScCodeChatService extends Disposable implements IScCodeChatService 
 			void this._sendWithContext(text);
 		};
 		this._pendingSend = { dispose: cancel };
-		timeout = setTimeout(() => {
+		const timeout = setTimeout(() => {
 			if (finished) { return; }
 			cancel();
 			this._setStreaming(false);
@@ -622,8 +622,8 @@ export class ScCodeChatService extends Disposable implements IScCodeChatService 
 		}
 
 		this._isReverting = true;
-        void this._revertAfterRollback(messageIndex, msg.checkpointLabel)
-            .finally(() => { this._isReverting = false; });
+		void this._revertAfterRollback(messageIndex, msg.checkpointLabel)
+			.finally(() => { this._isReverting = false; });
 	}
 
 	private async _revertAfterRollback(messageIndex: number, label: string): Promise<void> {
@@ -795,9 +795,8 @@ export class ScCodeChatService extends Disposable implements IScCodeChatService 
 		this._sessionId = null;
 		this._dbSessionId = null;
 		this._dbSessionCreated = false;
-		this._dbSessionPromise = null;
-		this._msgCounter = 0;
-		this._persistedMessages.clear();
+		this._chatPersistence = null;
+		this._sessionLoadGeneration++;
 		this._currentAssistantMessage = null;
 		this._lastPromptTokens = 0;
 		this._sessionCost = 0;
@@ -823,12 +822,13 @@ export class ScCodeChatService extends Disposable implements IScCodeChatService 
 		if (this._isReverting || this._isStreaming) { return; }
 		const invoke = ScCodeChatService._getTauriInvoke();
 		if (!invoke) { return; }
+		const generation = ++this._sessionLoadGeneration;
 		try {
 			const dbMessages = await invoke('session_load', { sessionId }) as Array<{
 				id: string; session_id: string; role: string; content: string;
 				tool_calls: string | null; tool_call_id: string | null; created_at: number;
 			}>;
-			if (this._isReverting || this._isStreaming) { return; }
+			if (generation !== this._sessionLoadGeneration || this._isReverting || this._isStreaming) { return; }
 			this._messages = dbMessages.map(m => {
 				const msg: IChatMessage = {
 					role: m.role as IChatMessage['role'],
@@ -845,13 +845,10 @@ export class ScCodeChatService extends Disposable implements IScCodeChatService 
 			this._sessionId = sessionId;
 			this._dbSessionId = sessionId;
 			this._dbSessionCreated = true;
-			this._dbSessionPromise = null;
-			this._msgCounter = this._messages.length;
+			this._chatPersistence = null;
 			this._currentAssistantMessage = null;
-			this._persistedMessages.clear();
-			for (const msg of this._messages) {
-				this._persistedMessages.add(msg);
-			}
+			const persistence = this._ensureDbSession();
+			for (const msg of this._messages) { persistence?.markSaved(msg); }
 			this._setStreaming(false);
 			this._onDidChangeMessages.fire(this._messages);
 		} catch { /* ignore */ }
@@ -922,98 +919,40 @@ export class ScCodeChatService extends Disposable implements IScCodeChatService 
 		return g.__TAURI_INVOKE__ ?? g.__TAURI_INTERNALS__?.invoke ?? null;
 	}
 
-	private _dbSessionPromise: Promise<void> | null = null;
-
-	private _ensureDbSession(): Promise<void> {
-		if (this._dbSessionCreated) { return Promise.resolve(); }
-		if (this._dbSessionPromise) { return this._dbSessionPromise; }
-
+	private _ensureDbSession(): ChatSessionPersistence | null {
+		if (this._chatPersistence) { return this._chatPersistence; }
 		const invoke = ScCodeChatService._getTauriInvoke();
-		if (!invoke) { return Promise.resolve(); }
-
-		if (!this._dbSessionId) {
-			this._dbSessionId = `session-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-		}
-		const dbId = this._dbSessionId;
-
-		const firstUserMsg = this._messages.find(m => m.role === 'user');
-		const title = firstUserMsg
-			? firstUserMsg.content.slice(0, 50) + (firstUserMsg.content.length > 50 ? '...' : '')
-			: 'Untitled';
-		const ctx = this._gatherWorkspaceContext();
-
-		this._dbSessionPromise = invoke('session_create', {
-			id: dbId,
-			title,
+		if (!invoke) { return null; }
+		this._dbSessionId ??= 'session-' + crypto.randomUUID();
+		const first = this._messages.find(m => m.role === 'user');
+		this._chatPersistence = new ChatSessionPersistence(invoke, {
+			id: this._dbSessionId,
+			title: first?.content.slice(0, 80) || 'New Chat',
 			model: this._serverModel,
 			mode: this._currentMode,
-			workspace: ctx.cwd,
-		}).then(() => {
-			this._dbSessionCreated = true;
-			this._dbSessionPromise = null;
-		}).catch(() => {
-			this._dbSessionPromise = null;
-		}) as Promise<void>;
-
-		return this._dbSessionPromise;
+			workspace: this._gatherWorkspaceContext().cwd,
+		}, error => {
+			console.warn('[sc-code-chat] history save failed:', error);
+			this._onDidReceiveChunk.fire({ type: 'notice', content: 'Chat history could not be saved. Messages remain in this window; saving will be retried on the next message.' });
+		}, this._dbSessionCreated);
+		return this._chatPersistence;
 	}
 
 	private async _persistUserMessage(msg: IChatMessage): Promise<void> {
-		const invoke = ScCodeChatService._getTauriInvoke();
-		if (!invoke) { return; }
-
-		try {
-			await this._ensureDbSession();
-			if (!this._dbSessionId) { return; }
-
-			this._msgCounter++;
-			await invoke('session_save_message', {
-				id: `${this._dbSessionId}-msg-${this._msgCounter}`,
-				sessionId: this._dbSessionId,
-				role: msg.role,
-				content: msg.content,
-				toolCalls: msg.toolCalls ? JSON.stringify(msg.toolCalls) : null,
-				toolCallId: null,
-				createdAt: Math.floor(msg.timestamp / 1000),
-			});
-			this._persistedMessages.add(msg);
-		} catch { /* persist failed silently */ }
+		const persistence = this._ensureDbSession();
+		persistence?.retryFailed();
+		await persistence?.save(msg);
 	}
 
 	private _persistAssistantMessage(msg: IChatMessage): void {
-		if (this._persistedMessages.has(msg)) { return; }
-		const invoke = ScCodeChatService._getTauriInvoke();
-		if (!invoke) { return; }
-
-		this._persistedMessages.add(msg);
-
-		const doSave = () => {
-			if (!this._dbSessionId) { return; }
-			this._msgCounter++;
-			const msgId = `${this._dbSessionId}-msg-${this._msgCounter}`;
-			invoke('session_save_message', {
-				id: msgId,
-				sessionId: this._dbSessionId,
-				role: msg.role,
-				content: msg.content,
-				toolCalls: msg.toolCalls ? JSON.stringify(msg.toolCalls) : null,
-				toolCallId: null,
-				createdAt: Math.floor(msg.timestamp / 1000),
-			}).catch(() => { /* persist failed silently */ });
-		};
-
-		if (this._dbSessionCreated) {
-			doSave();
-		} else {
-			this._ensureDbSession().then(() => doSave()).catch(() => { /* ignore */ });
-		}
+		const persistence = this._ensureDbSession();
+		persistence?.retryFailed();
+		void persistence?.save(msg);
 	}
 
 	private _persistAllUnpersistedAssistantMessages(): void {
 		for (const msg of this._messages) {
-			if (msg.role === 'assistant' && !this._persistedMessages.has(msg)) {
-				this._persistAssistantMessage(msg);
-			}
+			if (msg.role === 'assistant') { this._persistAssistantMessage(msg); }
 		}
 	}
 
@@ -2077,7 +2016,7 @@ ${prompt}`,
 					})
 					.catch(() => null)
 				: Promise.resolve(null),
-		]).then(([allModels, enabledRaw, customRaw, generalRaw]) => {
+		]).then(([allModels, _enabledRaw, customRaw, generalRaw]) => {
 			if (!Array.isArray(allModels)) { return; }
 
 			let defaultModelId = ScCodeChatService.DEFAULT_MODEL;

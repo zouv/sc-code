@@ -5,6 +5,9 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 const root = path.resolve(__dirname, '..');
+const bashScripts = ['check-docs.sh', 'manager.sh', 'scripts/bin/xattr',
+  'scripts/dev-local.sh', 'scripts/setup-extensions.sh',
+  'src/vs/workbench/contrib/terminal/common/scripts/shellIntegration-bash.sh'];
 const ignoreFiles = ['.gitignore', 'src-tauri/.gitignore', 'agent/.gitignore',
   'agent/server/.gitignore', 'infrastructure/marketplace-proxy/.gitignore'];
 
@@ -95,7 +98,14 @@ test('ignore regression checks cannot be masked by an already tracked source fil
 });
 test('Bash scripts use LF and Windows entry points use CRLF on checkout', t => {
   const dir = fixture(t);
-  for (const file of ['check-docs.sh', 'manager.sh', 'scripts/bin/xattr'])
+  for (const file of bashScripts)
     assert.match(git(dir, ['check-attr', 'eol', '--', file]), /: eol: lf\s*$/);
   assert.match(git(dir, ['check-attr', 'eol', '--', 'package.bat']), /: eol: crlf\s*$/);
+});
+
+test('Bash working-tree bytes actually use LF, not just checkout attributes', () => {
+  for (const file of bashScripts) {
+    const contents = fs.readFileSync(path.join(root, file));
+    assert.equal(contents.includes(13), false, file + ' contains CR bytes; restore LF before running Bash');
+  }
 });

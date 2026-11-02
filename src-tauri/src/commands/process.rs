@@ -903,6 +903,39 @@ pub fn term_is_alive(
 // Simple Command Execution
 // ============================================================================
 
+const EXEC_OUTPUT_LIMIT: usize = 100_000;
+
+async fn drain_exec_output(
+    mut stream: impl tokio::io::AsyncRead + Unpin,
+    output: &Mutex<Vec<u8>>,
+) -> std::io::Result<()> {
+    use tokio::io::AsyncReadExt;
+    let mut buffer = [0_u8; 8192];
+    loop {
+        let count = stream.read(&mut buffer).await?;
+        if count == 0 {
+            return Ok(());
+        }
+        let mut bytes = output
+            .lock()
+            .map_err(|_| std::io::Error::other("output lock failed"))?;
+        let keep = count.min(EXEC_OUTPUT_LIMIT.saturating_sub(bytes.len()));
+        bytes.extend_from_slice(&buffer[..keep]);
+        // Keep draining after the budget is reached to avoid pipe deadlocks.
+    }
+}
+
+fn exec_output_text(output: &Mutex<Vec<u8>>) -> String {
+    let Ok(bytes) = output.lock() else {
+        return String::new();
+    };
+    let mut text = String::from_utf8_lossy(&bytes).into_owned();
+    if bytes.len() == EXEC_OUTPUT_LIMIT {
+        text.push_str("\n...(truncated)");
+    }
+    text
+}
+
 /// Execute a simple command (non-interactive)
 #[tauri::command]
 #[allow(clippy::needless_pass_by_value)]
@@ -916,87 +949,65 @@ pub async fn exec(
     use tokio::process::Command;
     use tokio::time::{timeout, Duration};
 
-    let timeout_duration = Duration::from_millis(timeout_ms.unwrap_or(DEFAULT_EXEC_TIMEOUT_MS));
-
+    // The deadline includes draining inherited stdout/stderr, not just waiting
+    // for the parent. Detached descendants must not hang the IPC forever.
+    let timeout_duration = Duration::from_millis(
+        timeout_ms
+            .unwrap_or(DEFAULT_EXEC_TIMEOUT_MS)
+            .clamp(1, 300_000),
+    );
     let mut cmd = Command::new(&command);
-    cmd.args(&args);
-    cmd.stdout(std::process::Stdio::piped());
-    cmd.stderr(std::process::Stdio::piped());
-
-    // Set working directory
+    cmd.args(&args)
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .kill_on_drop(true);
     if let Some(dir) = cwd {
         cmd.current_dir(dir);
     }
-
-    // Set environment
     if let Some(env_vars) = env {
-        for (k, v) in env_vars {
-            cmd.env(k, v);
-        }
+        cmd.envs(env_vars);
     }
-
     #[cfg(windows)]
     cmd.creation_flags(0x0800_0000);
-
-    // Spawn the process
     let mut child = cmd
         .spawn()
         .map_err(|e| format!("Failed to spawn '{command}': {e}"))?;
-
-    let stdout_handle = child.stdout.take();
-    let stderr_handle = child.stderr.take();
-
-    let stdout_task = tokio::spawn(async move {
-        use tokio::io::AsyncReadExt;
-        if let Some(mut stdout) = stdout_handle {
-            let mut buf = String::new();
-            let _ = stdout.read_to_string(&mut buf).await;
-            buf
-        } else {
-            String::new()
-        }
-    });
-
-    let stderr_task = tokio::spawn(async move {
-        use tokio::io::AsyncReadExt;
-        if let Some(mut stderr) = stderr_handle {
-            let mut buf = String::new();
-            let _ = stderr.read_to_string(&mut buf).await;
-            buf
-        } else {
-            String::new()
-        }
-    });
-
-    let result = timeout(timeout_duration, child.wait()).await;
-
-    match result {
-        Ok(Ok(status)) => {
-            let stdout = stdout_task.await.unwrap_or_default();
-            let stderr = stderr_task.await.unwrap_or_default();
-
-            Ok(ExecResult {
-                stdout,
-                stderr,
-                exit_code: status.code(),
-                timed_out: false,
-            })
-        }
-        Ok(Err(e)) => Err(format!("Process error: {e}")),
+    let stdout = child.stdout.take().ok_or("stdout pipe missing")?;
+    let stderr = child.stderr.take().ok_or("stderr pipe missing")?;
+    let out = Arc::new(Mutex::new(Vec::new()));
+    let err = Arc::new(Mutex::new(Vec::new()));
+    let result = timeout(timeout_duration, async {
+        // Cancellation drops the pipe readers: there are no detached reader
+        // tasks left behind to retain handles or unbounded output buffers.
+        tokio::try_join!(
+            child.wait(),
+            drain_exec_output(stdout, &out),
+            drain_exec_output(stderr, &err)
+        )
+    })
+    .await;
+    let (exit_code, timed_out) = match result {
+        Ok(Ok((status, (), ()))) => (status.code(), false),
+        Ok(Err(error)) => return Err(format!("Process error: {error}")),
         Err(_) => {
-            let _ = child.kill().await;
-
-            let stdout = stdout_task.await.unwrap_or_default();
-            let stderr = stderr_task.await.unwrap_or_default();
-
-            Ok(ExecResult {
-                stdout,
-                stderr,
-                exit_code: None,
-                timed_out: true,
-            })
+            // Only clean up while our original child is still alive. Never
+            // schedule a watchdog that could act on a later reused PID.
+            if child.try_wait().ok().flatten().is_none() {
+                if let Some(pid) = child.id() {
+                    let _ = kill_process_tree(pid);
+                }
+                let _ = child.kill().await;
+                let _ = timeout(Duration::from_secs(2), child.wait()).await;
+            }
+            (None, true)
         }
-    }
+    };
+    Ok(ExecResult {
+        stdout: exec_output_text(&out),
+        stderr: exec_output_text(&err),
+        exit_code,
+        timed_out,
+    })
 }
 
 // ============================================================================
@@ -1097,4 +1108,71 @@ pub fn term_set_cwd(
     terminal.cwd = cwd;
 
     Ok(())
+}
+
+#[cfg(test)]
+mod exec_tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn output_capture_drains_beyond_its_memory_budget() {
+        let output = Mutex::new(Vec::new());
+        let bytes = vec![b'x'; EXEC_OUTPUT_LIMIT * 4];
+        drain_exec_output(std::io::Cursor::new(bytes), &output)
+            .await
+            .unwrap();
+        assert_eq!(output.lock().unwrap().len(), EXEC_OUTPUT_LIMIT);
+        assert!(exec_output_text(&output).ends_with("...(truncated)"));
+    }
+
+    #[tokio::test]
+    async fn exec_drains_stdout_and_stderr_concurrently() {
+        #[cfg(windows)]
+        let (command, args) = ("powershell.exe", vec!["-NoProfile", "-NonInteractive", "-Command", "$s='x'*1024; 1..128 | ForEach-Object { [Console]::Out.WriteLine($s); [Console]::Error.WriteLine($s) }"]);
+        #[cfg(not(windows))]
+        let (command, args) = ("sh", vec!["-c", "i=0; while [ $i -lt 20000 ]; do echo xxxxxxxxx; echo yyyyyyyyy >&2; i=$((i+1)); done"]);
+        let result = exec(
+            command.into(),
+            args.into_iter().map(String::from).collect(),
+            None,
+            None,
+            Some(20_000),
+        )
+        .await
+        .unwrap();
+        assert!(!result.timed_out);
+        assert_eq!(result.exit_code, Some(0));
+        assert!(result.stdout.contains("...(truncated)"));
+        assert!(result.stderr.contains("...(truncated)"));
+        assert!(result.stdout.len() < EXEC_OUTPUT_LIMIT + 100);
+        assert!(result.stderr.len() < EXEC_OUTPUT_LIMIT + 100);
+    }
+
+    #[tokio::test]
+    async fn exec_timeout_returns_without_waiting_for_pipe_readers() {
+        #[cfg(windows)]
+        let (command, args) = (
+            "powershell.exe",
+            vec![
+                "-NoProfile",
+                "-NonInteractive",
+                "-Command",
+                "Start-Sleep -Seconds 10",
+            ],
+        );
+        #[cfg(not(windows))]
+        let (command, args) = ("sh", vec!["-c", "sleep 10"]);
+        let started = std::time::Instant::now();
+        let result = exec(
+            command.into(),
+            args.into_iter().map(String::from).collect(),
+            None,
+            None,
+            Some(500),
+        )
+        .await
+        .unwrap();
+        assert!(result.timed_out);
+        assert!(started.elapsed() < Duration::from_secs(7));
+    }
 }

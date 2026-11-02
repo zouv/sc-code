@@ -6,7 +6,7 @@ use anyhow::{Context, Result};
 use rusqlite::Connection;
 
 /// Current schema version. Bump when adding migrations.
-pub const CURRENT_SCHEMA_VERSION: u32 = 4;
+pub const CURRENT_SCHEMA_VERSION: u32 = 5;
 
 /// Wraps a `SQLite` connection and ensures schema migrations run on open.
 pub struct Database {
@@ -25,13 +25,17 @@ impl Database {
         let conn = Connection::open(path)
             .with_context(|| format!("failed to open database at {}", path.display()))?;
 
-        conn.execute_batch("PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;")
-            .context("failed to set pragmas")?;
-
         let mut db = Self {
             conn,
             path: path.to_path_buf(),
         };
+        anyhow::ensure!(
+            db.schema_version()? <= CURRENT_SCHEMA_VERSION,
+            "database schema is newer than this application; use a compatible version"
+        );
+        db.conn
+            .execute_batch("PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;")
+            .context("failed to set pragmas")?;
         db.migrate(CURRENT_SCHEMA_VERSION)?;
         Ok(db)
     }
@@ -84,22 +88,30 @@ impl Database {
 
     /// Run versioned migrations up to `target_version`.
     pub fn migrate(&mut self, target_version: u32) -> Result<()> {
+        anyhow::ensure!(
+            target_version <= CURRENT_SCHEMA_VERSION,
+            "unsupported target schema version"
+        );
         let current = self.schema_version()?;
         if current >= target_version {
             return Ok(());
         }
 
-        if current < 1 {
+        if current < 1 && target_version >= 1 {
             self.migration_v1()?;
         }
-        if current < 2 {
+        if current < 2 && target_version >= 2 {
             self.migration_v2()?;
         }
-        if current < 3 {
+        if current < 3 && target_version >= 3 {
             self.migration_v3()?;
         }
-        if current < 4 {
+        if current < 4 && target_version >= 4 {
             self.migration_v4()?;
+        }
+
+        if current < 5 && target_version >= 5 {
+            self.migration_v5()?;
         }
 
         self.conn
@@ -354,6 +366,36 @@ impl Database {
         Ok(())
     }
 
+    /// V5: durable chat history. Existing sessions are preserved on upgrade.
+    fn migration_v5(&self) -> Result<()> {
+        let tx = self
+            .conn
+            .unchecked_transaction()
+            .context("begin migration v5")?;
+        tx.execute_batch(
+            "CREATE TABLE IF NOT EXISTS chat_sessions (
+                id TEXT PRIMARY KEY, title TEXT NOT NULL,
+                created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL,
+                model TEXT NOT NULL, mode TEXT NOT NULL, workspace TEXT NOT NULL,
+                message_count INTEGER NOT NULL DEFAULT 0,
+                pinned INTEGER NOT NULL DEFAULT 0, archived INTEGER NOT NULL DEFAULT 0
+            );
+            CREATE TABLE IF NOT EXISTS chat_messages (
+                id TEXT PRIMARY KEY, session_id TEXT NOT NULL
+                    REFERENCES chat_sessions(id) ON DELETE CASCADE,
+                role TEXT NOT NULL, content TEXT NOT NULL,
+                tool_calls TEXT, tool_call_id TEXT, created_at INTEGER NOT NULL
+            );
+            CREATE INDEX IF NOT EXISTS chat_sessions_workspace_updated
+                ON chat_sessions(workspace, pinned DESC, updated_at DESC);
+            CREATE INDEX IF NOT EXISTS chat_messages_session_created
+                ON chat_messages(session_id, created_at, id);
+            PRAGMA user_version = 5;",
+        )
+        .context("migration v5")?;
+        tx.commit().context("commit migration v5")
+    }
+
     fn table_exists(conn: &Connection, name: &str) -> Result<bool> {
         let count: i64 = conn
             .query_row(
@@ -448,6 +490,44 @@ mod tests {
     }
 
     #[test]
+    fn v4_upgrade_creates_chat_tables_and_preserves_existing_state() {
+        let tmp = tempfile::tempdir().unwrap();
+        let path = tmp.path().join("state.db");
+        let conn = Connection::open(&path).unwrap();
+        conn.execute_batch("PRAGMA user_version = 4; CREATE TABLE global_state (key TEXT PRIMARY KEY, value TEXT); INSERT INTO global_state VALUES ('theme', 'dark');").unwrap();
+        drop(conn);
+        let db = Database::open(&path).unwrap();
+        assert!(Database::table_exists(db.conn(), "chat_sessions").unwrap());
+        assert!(Database::table_exists(db.conn(), "chat_messages").unwrap());
+        let theme: String = db
+            .conn()
+            .query_row(
+                "SELECT value FROM global_state WHERE key='theme'",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(theme, "dark");
+        assert_eq!(db.schema_version().unwrap(), 5);
+    }
+
+    #[test]
+    fn newer_schema_is_rejected_without_changing_database() {
+        let tmp = tempfile::tempdir().unwrap();
+        let path = tmp.path().join("state.db");
+        let conn = Connection::open(&path).unwrap();
+        conn.execute_batch("PRAGMA user_version = 99;").unwrap();
+        drop(conn);
+        assert!(Database::open(&path).is_err());
+        let conn = Connection::open(&path).unwrap();
+        assert_eq!(
+            conn.query_row("PRAGMA user_version", [], |r| r.get::<_, u32>(0))
+                .unwrap(),
+            99
+        );
+    }
+
+    #[test]
     fn backup_and_restore() {
         let tmp = tempfile::TempDir::new().unwrap();
         let db = Database::open(&tmp.path().join("test.db")).unwrap();
@@ -471,5 +551,18 @@ mod tests {
             )
             .unwrap();
         assert_eq!(val, "dark");
+    }
+    #[test]
+    fn unsupported_migration_target_does_not_change_schema() {
+        let tmp = tempfile::tempdir().unwrap();
+        let path = tmp.path().join("state.db");
+        let mut db = Database::open(&path).unwrap();
+        assert!(db.migrate(CURRENT_SCHEMA_VERSION + 1).is_err());
+        assert_eq!(db.schema_version().unwrap(), CURRENT_SCHEMA_VERSION);
+        drop(db);
+        assert_eq!(
+            Database::open(&path).unwrap().schema_version().unwrap(),
+            CURRENT_SCHEMA_VERSION
+        );
     }
 }

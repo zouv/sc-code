@@ -54,9 +54,7 @@ pub fn multi_edit(args: &Args, ctx: &ToolContext) -> Result<String> {
     }
 
     let mut content = fs::read_to_string(&path)?;
-    let mut applied = 0;
-
-    for edit in &edits {
+    for (index, edit) in edits.iter().enumerate() {
         let old = edit
             .get("old_text")
             .and_then(|v| v.as_str())
@@ -70,16 +68,13 @@ pub fn multi_edit(args: &Args, ctx: &ToolContext) -> Result<String> {
             .or_else(|| edit.get("new_string").and_then(|v| v.as_str()))
             .unwrap_or("");
         if old.is_empty() {
-            continue;
+            bail!("edit {}: old string is required", index + 1);
         }
-        if content.contains(old) {
-            content = content.replacen(old, new, 1);
-            applied += 1;
+        let count = content.matches(old).count();
+        if count != 1 {
+            bail!("edit {}: old string matches {count} times; expected exactly one match. No edits written.", index + 1);
         }
-    }
-
-    if applied == 0 {
-        bail!("none of the old strings matched");
+        content = content.replacen(old, new, 1);
     }
 
     if content.len() > 5 * 1024 * 1024 {
@@ -88,7 +83,7 @@ pub fn multi_edit(args: &Args, ctx: &ToolContext) -> Result<String> {
     sc_code_runtime::checkpoint::atomic_write(std::path::Path::new(&path), content.as_bytes())?;
     Ok(format!(
         "applied {}/{} edits to {}",
-        applied,
+        edits.len(),
         edits.len(),
         path
     ))

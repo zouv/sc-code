@@ -161,6 +161,41 @@ mod tests {
     }
 
     #[test]
+    fn multi_edit_is_all_or_nothing_and_rejects_ambiguity() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("m.txt");
+        for edits in [
+            r#"[{"old":"alpha","new":"A"},{"old":"missing","new":"B"}]"#,
+            r#"[{"old":"alpha","new":"A"},{"old":"","new":"B"}]"#,
+            r#"[{"old":"alpha","new":"A"},{"old":"beta","new":"B"}]"#,
+        ] {
+            fs::write(&path, "alpha beta beta").unwrap();
+            let args = format!(r#"{{"path":"m.txt","edits":{edits}}}"#);
+            let result = execute(&req("multi_edit", &args), &ctx(dir.path()));
+            assert!(!result.error.is_empty());
+            assert_eq!(fs::read_to_string(&path).unwrap(), "alpha beta beta");
+        }
+    }
+
+    #[test]
+    fn multi_edit_can_reference_previous_edit() {
+        let dir = tempfile::tempdir().unwrap();
+        fs::write(dir.path().join("m.txt"), "alpha").unwrap();
+        let result = execute(
+            &req(
+                "multi_edit",
+                r#"{"path":"m.txt","edits":[{"old":"alpha","new":"beta"},{"old":"beta","new":"gamma"}]}"#,
+            ),
+            &ctx(dir.path()),
+        );
+        assert!(result.error.is_empty(), "{}", result.error);
+        assert_eq!(
+            fs::read_to_string(dir.path().join("m.txt")).unwrap(),
+            "gamma"
+        );
+    }
+
+    #[test]
     fn test_glob() {
         let dir = tempfile::tempdir().unwrap();
         fs::write(dir.path().join("a.rs"), "").unwrap();

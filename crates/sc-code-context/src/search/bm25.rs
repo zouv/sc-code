@@ -16,6 +16,8 @@ pub struct Bm25Index {
     chunks: Vec<Chunk>,
     /// term → list of (chunk_index, term_frequency)
     inverted: HashMap<String, Vec<(usize, f64)>>,
+    /// Token lengths used by both batch and incremental indexing.
+    doc_lengths: Vec<usize>,
     /// Average document length (in tokens)
     avg_dl: f64,
     /// Number of documents
@@ -27,6 +29,7 @@ impl Bm25Index {
         Self {
             chunks: Vec::new(),
             inverted: HashMap::new(),
+            doc_lengths: Vec::new(),
             avg_dl: 0.0,
             n: 0,
         }
@@ -44,6 +47,7 @@ impl Bm25Index {
 
         let mut inverted: HashMap<String, Vec<(usize, f64)>> = HashMap::new();
         let mut total_len = 0usize;
+        let mut doc_lengths = Vec::with_capacity(n);
 
         for (idx, chunk) in chunks.iter().enumerate() {
             let tokens = tokenize(
@@ -58,7 +62,9 @@ impl Bm25Index {
             } else {
                 doc_len
             };
+            let effective_len = effective_len.max(1);
             total_len += effective_len;
+            doc_lengths.push(effective_len);
 
             let mut term_freq: HashMap<String, usize> = HashMap::new();
             for token in &tokens {
@@ -66,7 +72,7 @@ impl Bm25Index {
             }
 
             for (term, count) in term_freq {
-                let tf = count as f64 / effective_len.max(1) as f64;
+                let tf = count as f64;
                 inverted.entry(term).or_default().push((idx, tf));
             }
         }
@@ -76,6 +82,7 @@ impl Bm25Index {
         Self {
             chunks,
             inverted,
+            doc_lengths,
             avg_dl,
             n,
         }
@@ -100,7 +107,9 @@ impl Bm25Index {
             let idf = ((self.n as f64 - df + 0.5) / (df + 0.5) + 1.0).ln();
 
             for &(chunk_idx, tf) in postings {
-                let doc_len = self.chunks[chunk_idx].content.split_whitespace().count() as f64;
+                // BM25 expects raw term counts; length normalization happens
+                // once here using the same tokens as index construction.
+                let doc_len = self.doc_lengths[chunk_idx] as f64;
                 let numerator = tf * (K1 + 1.0);
                 let denominator = tf + K1 * (1.0 - B + B * doc_len / self.avg_dl);
                 let score = idf * numerator / denominator;
@@ -110,7 +119,7 @@ impl Bm25Index {
         }
 
         let mut results: Vec<(usize, f64)> = scores.into_iter().collect();
-        results.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+        results.sort_by(|a, b| b.1.total_cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
         results.truncate(limit);
 
         results
@@ -173,13 +182,14 @@ impl Bm25Index {
                 doc_len
             };
 
+            self.doc_lengths.push(effective_len.max(1));
             let mut term_freq: HashMap<String, usize> = HashMap::new();
             for token in &tokens {
                 *term_freq.entry(token.clone()).or_default() += 1;
             }
 
             for (term, count) in term_freq {
-                let tf = count as f64 / effective_len.max(1) as f64;
+                let tf = count as f64;
                 self.inverted.entry(term).or_default().push((idx, tf));
             }
         }
@@ -187,22 +197,7 @@ impl Bm25Index {
         self.chunks.extend(new_chunks);
         self.n = self.chunks.len();
         if self.n > 0 {
-            let total_len: usize = self
-                .chunks
-                .iter()
-                .map(|c| {
-                    let toks = c
-                        .content
-                        .split(|ch: char| !ch.is_alphanumeric() && ch != '_')
-                        .filter(|w| w.len() >= 2)
-                        .count();
-                    if matches!(c.kind, ChunkKind::Module | ChunkKind::Import) {
-                        toks.max(30)
-                    } else {
-                        toks
-                    }
-                })
-                .sum();
+            let total_len: usize = self.doc_lengths.iter().sum();
             self.avg_dl = total_len as f64 / self.n as f64;
         }
     }
@@ -231,10 +226,14 @@ fn tokenize(content: &str, name: Option<&str>, file_path: &str, kind: &ChunkKind
     }
 
     if is_definition {
-        for part in file_path.split('/') {
-            let p = part.to_lowercase();
-            if p.len() >= 2 && !p.contains('.') {
-                tokens.push(p);
+        // The chunker emits native separators. Include the file stem (e.g.
+        // git.rs -> git) on every platform; otherwise Windows loses all path
+        // signals and short, unrelated definitions can outrank exact matches.
+        for part in file_path.split(['/', '\\']) {
+            let stem = part.rsplit_once('.').map_or(part, |(stem, _)| stem);
+            if stem.len() >= 2 {
+                tokens.push(stem.to_lowercase());
+                split_camel_snake(stem, &mut tokens);
             }
         }
     }
@@ -392,5 +391,59 @@ mod tests {
 
         index.add_chunks(vec![make_chunk("baz", "fn baz() {}", "c.rs")]);
         assert_eq!(index.chunk_count(), 2);
+    }
+    #[test]
+    fn test_windows_and_unix_paths_have_identical_search_signals() {
+        let unix = tokenize(
+            "fn status() {}",
+            Some("status"),
+            "src/tools/git.rs",
+            &ChunkKind::Function,
+        );
+        let windows = tokenize(
+            "fn status() {}",
+            Some("status"),
+            "src\\tools\\git.rs",
+            &ChunkKind::Function,
+        );
+        assert_eq!(unix, windows);
+        assert!(unix.iter().any(|term| term == "git"));
+        let index = Bm25Index::build(vec![
+            make_chunk(
+                "MonitorStatus",
+                "enum MonitorStatus { Running, Completed, Failed }",
+                "src\\tools\\monitor.rs",
+            ),
+            make_chunk(
+                "status",
+                r#"fn status() { git_cmd(&["status", "--short"]); }"#,
+                "src\\tools\\git.rs",
+            ),
+        ]);
+        assert_eq!(
+            index.search("git status", 1)[0].0.name.as_deref(),
+            Some("status")
+        );
+    }
+    #[test]
+    fn test_incremental_scores_equal_full_rebuild() {
+        let initial = make_chunk("status", "fn status() { git_status(); }", "src/git.rs");
+        let added = make_chunk(
+            "monitor",
+            "fn monitor() { status(); status(); }",
+            "src/monitor.rs",
+        );
+        let full = Bm25Index::build(vec![initial.clone(), added.clone()]);
+        let mut incremental = Bm25Index::build(vec![initial]);
+        incremental.add_chunks(vec![added]);
+        let expected = full.search("git status", 10);
+        let actual = incremental.search("git status", 10);
+        assert_eq!(expected.len(), actual.len());
+        for ((expected_chunk, expected_score), (actual_chunk, actual_score)) in
+            expected.iter().zip(actual.iter())
+        {
+            assert_eq!(expected_chunk.id, actual_chunk.id);
+            assert!((expected_score - actual_score).abs() < 1e-12);
+        }
     }
 }

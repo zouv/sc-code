@@ -2,6 +2,9 @@
 const test = require('node:test');
 const { spawn } = require('node:child_process');
 const path = require('node:path');
+const fs = require('node:fs');
+const os = require('node:os');
+const assert = require('node:assert/strict');
 const WebSocket = require('ws');
 
 const root = path.resolve(__dirname, '..');
@@ -9,8 +12,10 @@ const bundle = path.join(root, '.runtime/ext-host/extensionHost.cjs');
 
 function startHost(token) {
 	return new Promise((resolve, reject) => {
+		const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'sc-code-ext-host-test-'));
 		const child = spawn(process.execPath, [bundle], {
-			env: { ...process.env, SC_CODE_EXT_HOST_PORT: '0', SC_CODE_EXT_HOST_TOKEN: token },
+            windowsHide: true,
+			env: { ...process.env, HOME: profile, USERPROFILE: profile, APPDATA: profile, LOCALAPPDATA: profile, SC_CODE_HOME: profile, SC_CODE_EXT_HOST_PORT: '0', SC_CODE_EXT_HOST_TOKEN: token },
 			stdio: ['ignore', 'pipe', 'inherit'],
 		});
 		let buffer = '';
@@ -71,4 +76,37 @@ test('real extension host bundle boots, authenticates and sends Ready', async ()
 	} finally {
 		child.kill();
 	}
+});
+
+function openReady(port, token) {
+    return new Promise((resolve, reject) => {
+        const ws = new WebSocket(`ws://127.0.0.1:${port}/?token=${token}`);
+        const timer = setTimeout(() => { ws.terminate(); reject(new Error('no Ready')); }, 5000);
+        ws.once('error', reject);
+        ws.on('message', data => {
+            const bytes = Buffer.from(data);
+            if (bytes.at(-1) === 2) { clearTimeout(timer); resolve(ws); }
+        });
+    });
+}
+
+test('each host has one renderer and closing one process does not close another host', async () => {
+    const token = 'synthetic-host-isolation-token';
+    const a = await startHost(token), b = await startHost(token);
+    let socketA, socketB;
+    try {
+        socketA = await openReady(a.port, token); socketB = await openReady(b.port, token);
+        await new Promise((resolve, reject) => {
+            const extra = new WebSocket(`ws://127.0.0.1:${b.port}/?token=${token}`);
+            const timer = setTimeout(() => { extra.terminate(); reject(new Error('second renderer not rejected')); }, 3000);
+            extra.once('close', code => { clearTimeout(timer); code === 1008 ? resolve() : reject(new Error('unexpected close')); });
+            extra.once('error', reject);
+        });
+        socketA.close();
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        assert.equal(a.child.exitCode, 0);
+        assert.equal(b.child.exitCode, null); assert.equal(socketB.readyState, WebSocket.OPEN);
+    } finally {
+        socketA?.terminate(); socketB?.terminate(); a.child.kill(); b.child.kill();
+    }
 });

@@ -12,6 +12,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { invoke } from '../../../scCodeBridge.js';
+import { FileType } from '../../files/common/files.js';
 import { createDecorator } from '../../instantiation/common/instantiation.js';
 import { InstantiationType, registerSingleton } from '../../instantiation/common/extensions.js';
 
@@ -71,20 +72,14 @@ export class ScCodeFileSystemProvider {
 			readonly: boolean;
 		}>('stat', { path });
 
-		let type = 0; // FileType.Unknown
-		if (raw.is_dir) {
-			type = 2; // FileType.Directory
-		} else if (raw.is_symlink) {
-			type = 64; // FileType.SymbolicLink
-		} else if (raw.is_file) {
-			type = 1; // FileType.File
-		}
+		const type = (raw.is_dir ? FileType.Directory : raw.is_file ? FileType.File : FileType.Unknown)
+			| (raw.is_symlink ? FileType.SymbolicLink : 0);
 
 		return {
 			type,
 			size: raw.size,
-			mtime: raw.modified * 1000,
-			ctime: raw.created * 1000,
+			mtime: raw.modified,
+			ctime: raw.created,
 			readonly: raw.readonly
 		};
 	}

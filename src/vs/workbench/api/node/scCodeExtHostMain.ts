@@ -133,12 +133,18 @@ async function start(): Promise<void> {
 	const actualPort = typeof address === 'object' && address ? address.port : port;
 	process.stdout.write(`${JSON.stringify({ port: actualPort, pid: process.pid })}\n`);
 
+	let claimed = false;
 	wss.on('connection', (ws: WebSocket, request) => {
 		if (!verifyToken(request.url, expectedToken)) {
 			ws.close(1008, 'unauthorized');
 			return;
 		}
 
+		if (claimed) {
+            ws.close(1008, 'extension host already claimed');
+            return;
+        }
+        claimed = true;
 		const socket = new WebSocketSocket(ws);
 		const protocol = new PersistentProtocol({ socket });
 		console.log(`[ext-host] renderer connected (pid ${process.pid})`);

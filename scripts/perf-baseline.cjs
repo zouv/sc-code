@@ -7,13 +7,13 @@
  *
  * Measures:
  *   - time until the main window handle appears (proxy for "UI is up")
- *   - time until the extension host listens (parsed from the process tree
- *     only when the app writes it; otherwise reported as unavailable)
  *   - summed working set of the app process tree at 5s / 15s / end
  *
  * Results are written to .runtime/logs/perf-<timestamp>.json so runs can be
  * compared across changes. This does not touch user profiles; set
- * SC_CODE_HOME to an isolated directory before running.
+ * SC_CODE_HOME to an isolated directory before running. HOME and OS profile
+ * environment variables are redirected there too; credential env vars are removed.
+ * This measures a window handle, not workbench interactive readiness.
  */
 const { spawn, spawnSync } = require('node:child_process');
 const fs = require('node:fs');
@@ -80,60 +80,74 @@ function sleep(ms) {
 }
 
 async function main() {
+	if (process.platform !== 'win32') { throw new Error('This baseline requires Windows'); }
+	if (!Number.isFinite(seconds) || seconds < 15 || seconds > 3600) { throw new Error('--seconds must be between 15 and 3600'); }
+	if (fs.existsSync(path.join(root, '.env'))) { throw new Error('Refusing repository .env credentials'); }
 	if (!fs.existsSync(exe)) {
 		console.error(`[perf] executable not found: ${exe}`);
 		process.exit(2);
 	}
 	fs.mkdirSync(outDir, { recursive: true });
 
+	const profile = path.resolve(process.env.SC_CODE_HOME);
+	fs.mkdirSync(profile, { recursive: true });
+	const env = { SC_CODE_PERF_RUN: '1', SC_CODE_HOME: profile, HOME: profile, USERPROFILE: profile, APPDATA: profile, LOCALAPPDATA: profile,
+		TEMP: profile, TMP: profile, SC_CODE_LIVE_PRICING: '0', SC_CODE_TELEMETRY: '0' };
+	for (const name of ['SystemRoot', 'WINDIR', 'COMSPEC', 'PATH', 'PATHEXT']) {
+		const key = Object.keys(process.env).find(key => key.toLowerCase() === name.toLowerCase());
+		if (key) { env[name] = process.env[key]; }
+	}
 	const startedAt = Date.now();
-	const child = spawn(exe, [], {
-		stdio: 'ignore',
-		detached: false,
-		env: { ...process.env, SC_CODE_PERF_RUN: '1' },
-	});
-	const samples = [];
-	let windowAt = null;
+	const child = spawn(exe, [], { stdio: 'ignore', detached: false, env, cwd: root, windowsHide: true });
+	let spawnError;
+	child.on('error', error => { spawnError = error; });
+	try {
+		const samples = [];
+		let windowAt = null;
 
-	const deadline = startedAt + 60_000;
-	while (Date.now() < deadline) {
-		if (child.exitCode !== null) {
-			break;
+		const deadline = startedAt + 60_000;
+		while (Date.now() < deadline) {
+			if (spawnError) { throw spawnError; }
+			if (child.exitCode !== null) { throw new Error(`App exited before readiness: ${child.exitCode}`); }
+			if (mainWindowHandle(child.pid)) {
+				windowAt = Date.now() - startedAt;
+				break;
+			}
+			await sleep(100);
 		}
-		if (mainWindowHandle(child.pid)) {
-			windowAt = Date.now() - startedAt;
-			break;
+		if (windowAt === null) {
+			throw new Error('Main window did not appear within 60s; no successful baseline will be written');
 		}
-		await sleep(100);
-	}
-	if (windowAt === null) {
-		console.error('[perf] main window did not appear within 60s');
-	}
 
-	const sampleAt = async label => {
-		samples.push({ label, atMs: Date.now() - startedAt, ...processTreeMemory(child.pid) });
-	};
-	await sleep(Math.max(0, 5_000 - (Date.now() - startedAt)));
-	await sampleAt('5s');
-	await sleep(Math.max(0, 15_000 - (Date.now() - startedAt)));
-	await sampleAt('15s');
-	await sleep(Math.max(0, seconds * 1000 - (Date.now() - startedAt)));
-	await sampleAt(`${seconds}s`);
+		const sampleAt = async label => {
+			if (child.exitCode !== null) { throw new Error(`App exited during sampling: ${child.exitCode}`); }
+			const memory = processTreeMemory(child.pid);
+			if (memory.workingSetBytes <= 0) { throw new Error('Process-tree memory unavailable'); }
+			samples.push({ label, atMs: Date.now() - startedAt, ...memory });
+		};
+		await sleep(Math.max(0, 5_000 - (Date.now() - startedAt)));
+		await sampleAt('5s');
+		await sleep(Math.max(0, 15_000 - (Date.now() - startedAt)));
+		await sampleAt('15s');
+		await sleep(Math.max(0, seconds * 1000 - (Date.now() - startedAt)));
+		await sampleAt(`${seconds}s`);
 
-	const report = {
-		timestamp: new Date().toISOString(),
-		exe,
-		windowReadyMs: windowAt,
-		samples,
-		notes: 'workingSetBytes is the sum for the app process tree (Rust + WebView2 + Node/Go children)',
-	};
-	const outFile = path.join(outDir, `perf-${new Date().toISOString().replace(/[:.]/g, '-')}.json`);
-	fs.writeFileSync(outFile, JSON.stringify(report, null, 2));
-	console.log(JSON.stringify(report, null, 2));
-	console.log(`[perf] written to ${outFile}`);
+		const report = {
+			timestamp: new Date().toISOString(),
+			exe,
+			windowReadyMs: windowAt,
+			samples,
+			notes: 'Window-handle readiness only (not interactive workbench). workingSetBytes sums the process tree (Rust + WebView2 + Node/Go children); debug and release results are not interchangeable.',
+		};
+		const outFile = path.join(outDir, `perf-${new Date().toISOString().replace(/[:.]/g, '-')}.json`);
+		fs.writeFileSync(outFile, JSON.stringify(report, null, 2));
+		console.log(JSON.stringify(report, null, 2));
+		console.log(`[perf] written to ${outFile}`);
 
-	if (!keep && child.exitCode === null) {
-		spawnSync('taskkill.exe', ['/PID', String(child.pid), '/T', '/F'], { windowsHide: true });
+	} finally {
+		if (!keep && child.exitCode === null && child.pid) {
+			spawnSync('taskkill.exe', ['/PID', String(child.pid), '/T', '/F'], { windowsHide: true, stdio: 'ignore' });
+		}
 	}
 }
 

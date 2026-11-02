@@ -142,10 +142,41 @@ fn text_query(
     )
 }
 
-/// Cancellation flags of running streamed searches, keyed by the caller's request id.
-fn running_searches() -> &'static Mutex<HashMap<u64, Arc<AtomicBool>>> {
-    static RUNNING: OnceLock<Mutex<HashMap<u64, Arc<AtomicBool>>>> = OnceLock::new();
+/// Cancellation flags of running streamed searches, keyed by the native window owner and request id.
+fn running_searches() -> &'static Mutex<HashMap<(String, u64), Arc<AtomicBool>>> {
+    static RUNNING: OnceLock<Mutex<HashMap<(String, u64), Arc<AtomicBool>>>> = OnceLock::new();
     RUNNING.get_or_init(|| Mutex::new(HashMap::new()))
+}
+
+fn register_search(owner: &str, id: u64, flag: &Arc<AtomicBool>) -> Result<(), String> {
+    if let Some(previous) = running_searches()
+        .lock()
+        .map_err(|e| e.to_string())?
+        .insert((owner.to_owned(), id), Arc::clone(flag))
+    {
+        previous.store(true, Ordering::Relaxed);
+    }
+    Ok(())
+}
+
+fn finish_search(owner: &str, id: u64, flag: &Arc<AtomicBool>) {
+    if let Ok(mut running) = running_searches().lock() {
+        let key = (owner.to_owned(), id);
+        if running
+            .get(&key)
+            .is_some_and(|current| Arc::ptr_eq(current, flag))
+        {
+            running.remove(&key);
+        }
+    }
+}
+
+fn cancel_search(owner: &str, id: u64) {
+    if let Ok(running) = running_searches().lock() {
+        if let Some(flag) = running.get(&(owner.to_owned(), id)) {
+            flag.store(true, Ordering::Relaxed);
+        }
+    }
 }
 
 /// Runs filesystem-heavy work off both the main thread and the async workers.
@@ -202,6 +233,7 @@ pub async fn search_text(
 /// Streams matches per file over `on_file` until done, the result limit, or `search_cancel`.
 #[tauri::command]
 pub async fn search_text_stream(
+    window: tauri::Window,
     root: String,
     query: String,
     options: Option<SearchTextOptions>,
@@ -209,10 +241,8 @@ pub async fn search_text_stream(
     on_file: tauri::ipc::Channel<Vec<TextMatch>>,
 ) -> Result<TextSearchSummary, String> {
     let cancel = Arc::new(AtomicBool::new(false));
-    running_searches()
-        .lock()
-        .map_err(|e| e.to_string())?
-        .insert(request_id, Arc::clone(&cancel));
+    let owner = window.label().to_owned();
+    register_search(&owner, request_id, &cancel)?;
     let flag = Arc::clone(&cancel);
     let outcome = blocking(move || {
         let (crate_query, crate_opts) = text_query(query, options.as_ref());
@@ -234,9 +264,7 @@ pub async fn search_text_stream(
         Ok((count, count >= limit))
     })
     .await;
-    if let Ok(mut running) = running_searches().lock() {
-        running.remove(&request_id);
-    }
+    finish_search(&owner, request_id, &cancel);
     let (match_count, limit_hit) = outcome?;
     Ok(TextSearchSummary {
         match_count,
@@ -265,17 +293,16 @@ pub struct WorkspaceFileSearchResult {
 /// fuzzy match on the relative path). Cancellable through `search_cancel(request_id)`.
 #[tauri::command]
 pub async fn search_workspace_files(
+    window: tauri::Window,
     root: String,
     pattern: String,
     options: Option<WorkspaceFileSearchOptions>,
     request_id: Option<u64>,
 ) -> Result<WorkspaceFileSearchResult, String> {
     let cancel = Arc::new(AtomicBool::new(false));
+    let owner = window.label().to_owned();
     if let Some(id) = request_id {
-        running_searches()
-            .lock()
-            .map_err(|e| e.to_string())?
-            .insert(id, Arc::clone(&cancel));
+        register_search(&owner, id, &cancel)?;
     }
     let flag = Arc::clone(&cancel);
     let outcome = blocking(move || {
@@ -290,35 +317,51 @@ pub async fn search_workspace_files(
                 .and_then(|o| o.ignore_glob_case)
                 .unwrap_or(cfg!(any(windows, target_os = "macos"))),
         };
-        let list =
-            sc_code_workspace::search::search_workspace_files(Path::new(&root), &pattern, &query, &flag);
+        let list = sc_code_workspace::search::search_workspace_files(
+            Path::new(&root),
+            &pattern,
+            &query,
+            &flag,
+        );
         Ok(WorkspaceFileSearchResult {
             paths: list.files.into_iter().map(|f| f.path).collect(),
             limit_hit: list.limit_hit,
         })
     })
     .await;
-    if let (Some(id), Ok(mut running)) = (request_id, running_searches().lock()) {
-        running.remove(&id);
+    if let Some(id) = request_id {
+        finish_search(&owner, id, &cancel);
     }
     outcome
 }
 
 #[tauri::command]
-pub fn search_cancel(request_id: u64) {
-    let flag = running_searches()
-        .lock()
-        .ok()
-        .and_then(|running| running.get(&request_id).cloned());
-    if let Some(flag) = flag {
-        flag.store(true, Ordering::Relaxed);
-    }
+pub fn search_cancel(window: tauri::Window, request_id: u64) {
+    cancel_search(window.label(), request_id);
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use std::path::PathBuf;
+
+    #[test]
+    fn cancellation_is_window_scoped_and_old_completion_keeps_replacement() {
+        let a = Arc::new(AtomicBool::new(false));
+        let b = Arc::new(AtomicBool::new(false));
+        let next = Arc::new(AtomicBool::new(false));
+        register_search("test-a", 1, &a).unwrap();
+        register_search("test-b", 1, &b).unwrap();
+        cancel_search("test-a", 1);
+        assert!(a.load(Ordering::Relaxed));
+        assert!(!b.load(Ordering::Relaxed));
+        register_search("test-a", 1, &next).unwrap();
+        finish_search("test-a", 1, &a);
+        cancel_search("test-a", 1);
+        assert!(next.load(Ordering::Relaxed));
+        finish_search("test-a", 1, &next);
+        finish_search("test-b", 1, &b);
+    }
 
     fn result(line: &str, start: usize, end: usize) -> sc_code_workspace::search::SearchResult {
         sc_code_workspace::search::SearchResult {
@@ -353,7 +396,10 @@ mod tests {
         let m = to_text_match(result(&line, 5000, 5006));
         assert_eq!(m.column, 5000);
         assert!(m.line_content.len() < 600);
-        assert_eq!(&m.line_content[m.preview_column..m.preview_column + 6], "needle");
+        assert_eq!(
+            &m.line_content[m.preview_column..m.preview_column + 6],
+            "needle"
+        );
     }
 }
 

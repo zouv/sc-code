@@ -18,15 +18,9 @@ async function ensureWasm(): Promise<any> {
 		initPromise = (async () => {
 			try {
 				const wasmPath = '/wasm/tfidf/sc_code_tfidf_wasm.js';
-				const resp = await fetch(wasmPath);
-				if (!resp.ok) {
-					throw new Error(`HTTP ${resp.status}`);
-				}
-				const code = await resp.text();
-				const blob = new Blob([code], { type: 'application/javascript' });
-				const url = URL.createObjectURL(blob);
-				const mod = await import(/* @vite-ignore */ url);
-				URL.revokeObjectURL(url);
+				// Import the same-origin glue directly: blob imports violate the
+				// workbench CSP and break wasm-bindgen's relative WASM URLs.
+				const mod = await import(/* @vite-ignore */ wasmPath);
 				await mod.default();
 				wasmModule = mod;
 			} catch {

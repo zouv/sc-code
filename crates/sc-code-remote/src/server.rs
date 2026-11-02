@@ -437,8 +437,18 @@ impl ScCodeServer {
             .and_then(|v| serde_json::from_value(v.clone()).ok())
             .unwrap_or_default();
 
-        let mut cmd = Command::new("sh");
-        cmd.arg("-c").arg(command);
+        #[cfg(windows)]
+        let mut cmd = {
+            let mut cmd = Command::new("cmd.exe");
+            cmd.args(["/d", "/s", "/c"]).arg(command);
+            cmd
+        };
+        #[cfg(not(windows))]
+        let mut cmd = {
+            let mut cmd = Command::new("sh");
+            cmd.arg("-c").arg(command);
+            cmd
+        };
         if let Some(dir) = cwd {
             cmd.current_dir(dir);
         }

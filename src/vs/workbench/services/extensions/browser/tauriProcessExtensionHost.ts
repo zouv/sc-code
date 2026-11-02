@@ -15,7 +15,7 @@ import { VSBuffer } from '../../../../base/common/buffer.js';
 import { Emitter, Event } from '../../../../base/common/event.js';
 import { Disposable } from '../../../../base/common/lifecycle.js';
 import { joinPath } from '../../../../base/common/resources.js';
-import { URI } from '../../../../base/common/uri.js';
+import { generateUuid } from '../../../../base/common/uuid.js';
 import { IMessagePassingProtocol } from '../../../../base/parts/ipc/common/ipc.js';
 import { PersistentProtocol } from '../../../../base/parts/ipc/common/ipc.net.js';
 import { RemoteConnectionType } from '../../../../platform/remote/common/remoteAuthorityResolver.js';
@@ -79,6 +79,7 @@ export class TauriProcessExtensionHost extends Disposable implements IExtensionH
 	private _protocolPromise: Promise<IMessagePassingProtocol> | null = null;
 	private _protocol: PersistentProtocol | null = null;
 	private _isTerminating = false;
+	private readonly _hostId = generateUuid();
 
 	constructor(
 		public readonly runningLocation: LocalProcessRunningLocation,
@@ -99,14 +100,21 @@ export class TauriProcessExtensionHost extends Disposable implements IExtensionH
 
 	public start(): Promise<IMessagePassingProtocol> {
 		if (!this._protocolPromise) {
-			this._protocolPromise = this._start();
+			this._protocolPromise = this._start().catch(error => {
+				void invoke('real_ext_host_stop', { hostId: this._hostId }).catch(stopError => this._logService.warn('[extHost] cleanup failed', stopError));
+				throw error;
+			});
 		}
 		return this._protocolPromise;
 	}
 
 	private async _start(): Promise<IMessagePassingProtocol> {
 		logToHost(3, '[extHost] requesting real extension host endpoint');
-		const endpoint = await invoke<ITauriExtensionHostEndpoint>('real_ext_host_start');
+		const endpoint = await invoke<ITauriExtensionHostEndpoint>('real_ext_host_start', { hostId: this._hostId });
+		if (this._isTerminating) {
+			await invoke('real_ext_host_stop', { hostId: this._hostId });
+			throw new Error('Extension host disposed while starting.');
+		}
 		if (!endpoint || !endpoint.port) {
 			logToHost(1, '[extHost] real extension host endpoint unavailable');
 			throw new Error('The local extension host could not be started.');
@@ -121,6 +129,10 @@ export class TauriProcessExtensionHost extends Disposable implements IExtensionH
 			`token=${encodeURIComponent(endpoint.token)}`,
 			'extensionHost'
 		);
+		if (this._isTerminating) {
+			socket.dispose();
+			throw new Error('Extension host disposed while connecting.');
+		}
 		const protocol = new PersistentProtocol({ socket });
 		this._protocol = protocol;
 		this._register(protocol);
@@ -129,17 +141,30 @@ export class TauriProcessExtensionHost extends Disposable implements IExtensionH
 		protocol.onSocketClose(() => this._onConnectionLost());
 
 		return new Promise<IMessagePassingProtocol>((resolve, reject) => {
-			const timeout = setTimeout(() => reject(new Error('The local extension host took longer than 60s to send its ready message.')), 60_000);
+			let settled = false;
+			const finish = (error?: Error) => {
+				if (settled) { return; }
+				settled = true;
+				clearTimeout(timeout);
+				listener.dispose();
+				disposeListener.dispose();
+				closeListener.dispose();
+				if (error) { reject(error); } else { resolve(protocol); }
+			};
+			const timeout = setTimeout(() => finish(new Error('The local extension host took longer than 60s to send its ready message.')), 60_000);
+			const disposeListener = protocol.onDidDispose(() => finish(new Error('Extension host disposed during handshake.')));
+			const closeListener = protocol.onSocketClose(() => finish(new Error('Extension host disconnected during handshake.')));
 			const listener = protocol.onMessage(msg => {
 				if (isMessageOfType(msg, MessageType.Ready)) {
-					void this._createExtHostInitData().then(data => protocol.send(VSBuffer.fromString(JSON.stringify(data))));
+					void this._createExtHostInitData().then(data => {
+						if (settled || this._isTerminating) { return; }
+						protocol.send(VSBuffer.fromString(JSON.stringify(data)));
+					}).catch(error => finish(error instanceof Error ? error : new Error(String(error))));
 					return;
 				}
 				if (isMessageOfType(msg, MessageType.Initialized)) {
-					clearTimeout(timeout);
-					listener.dispose();
 					logToHost(3, '[extHost] real extension host initialized');
-					resolve(protocol);
+					finish();
 					return;
 				}
 				this._logService.warn('[extHost] unexpected message during handshake');
@@ -221,11 +246,13 @@ export class TauriProcessExtensionHost extends Disposable implements IExtensionH
 		this._isTerminating = true;
 		this._protocol?.send(createMessageOfType(MessageType.Terminate));
 		this._protocol?.sendDisconnect();
-		await this._protocol?.drain();
+		try { await this._protocol?.drain(); } finally {
+			await invoke('real_ext_host_stop', { hostId: this._hostId });
+		}
 	}
 
 	override dispose(): void {
-		void this.disconnect();
+		void this.disconnect().catch(error => this._logService.warn('[extHost] shutdown failed', error));
 		this._protocol = null;
 		super.dispose();
 	}

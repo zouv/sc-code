@@ -1,78 +1,29 @@
 # 会话接力 · ScCode
 
-- 快照：2026-10-27；分支 `main`；**无进行中任务**（迁移期残留清理、扩展通知改右下角 toast、关窗丢弃 untitled 备份、图标样式更新与 v0.4.0 发布均已完成，见 `CHANGELOG.md` 0.4.0 小节）。
-- 本轮验证：`npm test`（74/74，含扩展消息路由新用例）、`npm run typecheck`、`cargo check --offline -p sc-code`、`sh check-docs.sh` 全部通过。
-- 当前版本：**0.4.0**（已打包并发布为 GitHub prerelease）。
-- 最新发布：[v0.4.0](https://github.com/zouv/sc-code/releases/tag/v0.4.0)（GitHub prerelease）：
-  - `ScCode_0.4.0_x64-setup.exe`（68,815,933 B）
-  - `ScCode_0.4.0_x64-unpack.zip`（94,600,187 B）
-- 本轮发布冒烟（Release 包解压 + 隔离 `SC_CODE_HOME`）：启动 30s 未退出，隔离 profile 正常生成 `sc_code_state.db` / `sc_code_storage.db` 与 `User`/`extensions`/`logs` 目录，进程已清理；搜索/终端/webview/CLI 的完整 GUI 冒烟仍待执行。
-- 打包：`npm run desktop:package` exit 0；`dist/dev/ScCode_0.4.0_x64-unpack-debug.zip`（含 PDB）、`dist/release/unpack/`、setup exe、unpack zip 均生成。
-- 仓库边界不变：源码/文档/脚本/锁文件入库；`.runtime/`、`dist/`、`node_modules/`、Tauri 生成物、用户 profile 不入库。
+## 当前状态
+- 快照：2026-11-02；分支 main；当前进行中：0.4.1 打包、commit/push、GitHub 预发布。
+- 版本已同步为 0.4.1；用户已明确授权 commit/push、打包与上传。当前包尚未生成/验收，上传前必须确认新 setup 与 unpack ZIP 同时存在，不复用旧产物。
+- 已验收状态见 ROADMAP「当前验证与性能边界」；实现变化见 CHANGELOG「0.4.1」，不在此重复完成清单。
 
-## 下一步（未排期）
+## 尚需真实环境验收
+1. 工作台 trust：实际授权 UI 后确认全部扩展自动恢复；当前程序性 IPC 与合成服务测试不能替代此项。顶层 renderer 控制授权，执行 guard 不是 Node/文件系统沙箱，也不保证终止全部在途后台活动；细粒度授权/强隔离见 ROADMAP。
+2. S10b 扩展生态：typescript/emmet/json 贡献命令、VAC/Claude Code/VSIX、TreeView/webview/对话框/自定义编辑器、Node 调试与 ESM 重载逐项验收；真实宿主仍受实验开关控制，旧 host.cjs 保留回退。
+3. 外部服务：真实补全上游/付费模型、用户 SSH/多跳/转发/remote FS、真 keyring 尚未验收。现有模型协议与 SSH 用本地隔离服务验证，不读取真实凭据；首次 SSH 主机密钥登记仍需可信渠道核验。
+4. Agent 文件任务：Rust patch/regex/LSP/后台 shell 缺口与 local_exec 边界见 ARCHITECTURE §3.5；持久 journal/多文件事务/冲突检测见 ROADMAP，不能把工具声明等同于真实任务可用。
+5. 体验：Explorer Outline、--wait、MainThread comments/timeline/browserView/externalUriOpener、实际任务栏 Jump List 点击/About 外观与完整关窗询问流程尚需验收。
+6. 性能：Debug 基线不代表 Release；包体与内存、循环 chunk/混合静态动态导入告警、Rust 遗留 warnings 待专项处理。不能声称 strict clippy/fmt 全仓通过；WASM 资产当前为 0，未启用实际加速。旧 terminal crate 已纳入回归，但未替换工作台 Tauri 终端；原历史后台 shell 问题与逃逸子进程清理仍需专项。
 
-1. **完整 GUI 冒烟**：本轮仅完成 Release 包启动与隔离 profile 冒烟；搜索、终端、webview 隔离、关窗询问、CLI `-g` 仍待逐项复验（参考 `scripts/smoke-dist.cjs`）。
-2. 真实宿主（S10b）：扩展贡献命令在真实宿主下 MISSING（typescript/emmet/json 等），旧宿主同样缺；需先修扩展注册/激活链路，再验自定义编辑器与 Node 调试适配器。
-3. 剩余体验缺口：Explorer 的 Outline 视图面板（`contrib/outline` 未移植，面包屑已可用）、`--wait`（git `core.editor`）、`IWorkingCopyService.modifiedWorkingCopies` 在本移植中为空（关窗判断改用编辑器脏状态绕开）。
-4. 手工验收 S16 桌面壳体验：关于对话框图标；Windows 任务栏右键“Recent Folders / Recent Workspaces”；运行中点击跳转列表应转发到已运行实例并新开窗口；冷启动点击应直接以目标文件夹/工作区启动。
-5. 真实宿主全量验收（S10b）：VAC、Claude Code、VSIX 安装、树视图、webview、对话框、配置读取。
-6. 真实宿主 `MainThread*` 覆盖补齐：comments/timeline/browserView/externalUriOpener 尚未移植。
-7. 多窗口宿主隔离：`real_ext_host_start` 目前是应用级单进程。
-8. ESM 扩展热重载不完整；宿主随窗口 reload 重建后需验证。
+## 如何复验
+- npm test；npm run test:transport；npm run typecheck；npm run lint；npm audit；npm audit --omit=dev。
+- cargo test --offline --workspace；在 agent/server 执行 go test -tags fts5 ./...（Windows 需可用 CGO 编译器）。
+- npm run ext-host:build；npm run test:ext-host；npm run test:server（隔离本地侧车，无 provider 调用）。
+- npm run build；npm run smoke:dist；用 Git Bash 执行 bash check-docs.sh（Windows 不要误用 System32 的 WSL bash）。
+- 真实桌面：先 npm run runtime:prepare，然后 npm run desktop:build -- --debug --no-bundle --ci（重建当前资源），再 npm run smoke:desktop；脚本自行使用一次性 HOME/profile/工作区，拒绝仓库 .env，限时清理自己创建的进程。
+- 性能：SC_CODE_HOME 设为新建一次性目录，再 npm run perf:baseline -- --exe .runtime/target/debug/ScCode.exe --seconds 30 --out .runtime/logs；完成后仅清理该测试目录，不使用真实 profile。
+- 证据在忽略的 .runtime/logs/all-* 与 perf-*.json；不入库、不作为发行包。
 
-## 最近验证（2026-10-22）
-
-- 发布：`v0.2.0` 已创建 tag，GitHub Release 为 prerelease；安装包与 unpack zip 两个资产均已上传。
-- 打包：`npm run desktop:package` exit 0；Debug zip 与 Release setup/unpack zip 均生成。
-- 冒烟：Release unpack 解压到隔离目录，`SC_CODE_HOME` 隔离启动 25 秒正常，profile 生成 SQLite 数据。
-- 通过：`npm test`（77/77）、`npm run typecheck`、`sh check-docs.sh`。
-- 通过：D 版图标的 PNG 尺寸、七帧 ICO、ICNS 头与 RGBA 透明圆角检查；Release `ScCode.exe` ProductVersion/FileVersion 为 `0.2.0`。
-- 通过：`cargo check --offline -p sc-code --bin ScCode`。
-- 已清理仓库正文本机路径：README 示例路径；README 截图位于 `docs/images/preview.jpg`。
-- Git 历史已重写：10 个历史提交的作者/提交者统一为 `zouv <zouv@163.com>`，9 处 `Co-Authored-By` 已移除；`origin/main` 与 `v0.1.1`/`v0.1.2` 标签已 force-push，本地 `user.name/user.email` 同步更新。
-- 已复查工作树与全部 Git 引用：无真实姓名、邮箱、本机路径、设备标识残留；`AGENTS.md` 新增 §3.1「个人信息与仓库卫生」铁律与提交前自检流程。
-
-## 前次验证（2026-10-21）
-
-- 通过：`npm run typecheck`。
-- 通过：`npm test`（77/77）。
-- 通过：`cargo check --offline -p sc-code --bin ScCode`。
-- 通过：`cargo test --offline -p sc-code --lib taskbar`（4/4：参数解析、URI 校验、去重/标签、app URL）。
-- 通过：`cargo clippy --offline -p sc-code --lib` 对 `taskbar.rs` 无告警。
-- 实跑：隔离 `SC_CODE_HOME` 启动 Debug 桌面应用；截图确认标题栏应用图标位于最左侧（菜单之前）。关于对话框与任务栏跳转列表尚需按“下一步 1”做手工验收。
-- 注意：此前 Tauri 丢弃窗口配置的 `dataDirectory`，所有 profile 共用默认 `%LOCALAPPDATA%\dev.sccode.app\EBWebView`；S18 起设置 `SC_CODE_HOME` 时 WebView 数据在该目录内。新单实例锁按 profile 数据目录隔离。
-
-## 打包与发布
-
-- 本地打包：`npm run desktop:package`（或 `package.bat`）。
-- 2026-10-20 0.1.2 产物：
-  - `dist/dev/unpack/`（Debug 未压缩目录，含 PDB）
-  - `dist/dev/ScCode_0.1.2_x64-unpack-debug.zip`（245,484,507 B）
-  - `dist/release/unpack/`（Release 未压缩运行目录）
-  - `dist/release/ScCode_0.1.2_x64-setup.exe`（68,692,521 B）
-  - `dist/release/ScCode_0.1.2_x64-unpack.zip`（94,430,194 B，828 项，根目录无版本外壳）
-- 打包中曾遇到 Windows 目录重命名瞬时 `EPERM`（Debug unpack 导出），清理旧产物后重试成功；如复现先关闭占用 `dist/<channel>/unpack/` 的进程再重试。
-- 发布 skill：`.claude/skills/sc-code-publish`；打包 skill：`.claude/skills/sc-code-release`。
-
-## 运行/验证
-
-```powershell
-npm run setup
-npm run runtime:prepare        # 内含 ext-host:build
-npm test
-npm run typecheck
-npm run desktop:package
-# 解压 dist/release/ScCode_<version>_x64-unpack.zip 到任意目录（zip 内无版本子目录）后：
-$env:SC_CODE_HOME='D:\Temp\sc-code-smoke'
-.\ScCode.exe
-```
-
-## 实现边界
-
-- 真实宿主 bundle 输出在 `.runtime/ext-host/extensionHost.cjs`；prepare 时复制到运行资源 `extension-host/extensionHost.cjs`。
-- 工作台存储首次启动从 IndexedDB 复制到 SQLite，空库才迁移。
-- 旧 `host.cjs` 保留作为默认回退；不要在真实宿主验证完成前删除。
-- 打包约束：base/platform/editor 不得拆成不同 chunk（TDZ 黑屏）；见 ARCHITECTURE §3.6。
-- unpack 默认用户数据仍是 `%APPDATA%\ScCode`（或 `SC_CODE_HOME`），不是目录内 portable 模式。
-- Windows 任务栏跳转列表与单实例代码在 `src-tauri/src/taskbar.rs`；Win32/COM 的 `unsafe` 仅限该文件的 `windows_impl` / `windows_single_instance`，不要扩散到业务命令。
+## 不变边界
+- 本轮仅为用户授权的 0.4.1 commit/push/打包/预发布；无新的明确要求时不再发布其他版本；.runtime/、dist/、node_modules/、Tauri 生成物与用户状态不入库。新 helper/tests/scripts 是源码，不能漏掉。
+- 不访问真实 profile、keyring、私钥、回收站，不调用付费模型；SC_CODE_HOME 同时隔离应用数据/日志/各窗口 WebView2。
+- renderer fetch/proxy 每跳 URL/DNS 公网检查并钉住解析结果，直连且不使用环境/系统代理；Agent/provider 的独立网络栈未改，不能泛化为全应用防 SSRF。
+- core/platform/editor 不盲拆 chunk（TDZ 黑屏风险）；数据库升级失败保留原库，不自动改名建空库。长期能力规划见 ROADMAP，不借审查擅自移除 Agent 或扩展功能。

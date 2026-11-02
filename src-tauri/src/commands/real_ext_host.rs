@@ -6,9 +6,11 @@
 //! `extension_host.rs`; this module is only used when the workbench enables the
 //! experimental real-host path.
 
+use std::collections::HashMap;
 use std::io::{BufRead, BufReader, Read};
 use std::path::PathBuf;
 use std::process::{Child, ChildStdout, Command, Stdio};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
 use std::time::Duration;
 
@@ -31,7 +33,78 @@ pub struct RealExtensionHostEndpoint {
     pub pid: u32,
 }
 
+/// A process belongs to one renderer host instance, not the whole app. Instance
+/// IDs prevent a late dispose from an old renderer stopping its replacement.
 pub struct RealExtensionHost {
+    instances: Mutex<HashMap<(String, String), std::sync::Arc<HostInstance>>>,
+}
+
+impl RealExtensionHost {
+    pub fn new() -> Self {
+        Self {
+            instances: Mutex::new(HashMap::new()),
+        }
+    }
+
+    fn instance(
+        &self,
+        window: &str,
+        host_id: &str,
+    ) -> Result<std::sync::Arc<HostInstance>, String> {
+        if host_id.is_empty() || host_id.len() > 128 {
+            return Err("invalid extension host instance id".into());
+        }
+        Ok(self
+            .instances
+            .lock()
+            .map_err(|e| e.to_string())?
+            .entry((window.to_owned(), host_id.to_owned()))
+            .or_insert_with(|| std::sync::Arc::new(HostInstance::new()))
+            .clone())
+    }
+
+    fn stop(&self, window: &str, host_id: &str) {
+        let host =
+            self.instances.lock().ok().and_then(|mut instances| {
+                instances.remove(&(window.to_owned(), host_id.to_owned()))
+            });
+        if let Some(host) = host {
+            host.shutdown();
+        }
+    }
+
+    pub fn shutdown_window(&self, window: &str) {
+        let hosts = if let Ok(mut instances) = self.instances.lock() {
+            let keys: Vec<_> = instances
+                .keys()
+                .filter(|(owner, _)| owner == window)
+                .cloned()
+                .collect();
+            keys.into_iter()
+                .filter_map(|key| instances.remove(&key))
+                .collect::<Vec<_>>()
+        } else {
+            Vec::new()
+        };
+        for host in hosts {
+            host.shutdown();
+        }
+    }
+
+    pub fn shutdown(&self) {
+        let hosts = self
+            .instances
+            .lock()
+            .map(|mut instances| instances.drain().map(|(_, host)| host).collect::<Vec<_>>())
+            .unwrap_or_default();
+        for host in hosts {
+            host.shutdown();
+        }
+    }
+}
+
+struct HostInstance {
+    stopped: AtomicBool,
     child: Mutex<Option<Child>>,
     endpoint: Mutex<Option<RealExtensionHostEndpoint>>,
     /// Serializes concurrent `real_ext_host_start` calls. The workbench can
@@ -40,16 +113,21 @@ pub struct RealExtensionHost {
     start_lock: Mutex<()>,
 }
 
-impl RealExtensionHost {
-    pub fn new() -> Self {
+impl HostInstance {
+    fn new() -> Self {
         Self {
+            stopped: AtomicBool::new(false),
             child: Mutex::new(None),
             endpoint: Mutex::new(None),
             start_lock: Mutex::new(()),
         }
     }
 
-    pub fn shutdown(&self) {
+    fn shutdown(&self) {
+        self.stopped.store(true, Ordering::SeqCst);
+        let Ok(_start_guard) = self.start_lock.lock() else {
+            return;
+        };
         if let Ok(mut guard) = self.child.lock() {
             if let Some(mut child) = guard.take() {
                 let _ = child.kill();
@@ -157,19 +235,32 @@ fn strip_verbatim(path: PathBuf) -> PathBuf {
 #[tauri::command]
 pub async fn real_ext_host_start(
     app: AppHandle,
+    window: tauri::Window,
+    host_id: String,
     host: tauri::State<'_, std::sync::Arc<RealExtensionHost>>,
 ) -> Result<RealExtensionHostEndpoint, String> {
-    let host = std::sync::Arc::clone(host.inner());
-    tauri::async_runtime::spawn_blocking(move || start_blocking(&app, &host))
-        .await
-        .map_err(|e| format!("extension host start task failed: {e}"))?
+    let instance = host.instance(window.label(), &host_id)?;
+    let owner = window.label().to_owned();
+    tauri::async_runtime::spawn_blocking(move || {
+        let endpoint = start_blocking(&app, &instance)?;
+        if app.get_webview_window(&owner).is_none() {
+            instance.shutdown();
+            return Err("extension host window was closed".into());
+        }
+        Ok(endpoint)
+    })
+    .await
+    .map_err(|e| format!("extension host start task failed: {e}"))?
 }
 
 fn start_blocking(
     app: &AppHandle,
-    host: &std::sync::Arc<RealExtensionHost>,
+    host: &std::sync::Arc<HostInstance>,
 ) -> Result<RealExtensionHostEndpoint, String> {
     let _start_guard = host.start_lock.lock().map_err(|e| e.to_string())?;
+    if host.stopped.load(Ordering::SeqCst) {
+        return Err("extension host instance was stopped".into());
+    }
 
     {
         let mut child = host.child.lock().map_err(|e| e.to_string())?;
@@ -251,7 +342,10 @@ fn start_blocking(
     // pipe fills up (64 KiB) and then blocks the host process indefinitely.
     if let Some(stderr) = child.stderr.take() {
         std::thread::spawn(move || {
-            for line in std::io::BufReader::new(stderr).lines().map_while(Result::ok) {
+            for line in std::io::BufReader::new(stderr)
+                .lines()
+                .map_while(Result::ok)
+            {
                 log::info!("[ext-host stderr] {line}");
             }
         });
@@ -268,6 +362,35 @@ fn start_blocking(
 }
 
 #[tauri::command(async)]
-pub fn real_ext_host_stop(host: tauri::State<'_, std::sync::Arc<RealExtensionHost>>) {
-    host.shutdown();
+pub fn real_ext_host_stop(
+    window: tauri::Window,
+    host_id: String,
+    host: tauri::State<'_, std::sync::Arc<RealExtensionHost>>,
+) {
+    host.stop(window.label(), &host_id);
+}
+
+#[cfg(test)]
+mod isolation_tests {
+    use super::*;
+    #[test]
+    fn instances_are_owned_by_window_and_generation() {
+        let hosts = RealExtensionHost::new();
+        let a = hosts.instance("window-a", "old").unwrap();
+        let b = hosts.instance("window-b", "old").unwrap();
+        let next = hosts.instance("window-a", "next").unwrap();
+        assert!(!std::sync::Arc::ptr_eq(&a, &b));
+        assert!(!std::sync::Arc::ptr_eq(&a, &next));
+        hosts.stop("window-a", "old");
+        assert!(std::sync::Arc::ptr_eq(
+            &next,
+            &hosts.instance("window-a", "next").unwrap()
+        ));
+        hosts.shutdown_window("window-a");
+        assert_eq!(hosts.instances.lock().unwrap().len(), 1);
+        assert!(std::sync::Arc::ptr_eq(
+            &b,
+            &hosts.instance("window-b", "old").unwrap()
+        ));
+    }
 }

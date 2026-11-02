@@ -17,6 +17,8 @@
 2026-10-27：移除迁移期来源清单与验证链，`docs/` 只保留开发文档与资源、不再被测试读取；清理残留 CUSTOM 标记、未参与构建的锁文件与 vendor 脚本。
 2026-10-27：v0.4.0 已打包并上传 GitHub Release（prerelease）：`ScCode_0.4.0_x64-setup.exe` + `ScCode_0.4.0_x64-unpack.zip`；Release 包隔离 profile 启动冒烟通过。
 
+2026-11-02：完成项目审查与安全后续修复：数据迁移/原子编辑、聊天/补全、DNS 连接地址校验、CSP、窗口级原生执行信任、SSH 执行协议、终端回归、多窗/CLI 与隔离日志；全量/生产 npm 审计 0。仅构建验证当前 debug 程序，未制作安装器或发布新版本。
+
 ## 开发大纲
 | 编号 | 优先级 | 任务 | 状态 |
 |---|---|---|---|
@@ -25,16 +27,16 @@
 | S1a | P0 | ~~独立身份、固定资源打包~~ | ✅ 2026-10-18 |
 | S1b | P0 | 安装/升级与历史 WebView 状态验收 | GUI 输入/截图受阻 |
 | S2a | P0 | ~~本地 transport 鉴权、密钥禁明文降级、单文件冲突保护~~ | ✅ 2026-10-18 |
-| S2b | P0 | CSP/workspace trust、扩展/工具权限边界 | 待开发；不可信项目/扩展不可视作安全 |
+| S2b | P0 | CSP/workspace trust、扩展/工具权限边界 | 2026-11-02：CSP 与窗口级高风险原生命令信任已实现并回归；细粒度扩展/Agent 授权与 Node 沙箱仍待开发 |
 | S2c | P0 | 持久恢复 journal、多文件事务、状态锁崩溃恢复 | 待开发；现有 checkpoint 仅单文件内存 |
 | S3a | P1 | ~~Node/TS/Rust/Go 回归、真实宿主/侧车 smoke、最新 debug NSIS~~ | ✅ 2026-10-18 |
 | S3b | P1 | 干净机器、正式 release/签名和 CI 实际运行 | 待验收 |
-| S3c | P1 | 扩展Rust回归：Windows shell超时清理、终端平台测试、remote测试API | 新发现3项未修；生产构建通过不代表全套回归通过 |
+| S3c | P1 | 扩展Rust回归：Windows shell超时清理、终端平台测试、remote测试API | 2026-11-02：旧 terminal 纳入 workspace/CI（88 项）；SSH 真实本地握手与 stdout/stderr/状态通过；native exec 有界输出/完整超时已修，Agent 历史异常与逃逸子进程仍需专项 |
 | S4a | P1 | ~~JSONC 配置、持久 Memento/工作区隔离、扩展 secret native 桥~~ | ✅ 2026-10-18；真 keyring 未验 |
 | S4b | P1 | 全扩展 API 契约、跨窗口同步、ESM 重启策略与真 keyring | 待开发/验收 |
 | S5 | P1 | AI 与 IDE 共用文档/LSP/index Runtime | 待开发 |
 | S5b | P1 | ACP客户端插件/AgentBackend替换内置Agent | 已评估；本轮未移除，待协议与迁移验收 |
-| S5c | P1 | 独立Tab补全适配，修正默认后端路由不一致 | 已定位；不把ACP会话直接当低延迟补全 |
+| S5c | P1 | ~~独立Tab补全适配，修正默认后端路由不一致~~ | ✅ 2026-11-02；默认协议契约回归通过，真实模型与延迟待验 |
 | S7 | P1 | ~~ScCode显示品牌、SC SVG、多平台图标~~ | ✅ 2026-10-18；含紫灰/淡紫配色区分，重打包/GUI边界见HANDOFF |
 | S8 | P1 | ~~日常 BAT（含独立Release入口与packages/dev、release安装包和unpack/dev、release免安装目录）、.runtime 收拢、ScCode profile 与凭据身份、Agent默认收起~~ | ✅ 2026-10-18；自动化与包信息见HANDOFF，真实GUI/keyring待验 |
 | S9 | P1 | ~~仓库布局、源码/生成物Git边界与首次提交~~ | ✅ 2026-10-18；干净检出验收通过，提交/推送记录以Git为准 |
@@ -49,12 +51,13 @@
 | S13 | P1 | ~~内部与外部标识统一为 ScCode：Rust crates/SDK/WASM 包、Go Agent 目录与产物、命令/设置 ID、协议、目录与清单；移除旧品牌兼容层与首次数据导入；清理历史 docs 并重排 README~~ | ✅ 2026-10-19；Go 编译已复验（2026-10-20） |
 | S14 | P1 | ~~打包输出未压缩 `packages/<dev\|release>/unpack/`，并生成根目录无版本外壳子目录的 zip~~ | ✅ 2026-10-19 |
 | S15 | P0 | ~~v0.1.2 发布链路：版本号同步、Debug/Release 打包、隔离 profile 冒烟、GitHub prerelease 上传~~ | ✅ 2026-10-20；setup + unpack zip 均已上传 |
-| S16 | P1 | ~~桌面壳体验：关于对话框图标、标题栏应用图标置左、Windows 任务栏最近文件夹/工作空间跳转列表与单实例转发~~ | ✅ 2026-10-21；Rust 单测与静态回归通过，GUI 实跑待验收 |
+| S16 | P1 | ~~桌面壳体验：关于对话框图标、标题栏应用图标置左、Windows 任务栏最近文件夹/工作空间跳转列表与单实例转发~~ | ✅ 2026-10-21；2026-11-02 修复多窗线程/协议，隔离 WebView2 单实例 CLI 转发通过；真实任务栏点击/About 外观仍待验 |
 | S17 | P1 | ~~D 版图标接入、版本号 0.2.0、仓库本机路径清理与截图来源清单修复~~ | ✅ 2026-10-22；setup + unpack zip 已上传 GitHub prerelease |
 | S18 | P0 | ~~安全面收紧：webview 独立来源、IPC 来源守卫、`git_run` 收紧、asset 授权收窄~~ | ✅ 2026-10-25；dev 实跑 + CDP 验证，Release 包冒烟随 S19；命令面收敛并入 S22 |
 | S19 | P1 | ~~性能快修：重活命令移出主线程、文件二进制 IPC、搜索正确性与取消、存储批量写、事件定向~~ | ✅ 2026-10-25；另修复全局搜索失效、终端乱码/退出码、监听丢新建、回收站；dev 实跑验证 |
 | S20 | P0 | ~~真实宿主转正前置：`ICustomEditorService`、Node 调试服务（executable 适配器）~~ | ✅ 2026-10-25；宿主 stdio 排空修复；扩展注册缺口归 S10b |
 | S21 | P1 | ~~体验缺口：保存参与者、面包屑/Outline 服务、关窗拦截、CLI 打开路径~~ | ✅ 2026-10-25；Explorer 的 Outline 面板与 `--wait` 未做 |
+| S23 | P0 | ~~项目审查修复：DB/chat、SSH、原子编辑、补全协议、跨窗宿主/搜索、文件元数据、DNS/CSP/trust、依赖与构建测试~~ | ✅ 2026-11-02；自动化及隔离 WebView2 核心链路通过，完整扩展/真实服务仍待验收，未重新打包发布 |
 | S22 | P2 | ~~收敛：无消费者的 scCode 桥接服务加载、CUSTOM 标记~~ | ✅ 2026-10-27；CUSTOM 标记与不必要桥接已清理 |
 
 ## 移植验收矩阵
@@ -65,19 +68,19 @@
 | 打开/保存对话框 | 真宿主模拟 Workbench 回包；Uri/fsPath/中文空格路径/取消 | 桌面文件选择器真实 UI |
 | 扩展更新/状态 | CJS 新入口/命令撤销/树刷新；ESM初次加载；状态重启、多根切换 | ESM真正热重载、第三方扩展完整生命周期 |
 | VSIX/profile扩展同步/工作区拖拽 | 源码保留、类型与模块检查 | 安装 VSIX、标签拖动、拖文件不变脏、区域语义逐项 GUI |
-| 设置/数据隔离 | JSONC并发保存；profile 与 HOME 隔离测试 | 安装升级、WebView跨origin历史状态、真keyring |
-| AI通信 | 取消/重连/endpoint；真实Go REST/WS鉴权smoke | 实际provider模型、工具权限、长会话故障恢复 |
+| 设置/数据隔离 | JSONC并发保存；隔离 HOME/profile；当前 WebView2 双窗/日志同一 SC_CODE_HOME | 安装升级、历史状态迁移、真 keyring |
+| AI通信 | 取消/重连/endpoint；补全协议与持久化回归；真实 Go REST/WS 鉴权 smoke | 实际 provider 模型、细粒度工具授权、长会话故障恢复 |
 | 构建/发布脚本与文档 | 独立打包与文档同步 | 正式签名发行、跨平台构建 |
 
 ## 下一批交付顺序
 1. P0 行为验收：可交互 Windows 会话/干净机器执行完整 profile 全矩阵。
-2. P0 安全：梳理需要的资产/网络来源与 Tauri invoke能力 → 收紧 CSP → workspace trust/扩展执行与agent工具授权；回归测试先于强制切换。
+2. P0 安全：在已启用 DNS/CSP/窗口级 trust 的基础上，继续做细粒度扩展/Agent 权限与 Node/文件系统沙箱，验证工作台真实信任 UI→宿主恢复；独立 Agent/provider 与浏览器出站流量边界另行设计，不把 renderer proxy 直连当全应用 SSRF 防护。
 3. P0 恢复：持久 journal + 崩溃恢复状态机 + 多文件 prepare/commit/rollback + 内容冲突检测；进程锁应先辨别活跃持有者，禁止超时直接删除锁。
 4. P1 Runtime：文档版本/编辑源一致性 → LSP/index共享 → agent只消费同一文档快照；逐步替换双份服务，不先重写工作台。
 
 ## Agent 当前兼容风险
 - Go注册66种工具但不是66种完整桌面能力：本机LSP仍是提示文本；patch/regex、后台shell与read_lints路由缺少Rust处理；编排local_exec=false与server拒绝workspace工具的策略冲突。
-- Tab补全存在 /v1/completions 与 /complete 契约不一致，需外部FIM服务；云Agent设置明确无托管后端。
+- Tab补全已对齐默认本地 Agent 契约；仍需配置可用 COMPLETION_SERVER_URL/VLLM_URL 上游，自动化模拟服务不等于真实模型验收。自定义外部 endpoint 默认按 OpenAI 协议；云Agent设置明确无托管后端。
 - 本轮未调用真实模型/账户验证；移除内置Agent前必须以真实编辑、语言语义、取消/权限和历史会话迁移为验收项。
 
 ## Agent 解耦交付建议（评估，不代表本轮已实现）
@@ -89,10 +92,19 @@
 6. Tab补全、多Agent DAG/验证器/记忆和长期恢复另做能力矩阵，不承诺ACP可一键替代；安全/事务P0仍需要独立完成。
 
 ## 已交付里程碑
+- ✅ 2026-11-02：~~S23 项目审查及安全后续修复~~ — 前端/Go/Rust、生产 CSP 工作台、隔离 WebView2 双窗/信任/宿主/PTY/frame/CLI 与本地真实 SSH 专项通过，npm 审计 0；未发布，不代替第三方扩展、付费模型、私有服务与真 keyring 验收。
 - ✅ 2026-10-22：~~D 版图标接入与 0.2.0 发布~~ — `docs/icons/` 资源已替换应用图标；`v0.2.0` setup + unpack zip 已上传 GitHub prerelease，Release unpack 隔离 profile 冒烟通过。
 以上 ✅ 为实现里程碑；v0.2.0 的 Windows x64 安装包与 unpack zip 已上传 GitHub prerelease。自动化测试通过不代表所有 GUI、用户数据或第三方扩展都兼容。
 
-## 新发现的回归缺口（2026-10-18）
-- crates/sc-code-agent/src/tools/shell.rs / timeout_terminates_long_running_child：1秒超时测试实耗88秒，未满足7秒上限；同步taskkill/pipe清理链路需单独诊断，不能靠放宽断言掩盖。未承诺Agent取消会可靠清理子进程。
-- crates/sc-code-terminal/src/link_detection.rs / detect_absolute_path_unix：Windows下Unix绝对路径用例失败；明确跨平台产品语义后修检测或约束测试，不能只为变绿忽略。
-- crates/sc-code-remote/src/ssh.rs 测试：依赖的russh_keys::key::ed25519 API不存在，测试目标编译失败；修fixture并重跑SSH测试。生产构建未受此测试编译问题影响。
+## 回归缺口复验（2026-11-02）
+- crates/sc-code-agent/src/tools/shell.rs / timeout_terminates_long_running_child：本轮原 7 秒上限断言通过，未放宽；历史 88 秒异常不能由一次环境复验判定根因已解决，取消/逃逸子进程清理仍需专项验收。
+- crates/sc-code-terminal/src/link_detection.rs：旧 crate 已加入当前 Cargo workspace 和跨平台 CI，88 项通过，含多路径/Unicode 前缀/Windows+Unix 识别；未接入工作台，不等于替换生产终端。
+- crates/sc-code-remote/src/ssh.rs：已对齐依赖公开 API，真实 loopback russh 握手在认证前拒绝未知/变更密钥，已知非标准端口成功，exec 正确返回 stdout/stderr/退出码（含 EOF 后状态）。临时内存密钥/合成密码，不触碰用户私钥；用户服务器、多跳与转发仍未验。
+
+## 当前验证与性能边界（2026-11-02，0.4.1）
+- 前端 npm test 97/97；transport 20/20；真实 Node 宿主进程 smoke 2/2；自有 TS lint 105 个文件零告警与 typecheck 通过。
+- Rust workspace 1797 passed / 2 原有 ignored；Go fts5 全包通过；独立真实 Go 侧车 10 项 REST/WS 本地鉴权通过。
+- 生产 frontend build 与 CSP smoke 通过；native debug 已用当前资源重建，隔离 WebView2 核心集成 9/9（含 restricted 搜索 Channel、双窗宿主、PTY、跨源 frame 与单实例 CLI）。信任状态通过程序性 IPC 验证，尚未实际点击授权 UI 验证工作台自动恢复全部扩展。
+- npm audit 全量/生产均 0；Rust 遗留 warnings 未清零，不能把测试通过写成 strict clippy/fmt 全仓通过。
+- 构建统计：JS 12.21 MB / CSS 642 kB / 总计 12.96 MB / WASM 资产 0。保留现有 chunk，未盲拆 core/platform/editor，循环 chunk/混合静态动态导入告警仍待有行为证据的专项优化。
+- 隔离 debug 空工作区开发基线：窗口句柄 1.446 s；进程树 11 个进程，约 6.3/16.1/31.2 s 的 working set 为 639/612/592 MiB。仅一次开发测量，不当 Release 指标或 workbench 交互就绪时间；高内存与包体需以相同环境的后续基线专项优化。

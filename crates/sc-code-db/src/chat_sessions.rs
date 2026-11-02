@@ -35,12 +35,13 @@ pub struct ChatMessage {
     pub created_at: i64,
 }
 
-/// Create a new chat session.
+/// Create a chat session idempotently so a lost IPC acknowledgement can be retried.
 pub fn create_session(db: &Database, session: &ChatSession) -> Result<()> {
     db.conn()
         .execute(
             "INSERT INTO chat_sessions (id, title, created_at, updated_at, model, mode, workspace, message_count, pinned, archived)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)
+             ON CONFLICT(id) DO NOTHING",
             params![
                 session.id,
                 session.title,
@@ -91,7 +92,11 @@ pub fn save_session(db: &Database, session: &ChatSession) -> Result<()> {
 
 /// Save a chat message, updating the parent session's `message_count` and `updated_at`.
 pub fn save_message(db: &Database, msg: &ChatMessage) -> Result<()> {
-    db.conn()
+    let tx = db
+        .conn()
+        .unchecked_transaction()
+        .context("begin save chat message")?;
+    tx
         .execute(
             "INSERT INTO chat_messages (id, session_id, role, content, tool_calls, tool_call_id, created_at)
              VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
@@ -110,16 +115,15 @@ pub fn save_message(db: &Database, msg: &ChatMessage) -> Result<()> {
         )
         .context("save chat message")?;
 
-    db.conn()
-        .execute(
-            "UPDATE chat_sessions
+    tx.execute(
+        "UPDATE chat_sessions
              SET message_count = (SELECT COUNT(*) FROM chat_messages WHERE session_id = ?1),
-                 updated_at = ?2
+                 updated_at = MAX(updated_at, ?2)
              WHERE id = ?1",
-            params![msg.session_id, msg.created_at],
-        )
-        .context("update session message_count")?;
-    Ok(())
+        params![msg.session_id, msg.created_at],
+    )
+    .context("update session message_count")?;
+    tx.commit().context("commit save chat message")
 }
 
 /// List recent sessions for a workspace, newest first.
@@ -170,7 +174,7 @@ pub fn load_messages(db: &Database, session_id: &str) -> Result<Vec<ChatMessage>
             "SELECT id, session_id, role, content, tool_calls, tool_call_id, created_at
              FROM chat_messages
              WHERE session_id = ?1
-             ORDER BY created_at ASC",
+             ORDER BY created_at ASC, id ASC",
         )
         .context("prepare load_messages")?;
 
@@ -573,5 +577,99 @@ mod tests {
         update_session_title(&db, "s1", "New title").unwrap();
         let sessions = list_sessions(&db, "/ws", 10).unwrap();
         assert_eq!(sessions[0].title, "New title");
+    }
+    fn regression_session(db: &Database) -> ChatSession {
+        let session = ChatSession {
+            id: "retry-session".into(),
+            title: "Original".into(),
+            created_at: 1,
+            updated_at: 1,
+            model: "test".into(),
+            mode: "agent".into(),
+            workspace: "/workspace".into(),
+            message_count: 0,
+            pinned: false,
+            archived: false,
+        };
+        create_session(db, &session).unwrap();
+        session
+    }
+
+    fn regression_message(id: &str, created_at: i64) -> ChatMessage {
+        ChatMessage {
+            id: id.into(),
+            session_id: "retry-session".into(),
+            role: "user".into(),
+            content: "test".into(),
+            tool_calls: None,
+            tool_call_id: None,
+            created_at,
+        }
+    }
+
+    #[test]
+    fn session_create_retry_preserves_existing_history() {
+        let db = test_db();
+        let mut session = regression_session(&db);
+        save_message(&db, &regression_message("message", 10)).unwrap();
+        session.title = "Stale retry".into();
+        create_session(&db, &session).unwrap();
+        let (title, count): (String, i64) = db
+            .conn()
+            .query_row(
+                "SELECT title, message_count FROM chat_sessions WHERE id = 'retry-session'",
+                [],
+                |r| Ok((r.get(0)?, r.get(1)?)),
+            )
+            .unwrap();
+        assert_eq!((title.as_str(), count), ("Original", 1));
+    }
+
+    #[test]
+    fn message_update_failure_rolls_back_insert() {
+        let db = test_db();
+        regression_session(&db);
+        db.conn().execute_batch("CREATE TRIGGER deny_session_update BEFORE UPDATE ON chat_sessions BEGIN SELECT RAISE(ABORT, 'test failure'); END;").unwrap();
+        assert!(save_message(&db, &regression_message("message", 10)).is_err());
+        let count: i64 = db
+            .conn()
+            .query_row("SELECT COUNT(*) FROM chat_messages", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(count, 0);
+    }
+
+    #[test]
+    fn older_message_retry_does_not_regress_session_time_or_count() {
+        let db = test_db();
+        regression_session(&db);
+        save_message(&db, &regression_message("new", 10)).unwrap();
+        save_message(&db, &regression_message("old", 2)).unwrap();
+        save_message(&db, &regression_message("old", 2)).unwrap();
+        let (updated, count): (i64, i64) = db
+            .conn()
+            .query_row(
+                "SELECT updated_at, message_count FROM chat_sessions WHERE id = 'retry-session'",
+                [],
+                |r| Ok((r.get(0)?, r.get(1)?)),
+            )
+            .unwrap();
+        assert_eq!((updated, count), (10, 2));
+    }
+    #[test]
+    fn same_second_messages_load_in_id_order_even_after_delayed_retry() {
+        let db = test_db();
+        regression_session(&db);
+        save_message(
+            &db,
+            &regression_message("session-msg-0001700000000124-00000001", 1700000000),
+        )
+        .unwrap();
+        save_message(
+            &db,
+            &regression_message("session-msg-0001700000000123-00000000", 1700000000),
+        )
+        .unwrap();
+        let loaded = load_messages(&db, "retry-session").unwrap();
+        assert!(loaded[0].id < loaded[1].id);
     }
 }

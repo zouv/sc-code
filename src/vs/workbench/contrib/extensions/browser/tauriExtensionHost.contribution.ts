@@ -1,3 +1,4 @@
+import { whenNativeWorkspaceTrustReady } from '../../../../../sc-code/security/workspaceTrust.contribution.js';
 import { Disposable, IDisposable } from '../../../../base/common/lifecycle.js';
 import { isRealExtensionHostEnabled } from '../../../services/extensions/browser/tauriProcessExtensionHost.js';
 import { registerWorkbenchContribution2, WorkbenchPhase } from '../../../common/contributions.js';
@@ -12,6 +13,7 @@ import { IEditorService } from '../../../services/editor/common/editorService.js
 import { IQuickInputService } from '../../../../platform/quickinput/common/quickInput.js';
 import { ILanguageConfigurationService } from '../../../../editor/common/languages/languageConfigurationRegistry.js';
 import type { LanguageConfiguration } from '../../../../editor/common/languages/languageConfiguration.js';
+import { IWorkspaceTrustManagementService } from '../../../../platform/workspace/common/workspaceTrust.js';
 import { IWorkspaceContextService } from '../../../../platform/workspace/common/workspace.js';
 import { IStatusbarService, StatusbarAlignment } from '../../../services/statusbar/browser/statusbar.js';
 import type { IStatusbarEntryAccessor } from '../../../services/statusbar/browser/statusbar.js';
@@ -185,6 +187,7 @@ class TauriExtensionHostContribution extends Disposable implements IWorkbenchCon
 
 	constructor(
 		@ILogService private readonly logService: ILogService,
+		@IWorkspaceTrustManagementService private readonly workspaceTrust: IWorkspaceTrustManagementService,
 		@ILanguageFeaturesService private readonly languageFeatures: ILanguageFeaturesService,
 		@IModelService private readonly modelService: IModelService,
 		@IMarkerService private readonly markerService: IMarkerService,
@@ -219,6 +222,7 @@ class TauriExtensionHostContribution extends Disposable implements IWorkbenchCon
 	}
 
 	private async _init(): Promise<void> {
+		await whenNativeWorkspaceTrustReady;
 		if ((globalThis as any).__SC_CODE_TAURI__ !== true) {
 			return;
 		}
@@ -239,6 +243,13 @@ class TauriExtensionHostContribution extends Disposable implements IWorkbenchCon
 				this._removeUninstalledExtension(event);
 			}
 		}));
+		this._register(this.workspaceTrust.onDidChangeTrust(trusted => {
+			if (trusted) { void this._startPlatform(); }
+		}));
+		if (this.workspaceTrust.isWorkspaceTrusted()) { await this._startPlatform(); }
+	}
+
+	private async _startPlatform(): Promise<void> {
 		try {
 			const bootstrap = await bootstrapExtensionPlatform();
 			this._applyBootstrap(bootstrap);

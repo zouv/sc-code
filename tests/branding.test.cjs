@@ -46,7 +46,9 @@ test('canonical profile and protocol are ScCode-owned',()=>{
   assert.match(read('src-tauri/src/app_dirs.rs'),/const PROFILE_DIR_NAME: &str = "ScCode"/);
   assert.match(read('src-tauri/extension-host/storage.cjs'),/APPDATA[^\n]+ScCode/);
   assert.doesNotMatch(read('src-tauri/src/app_dirs.rs'),/migration|legacy/i);
-  assert.match(read('index.html'),/urlProtocol: 'sc-code'/);
+  assert.match(read('index.html'),/<script src="\/workbench-globals\.js"><\/script>/);
+  assert.match(read('public/workbench-globals.js'),/urlProtocol: 'sc-code'/);
+  assert.doesNotMatch(read('index.html'),/<script(?![^>]*\bsrc=)[^>]*>[\s\S]*?<\/script>/);
   assert.match(read('src/bootstrap-globals.ts'),/version: '1.110.0'/);
 });
 test('font-independent SC editor SVG is connected to favicon and titlebar',()=>{

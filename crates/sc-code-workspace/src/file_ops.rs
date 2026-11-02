@@ -17,6 +17,7 @@ pub struct DirEntry {
     pub is_file: bool,
     pub is_symlink: bool,
     pub size: u64,
+    /// Milliseconds since Unix epoch.
     pub modified: u64,
 }
 
@@ -25,7 +26,9 @@ pub struct DirEntry {
 #[allow(clippy::struct_excessive_bools)]
 pub struct FileStat {
     pub size: u64,
+    /// Milliseconds since Unix epoch.
     pub modified: u64,
+    /// Milliseconds since Unix epoch.
     pub created: u64,
     pub is_dir: bool,
     pub is_file: bool,
@@ -223,23 +226,28 @@ pub fn read_dir(path: &Path) -> WorkspaceResult<Vec<DirEntry>> {
             path: entry.path(),
             source: e,
         })?;
-        let file_type = entry.file_type().map_err(|e| WorkspaceError::Io {
-            path: entry.path(),
-            source: e,
-        })?;
+        let is_symlink = metadata.file_type().is_symlink();
+        // Preserve the link bit but classify/size/time using its target. Dangling
+        // links remain discoverable as links with no file/directory bit.
+        let metadata = if is_symlink {
+            fs::metadata(entry.path()).unwrap_or(metadata)
+        } else {
+            metadata
+        };
+        let file_type = metadata.file_type();
 
         let modified = metadata
             .modified()
             .ok()
             .and_then(|t| t.duration_since(UNIX_EPOCH).ok())
-            .map_or(0, |d| d.as_secs());
+            .map_or(0, |d| u64::try_from(d.as_millis()).unwrap_or(u64::MAX));
 
         result.push(DirEntry {
             name: entry.file_name().to_string_lossy().to_string(),
             path: entry.path().to_string_lossy().to_string(),
             is_dir: file_type.is_dir(),
             is_file: file_type.is_file(),
-            is_symlink: file_type.is_symlink(),
+            is_symlink,
             size: metadata.len(),
             modified,
         });
@@ -263,17 +271,23 @@ pub fn stat(path: &Path) -> WorkspaceResult<FileStat> {
         source: e,
     })?;
 
+    let is_symlink = meta.file_type().is_symlink();
+    let meta = if is_symlink {
+        fs::metadata(path).unwrap_or(meta)
+    } else {
+        meta
+    };
     let modified = meta
         .modified()
         .ok()
         .and_then(|t| t.duration_since(UNIX_EPOCH).ok())
-        .map_or(0, |d| d.as_secs());
+        .map_or(0, |d| u64::try_from(d.as_millis()).unwrap_or(u64::MAX));
 
     let created = meta
         .created()
         .ok()
         .and_then(|t| t.duration_since(UNIX_EPOCH).ok())
-        .map_or(0, |d| d.as_secs());
+        .map_or(0, |d| u64::try_from(d.as_millis()).unwrap_or(u64::MAX));
 
     Ok(FileStat {
         size: meta.len(),
@@ -281,7 +295,7 @@ pub fn stat(path: &Path) -> WorkspaceResult<FileStat> {
         created,
         is_dir: meta.is_dir(),
         is_file: meta.file_type().is_file(),
-        is_symlink: meta.file_type().is_symlink(),
+        is_symlink,
         readonly: meta.permissions().readonly(),
     })
 }
@@ -305,6 +319,45 @@ pub fn is_binary_file(path: &Path) -> WorkspaceResult<bool> {
 mod tests {
     use super::*;
     use tempfile::TempDir;
+
+    #[test]
+    fn stat_preserves_subsecond_modification_time() {
+        let tmp = TempDir::new().unwrap();
+        let p = tmp.path().join("mtime.txt");
+        fs::write(&p, "one").unwrap();
+        let file = fs::OpenOptions::new().write(true).open(&p).unwrap();
+        let time = UNIX_EPOCH + std::time::Duration::from_millis(1_700_000_000_123);
+        file.set_times(fs::FileTimes::new().set_modified(time))
+            .unwrap();
+        assert_eq!(stat(&p).unwrap().modified, 1_700_000_000_123);
+    }
+
+    #[test]
+    fn directory_links_have_both_link_and_target_type() {
+        let tmp = TempDir::new().unwrap();
+        let target = tmp.path().join("target");
+        fs::create_dir(&target).unwrap();
+        let link = tmp.path().join("link");
+        #[cfg(windows)]
+        assert!(std::process::Command::new("cmd")
+            .args(["/c", "mklink", "/J"])
+            .arg(&link)
+            .arg(&target)
+            .output()
+            .unwrap()
+            .status
+            .success());
+        #[cfg(unix)]
+        std::os::unix::fs::symlink(&target, &link).unwrap();
+        let meta = stat(&link).unwrap();
+        assert!(meta.is_symlink && meta.is_dir);
+        let entry = read_dir(tmp.path())
+            .unwrap()
+            .into_iter()
+            .find(|e| e.name == "link")
+            .unwrap();
+        assert!(entry.is_symlink && entry.is_dir);
+    }
 
     #[test]
     fn write_flags_and_create_never_destroy_existing_files() {

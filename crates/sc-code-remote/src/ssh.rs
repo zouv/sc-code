@@ -6,7 +6,6 @@
 
 use std::collections::HashMap;
 use std::fmt::Write;
-use std::io::BufRead;
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -16,7 +15,6 @@ use anyhow::{bail, Context, Result};
 use russh::client;
 use russh_keys::key;
 use serde::{Deserialize, Serialize};
-use tokio::io::AsyncReadExt;
 use tokio::net::TcpListener;
 use tokio::sync::Mutex;
 
@@ -329,52 +327,54 @@ pub enum KnownHostStatus {
     },
 }
 
-/// Check a host key against `~/.ssh/known_hosts`.
-pub fn check_known_host(
+/// Check a host key against the OpenSSH known_hosts file. Unknown keys are not
+/// enrolled automatically; users must verify/enroll them with their SSH client.
+pub fn check_known_host(hostname: &str, port: u16, server_key: &key::PublicKey) -> KnownHostStatus {
+    let fingerprint = format!("SHA256:{}", server_key.fingerprint());
+    let Some(home) = dirs::home_dir() else {
+        return KnownHostStatus::Unknown { fingerprint };
+    };
+    check_known_host_at(hostname, port, server_key, &home.join(".ssh/known_hosts"))
+}
+
+fn check_known_host_at(
     hostname: &str,
     port: u16,
-    _server_key: &key::PublicKey,
+    server_key: &key::PublicKey,
+    path: &Path,
 ) -> KnownHostStatus {
-    let path = match dirs::home_dir() {
-        Some(h) => h.join(".ssh/known_hosts"),
-        None => {
-            return KnownHostStatus::Unknown {
-                fingerprint: "unknown".into(),
-            }
-        }
+    let fingerprint = format!("SHA256:{}", server_key.fingerprint());
+    // Fail closed on revoked keys, including when an ordinary entry for the
+    // same key remains elsewhere in the file. Never silently ignore revocation.
+    let Ok(contents) = std::fs::read_to_string(path) else {
+        return KnownHostStatus::Unknown { fingerprint };
     };
-
-    let target = if port == 22 {
-        hostname.to_string()
-    } else {
-        format!("[{hostname}]:{port}")
-    };
-
-    let fp = "SHA256:<key>".to_string();
-
-    let Ok(file) = std::fs::File::open(&path) else {
-        return KnownHostStatus::Unknown { fingerprint: fp };
-    };
-
-    for line in std::io::BufReader::new(file).lines().map_while(Result::ok) {
-        let line = line.trim().to_string();
-        if line.is_empty() || line.starts_with('#') {
-            continue;
-        }
-        let parts: Vec<&str> = line.splitn(3, ' ').collect();
-        if parts.len() < 3 {
-            continue;
-        }
-        let hosts = parts[0];
-        if hosts
-            .split(',')
-            .any(|h| h.trim() == target || h.trim() == hostname)
-        {
-            return KnownHostStatus::Trusted;
-        }
+    if contents.lines().any(|line| {
+        let parts: Vec<_> = line.split_whitespace().collect();
+        parts.first() == Some(&"@revoked")
+            && parts
+                .get(3)
+                .and_then(|value| russh_keys::parse_public_key_base64(value).ok())
+                .as_ref()
+                == Some(server_key)
+    }) {
+        return KnownHostStatus::Unknown { fingerprint };
     }
-
-    KnownHostStatus::Unknown { fingerprint: fp }
+    // russh handles comma-separated and hashed hostnames and port-qualified names.
+    // Unsupported/malformed entries must never imply trust.
+    let Ok(keys) = russh_keys::known_hosts::known_host_keys_path(hostname, port, path) else {
+        return KnownHostStatus::Unknown { fingerprint };
+    };
+    if keys.iter().any(|(_, key)| key == server_key) {
+        return KnownHostStatus::Trusted;
+    }
+    if let Some((_, old)) = keys.iter().find(|(_, key)| key.name() == server_key.name()) {
+        return KnownHostStatus::Changed {
+            old_fingerprint: format!("SHA256:{}", old.fingerprint()),
+            new_fingerprint: fingerprint,
+        };
+    }
+    KnownHostStatus::Unknown { fingerprint }
 }
 
 // ---------------------------------------------------------------------------
@@ -477,7 +477,21 @@ pub fn parse_ssh_config(path: &Path) -> Result<Vec<SshHostConfig>> {
 // Client handler
 // ---------------------------------------------------------------------------
 
-pub struct ClientHandler;
+pub struct ClientHandler {
+    host: String,
+    port: u16,
+    known_hosts: Option<PathBuf>,
+}
+
+impl ClientHandler {
+    fn new(host: &str, port: u16) -> Self {
+        Self {
+            host: host.to_owned(),
+            port,
+            known_hosts: dirs::home_dir().map(|home| home.join(".ssh/known_hosts")),
+        }
+    }
+}
 
 #[async_trait::async_trait]
 impl client::Handler for ClientHandler {
@@ -485,9 +499,14 @@ impl client::Handler for ClientHandler {
 
     async fn check_server_key(
         &mut self,
-        _server_public_key: &key::PublicKey,
+        server_public_key: &key::PublicKey,
     ) -> Result<bool, Self::Error> {
-        Ok(true)
+        match self.known_hosts.as_ref().map(|path| check_known_host_at(&self.host, self.port, server_public_key, path))
+            .unwrap_or_else(|| KnownHostStatus::Unknown { fingerprint: format!("SHA256:{}", server_public_key.fingerprint()) }) {
+            KnownHostStatus::Trusted => Ok(true),
+            KnownHostStatus::Unknown { fingerprint } => bail!("Untrusted SSH host {}:{} ({fingerprint}). Verify and enroll its key in ~/.ssh/known_hosts with a trusted SSH client before connecting.", self.host, self.port),
+            KnownHostStatus::Changed { old_fingerprint, new_fingerprint } => bail!("SSH host key changed for {}:{}: expected {old_fingerprint}, received {new_fingerprint}. Connection refused.", self.host, self.port),
+        }
     }
 }
 
@@ -546,7 +565,7 @@ impl SshConnectionPool {
         user: &str,
     ) -> Result<client::Handle<ClientHandler>> {
         let config = Arc::new(client::Config::default());
-        let handler = ClientHandler;
+        let handler = ClientHandler::new(host, port);
         let mut session = client::connect(config, (host, port), handler)
             .await
             .with_context(|| format!("SSH connect to {host}:{port}"))?;
@@ -776,20 +795,25 @@ impl SshTransport {
         let full_cmd = format!("{env_prefix}{command}");
 
         let session = self.session.lock().await;
-        let channel = session.channel_open_session().await?;
+        let mut channel = session.channel_open_session().await?;
         channel.exec(true, full_cmd.as_bytes()).await?;
         drop(session);
 
         let mut stdout = Vec::new();
-        let stderr = Vec::new();
-        let exit_code: i32 = -1;
-
-        let mut stream = channel.into_stream();
-        let mut buf = [0u8; 8192];
-        loop {
-            match stream.read(&mut buf).await {
-                Ok(0) | Err(_) => break,
-                Ok(n) => stdout.extend_from_slice(&buf[..n]),
+        let mut stderr = Vec::new();
+        let mut exit_code = -1;
+        // into_stream() discards extended data and exit-status requests. Keep
+        // the channel protocol, including status messages that follow EOF.
+        while let Some(message) = channel.wait().await {
+            match message {
+                russh::ChannelMsg::Data { data } => stdout.extend_from_slice(&data),
+                russh::ChannelMsg::ExtendedData { data, ext: 1 } => stderr.extend_from_slice(&data),
+                russh::ChannelMsg::ExitStatus { exit_status } => {
+                    exit_code = i32::try_from(exit_status).context("SSH exit status exceeds i32")?;
+                }
+                russh::ChannelMsg::Failure => bail!("SSH server rejected exec request"),
+                russh::ChannelMsg::Close => break,
+                _ => {}
             }
         }
 
@@ -1088,12 +1112,76 @@ Host *.example.com
         assert!(config.resolve("staging").is_none());
     }
 
+    #[tokio::test]
+    async fn handshake_refuses_unknown_changed_and_revoked_keys() {
+        use russh::client::Handler;
+        use russh_keys::PublicKeyBase64;
+        let tmp = tempfile::tempdir().unwrap();
+        let path = tmp.path().join("known_hosts");
+        let key = key::KeyPair::generate_ed25519().clone_public_key().unwrap();
+        let changed = key::KeyPair::generate_ed25519().clone_public_key().unwrap();
+        let mut handler = ClientHandler {
+            host: "example.com".into(),
+            port: 22,
+            known_hosts: Some(path.clone()),
+        };
+        assert!(handler.check_server_key(&key).await.is_err());
+        let record = format!("example.com {} {}\n", key.name(), key.public_key_base64());
+        std::fs::write(&path, &record).unwrap();
+        assert!(handler.check_server_key(&key).await.unwrap());
+        assert!(handler.check_server_key(&changed).await.is_err());
+        std::fs::write(&path, format!("{record}@revoked {record}")).unwrap();
+        assert!(handler.check_server_key(&key).await.is_err());
+        let hashed_key = russh_keys::parse_public_key_base64(
+            "AAAAC3NzaC1lZDI1NTE5AAAAILIG2T/B0l0gaqj3puu510tu9N1OkQ4znY3LYuEm5zCF",
+        )
+        .unwrap();
+        std::fs::write(&path, "|1|O33ESRMWPVkMYIwJ1Uw+n877jTo=|nuuC5vEqXlEZ/8BXQR7m619W6Ak= ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILIG2T/B0l0gaqj3puu510tu9N1OkQ4znY3LYuEm5zCF\n").unwrap();
+        assert!(handler.check_server_key(&hashed_key).await.unwrap());
+    }
+
     #[test]
-    fn known_host_unknown() {
-        let fake_key =
-            key::PublicKey::Ed25519(russh_keys::key::ed25519::PublicKey::from_bytes(&[0u8; 32]));
-        let status = check_known_host("nonexistent.test", 22, &fake_key);
-        matches!(status, KnownHostStatus::Unknown { .. });
+    fn known_hosts_compare_keys_and_ports() {
+        use russh_keys::PublicKeyBase64;
+        let tmp = tempfile::tempdir().unwrap();
+        let path = tmp.path().join("known_hosts");
+        let key = key::KeyPair::generate_ed25519().clone_public_key().unwrap();
+        let changed = key::KeyPair::generate_ed25519().clone_public_key().unwrap();
+        assert!(matches!(
+            check_known_host_at("example.com", 22, &key, &path),
+            KnownHostStatus::Unknown { .. }
+        ));
+        std::fs::write(
+            &path,
+            format!(
+                "example.com {} {}\n[example.com]:2222 {} {}\n",
+                key.name(),
+                key.public_key_base64(),
+                changed.name(),
+                changed.public_key_base64()
+            ),
+        )
+        .unwrap();
+        assert!(matches!(
+            check_known_host_at("example.com", 22, &key, &path),
+            KnownHostStatus::Trusted
+        ));
+        assert!(matches!(
+            check_known_host_at("example.com", 22, &changed, &path),
+            KnownHostStatus::Changed { .. }
+        ));
+        assert!(matches!(
+            check_known_host_at("example.com", 2222, &key, &path),
+            KnownHostStatus::Changed { .. }
+        ));
+        assert!(matches!(
+            check_known_host_at("example.com", 2222, &changed, &path),
+            KnownHostStatus::Trusted
+        ));
+        assert!(matches!(
+            check_known_host_at("example.com", 2223, &key, &path),
+            KnownHostStatus::Unknown { .. }
+        ));
     }
 
     #[test]
@@ -1101,4 +1189,83 @@ Host *.example.com
         let pool = SshConnectionPool::new(300);
         assert_eq!(pool.max_idle, Duration::from_secs(300));
     }
+
+    struct LoopbackSshServer {
+        auth_calls: Arc<std::sync::atomic::AtomicUsize>,
+    }
+    #[async_trait::async_trait]
+    impl russh::server::Handler for LoopbackSshServer {
+        type Error = anyhow::Error;
+        async fn auth_password(&mut self, user: &str, password: &str) -> Result<russh::server::Auth> {
+            assert_eq!(user, "synthetic-user");
+            assert_eq!(password, "synthetic-password");
+            self.auth_calls.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+            Ok(russh::server::Auth::Accept)
+        }
+        async fn channel_open_session(&mut self, _: russh::Channel<russh::server::Msg>, _: &mut russh::server::Session) -> Result<bool> {
+            Ok(true)
+        }
+        async fn exec_request(&mut self, channel: russh::ChannelId, data: &[u8], session: &mut russh::server::Session) -> Result<()> {
+            assert!(data == b"synthetic command" || data == b"synthetic failure");
+            session.channel_success(channel);
+            session.data(channel, russh::CryptoVec::from_slice(b"synthetic SSH output"));
+            session.extended_data(channel, 1, russh::CryptoVec::from_slice(b"synthetic SSH stderr"));
+            session.eof(channel);
+            session.exit_status_request(channel, if data == b"synthetic failure" { 7 } else { 0 });
+            session.close(channel);
+            Ok(())
+        }
+    }
+
+    #[tokio::test]
+    async fn loopback_handshake_checks_real_server_key_before_authentication() {
+        use russh_keys::PublicKeyBase64;
+        use std::sync::atomic::{AtomicUsize, Ordering};
+        let server_key = key::KeyPair::generate_ed25519();
+        let wrong_key = key::KeyPair::generate_ed25519();
+        let key_text = server_key.clone_public_key().unwrap().public_key_base64();
+        let wrong_text = wrong_key.clone_public_key().unwrap().public_key_base64();
+        for (known_text, should_connect) in [(None, false), (Some(&key_text), true), (Some(&wrong_text), false)] {
+            let listener = TcpListener::bind(("127.0.0.1", 0)).await.unwrap();
+            let port = listener.local_addr().unwrap().port();
+            let known_hosts = NamedTempFile::new().unwrap();
+            if let Some(text) = known_text {
+                std::fs::write(known_hosts.path(), format!("[127.0.0.1]:{port} ssh-ed25519 {text}\n")).unwrap();
+            }
+            let auth_calls = Arc::new(AtomicUsize::new(0));
+            let server_auth = Arc::clone(&auth_calls);
+            let config = Arc::new(russh::server::Config {
+                keys: vec![server_key.clone()],
+                auth_rejection_time: Duration::ZERO,
+                ..Default::default()
+            });
+            let server = tokio::spawn(async move {
+                let (stream, _) = listener.accept().await.unwrap();
+                if let Ok(session) = russh::server::run_stream(config, stream, LoopbackSshServer { auth_calls: server_auth }).await {
+                    let _ = session.await;
+                }
+            });
+            let handler = ClientHandler { host: "127.0.0.1".into(), port, known_hosts: Some(known_hosts.path().to_owned()) };
+            let connected = tokio::time::timeout(Duration::from_secs(5), client::connect(Arc::new(client::Config::default()), ("127.0.0.1", port), handler)).await.unwrap();
+            assert_eq!(connected.is_ok(), should_connect);
+            if let Ok(mut handle) = connected {
+                assert!(handle.authenticate_password("synthetic-user", "synthetic-password").await.unwrap());
+                let transport = SshTransport {
+                    session: Arc::new(Mutex::new(handle)), host: "127.0.0.1".into(), port,
+                    user: "synthetic-user".into(), env_vars: Arc::new(Mutex::new(HashMap::new())), keepalive_handle: None,
+                };
+                let output = tokio::time::timeout(Duration::from_secs(5), transport.exec("synthetic command")).await.unwrap().unwrap();
+                assert_eq!(output.stdout, "synthetic SSH output");
+                assert_eq!(output.exit_code, 0);
+                assert_eq!(output.stderr, "synthetic SSH stderr");
+                let failed = tokio::time::timeout(Duration::from_secs(5), transport.exec("synthetic failure")).await.unwrap().unwrap();
+                assert_eq!(failed.exit_code, 7);
+                assert_eq!(failed.stderr, "synthetic SSH stderr");
+            }
+            assert_eq!(auth_calls.load(Ordering::SeqCst), usize::from(should_connect));
+            server.abort();
+            let _ = server.await;
+        }
+    }
+
 }

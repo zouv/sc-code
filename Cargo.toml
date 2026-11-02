@@ -11,6 +11,7 @@ members = [
   "crates/sc-code-extension-api",
   "crates/sc-code-theme",
   "crates/sc-code-keymap",
+  "crates/sc-code-terminal",
   "crates/sc-code-settings",
   "crates/sc-code-db",
   "crates/sc-code-remote",

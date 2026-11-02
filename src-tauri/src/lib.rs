@@ -1,8 +1,9 @@
 mod app_dirs;
 mod commands;
-mod server;
 mod ipc_guard;
+mod workspace_permissions;
 mod recycle_bin;
+mod server;
 mod taskbar;
 mod webview_host;
 
@@ -489,6 +490,8 @@ pub fn run() {
     }
     let app_commands = handler(tauri::generate_handler![
             webview_host_origin,
+            workspace_permissions::workspace_set_trust,
+            workspace_permissions::workspace_reset_trust,
             // AI Agent
             commands::agent::agent_execute_tool,
             // Local account, providers, and the local agent server
@@ -858,6 +861,7 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_shell::init())
         .manage(webview_host)
+        .manage(workspace_permissions::WorkspacePermissions::default())
         .manage(AuthState::new())
         .manage(UpdateManagerState::new())
         .manage(Arc::new(commands::extensions::MarketplaceClientState::new()))
@@ -958,24 +962,10 @@ pub fn run() {
             }
 
             let sc_code_db_path = app_data.join("sc_code_state.db");
-            // A damaged state DB is moved aside (never deleted) before a fresh one is created;
-            // if it cannot be moved (e.g. locked), startup fails and the file stays untouched.
-            let sc_code_db = match sc_code_db::Database::open(&sc_code_db_path) {
-                Ok(db) => db,
-                Err(e) => {
-                    let stamp = std::time::SystemTime::now()
-                        .duration_since(std::time::UNIX_EPOCH)
-                        .map(|d| d.as_secs())
-                        .unwrap_or_default();
-                    let preserved = sc_code_db_path.with_extension(format!("db.corrupt-{stamp}"));
-                    std::fs::rename(&sc_code_db_path, &preserved).map_err(|rename_err| {
-                        format!("Cannot open state database {} ({e}) and cannot preserve it ({rename_err}). Data has been kept; close other instances and retry.", sc_code_db_path.display())
+            // Never replace user state on open/migration/lock errors. Recovery is explicit.
+            let sc_code_db = sc_code_db::Database::open(&sc_code_db_path).map_err(|error| {
+                format!("Cannot open state database {} ({error:#}). Data has been kept; close other instances or use a compatible version and retry.", sc_code_db_path.display())
                     })?;
-                    log::error!("state DB open failed ({e}); preserved as {} and recreated", preserved.display());
-                    sc_code_db::Database::open(&sc_code_db_path)
-                        .map_err(|e| format!("failed to initialize sc-code-db state database: {e}"))?
-                }
-            };
             app.manage(Arc::new(ScCodeDbState::new(sc_code_db)));
 
             if let Err(err) = commands::updater::initialize(app.handle()) {
@@ -997,6 +987,15 @@ pub fn run() {
             if cfg!(debug_assertions) {
                 app.handle().plugin(
                     tauri_plugin_log::Builder::default()
+                        // Keep logs under the same profile as databases/WebView data.
+                        // LogDir uses OS Known Folders and bypasses SC_CODE_HOME.
+                        .targets([
+                            tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Stdout),
+                            tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Folder {
+                                path: app_data.join("logs"),
+                                file_name: None,
+                            }),
+                        ])
                         .level(log::LevelFilter::Info)
                         .build(),
                 )?;
@@ -1018,6 +1017,16 @@ pub fn run() {
             Ok(())
         })
         .on_window_event(|window, event| {
+            if let tauri::WindowEvent::Destroyed = event {
+                if let Some(state) = window.app_handle().try_state::<workspace_permissions::WorkspacePermissions>() {
+                    state.remove(window.label());
+                }
+                if let Some(host) = window.app_handle().try_state::<Arc<commands::real_ext_host::RealExtensionHost>>() {
+                    let host = Arc::clone(host.inner());
+                    let owner = window.label().to_owned();
+                    tauri::async_runtime::spawn_blocking(move || host.shutdown_window(&owner));
+                }
+            }
             // Let the workbench confirm unsaved changes before a window really closes.
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                 let approved = commands::window::take_close_approval(window.label());
@@ -1046,6 +1055,12 @@ pub fn run() {
                 let command = invoke.message.command().to_string();
                 log::warn!("rejected IPC command '{command}' from an untrusted origin");
                 invoke.resolver.reject(format!("Command {command} is not available to this origin"));
+                return true;
+            }
+            let webview = invoke.message.webview();
+            let permissions = webview.state::<workspace_permissions::WorkspacePermissions>();
+            if !permissions.allows(webview.label(), invoke.message.command()) {
+                invoke.resolver.reject("This operation requires a trusted workspace. Use Manage Workspace Trust to authorize it.");
                 return true;
             }
             app_commands(invoke)

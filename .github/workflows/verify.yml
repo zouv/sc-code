@@ -19,6 +19,8 @@ jobs:
       - run: npm test
       - run: npm run test:transport
       - run: npm run typecheck
+      - run: npm run lint
+      - run: npm audit --audit-level=moderate
       - run: npm run ext-host:build
       - run: npm run test:ext-host
       - run: npm run build
@@ -34,7 +36,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: rustup toolchain install stable --profile minimal
-      - run: cargo +stable test -p sc-code-runtime -p sc-code-auth -p sc-code-workspace -p sc-code-agent -p sc-code-settings -p sc-code-extensions
+      - run: cargo +stable test -p sc-code-runtime -p sc-code-auth -p sc-code-workspace -p sc-code-agent -p sc-code-settings -p sc-code-extensions -p sc-code-db -p sc-code-remote -p sc-code-lsp -p sc-code-syntax -p sc-code-context -p sc-code-terminal
   native:
     runs-on: windows-latest
     env:

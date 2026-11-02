@@ -159,19 +159,13 @@ export class TauriFileSystemProvider extends Disposable implements IFileSystemPr
 			throw TauriFileSystemProvider.toError(err, resource, FileSystemProviderErrorCode.FileNotFound);
 		}
 
-		let type: FileType;
-		if (raw.is_dir) {
-			type = FileType.Directory;
-		} else if (raw.is_symlink) {
-			type = FileType.SymbolicLink;
-		} else {
-			type = FileType.File;
-		}
+		const type = (raw.is_dir ? FileType.Directory : raw.is_file ? FileType.File : FileType.Unknown)
+			| (raw.is_symlink ? FileType.SymbolicLink : 0);
 
 		return {
 			type,
-			mtime: raw.modified * 1000,
-			ctime: raw.created * 1000,
+			mtime: raw.modified,
+			ctime: raw.created,
 			size: raw.size,
 			permissions: raw.readonly ? FilePermission.Readonly : undefined
 		};
@@ -191,14 +185,8 @@ export class TauriFileSystemProvider extends Disposable implements IFileSystemPr
 		}
 
 		return entries.map(e => {
-			let ft: FileType;
-			if (e.is_dir) {
-				ft = FileType.Directory;
-			} else if (e.is_symlink) {
-				ft = FileType.SymbolicLink;
-			} else {
-				ft = FileType.File;
-			}
+			const ft = (e.is_dir ? FileType.Directory : e.is_file ? FileType.File : FileType.Unknown)
+				| (e.is_symlink ? FileType.SymbolicLink : 0);
 			return [e.name, ft] as [string, FileType];
 		});
 	}

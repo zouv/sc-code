@@ -249,21 +249,22 @@ fn detect_absolute_paths(text: &str, row: u16, links: &mut Vec<TerminalLink>) {
     let mut search_from = 0;
     while search_from < text.len() {
         let remaining = &text[search_from..];
-        let start = if cfg!(target_os = "windows") {
-            remaining
-                .find(|c: char| c.is_ascii_alphabetic())
-                .and_then(|i| {
-                    if remaining.get(i + 1..i + 3) == Some(":\\") {
-                        Some(i)
-                    } else {
-                        None
-                    }
-                })
-        } else {
-            remaining
-                .find('/')
-                .filter(|&i| i == 0 || !remaining.as_bytes()[i - 1].is_ascii_alphanumeric())
-        };
+        // Logs may come from SSH/containers, so recognize both path syntaxes
+        // regardless of the local platform. Search every candidate, not just the
+        // first alphabetic character (which is usually part of the log prefix).
+        let start = remaining.char_indices().find_map(|(i, c)| {
+            let boundary = i == 0
+                || remaining[..i].chars().next_back().is_some_and(|prev| {
+                    prev.is_whitespace() || matches!(prev, '\'' | '"' | '(' | '[' | '=')
+                });
+            if !boundary {
+                return None;
+            }
+            let unix = c == '/' && !remaining[i..].starts_with("//");
+            let drive = c.is_ascii_alphabetic()
+                && matches!(remaining.get(i + 1..i + 3), Some(":\\") | Some(":/"));
+            (unix || drive).then_some(i)
+        });
 
         let Some(rel_start) = start else {
             break;
@@ -398,6 +399,32 @@ mod tests {
             .collect();
         assert!(!path_links.is_empty());
         assert!(path_links[0].url.starts_with("/usr/local/bin/app.rs"));
+    }
+
+    #[test]
+    fn detects_windows_and_unix_paths_in_remote_logs() {
+        let text = r"Error in C:\src\main.rs:42 and D:/src/lib.rs then /tmp/main.rs";
+        let links = detect_links(&cells_from_str(text));
+        let paths: Vec<_> = links
+            .iter()
+            .filter(|l| l.kind == LinkKind::FilePath)
+            .map(|l| l.url.as_str())
+            .collect();
+        assert_eq!(paths, [r"C:\src\main.rs", "D:/src/lib.rs", "/tmp/main.rs"]);
+    }
+    #[test]
+    fn unicode_prefix_and_url_do_not_confuse_path_detection() {
+        let links = detect_links(&cells_from_str(
+            "错误日志 /tmp/main.rs https://example.com/path.rs",
+        ));
+        assert_eq!(
+            links
+                .iter()
+                .filter(|l| l.kind == LinkKind::FilePath)
+                .count(),
+            1
+        );
+        assert_eq!(links.iter().filter(|l| l.kind == LinkKind::Url).count(), 1);
     }
 
     #[test]

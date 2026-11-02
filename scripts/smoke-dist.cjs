@@ -42,6 +42,21 @@ async function main() {
 	}
 
 	const page = await browser.newPage();
+	const cspConfig = JSON.parse(fs.readFileSync(path.join(root, 'src-tauri/tauri.conf.json'), 'utf8')).app.security.csp;
+	if (!cspConfig) { throw new Error('Production CSP must not be disabled'); }
+	const csp = typeof cspConfig === 'string' ? cspConfig : Object.entries(cspConfig).map(([key, value]) => `${key} ${Array.isArray(value) ? value.join(' ') : value}`).join('; ');
+	await page.route('**/*', async route => {
+		if (route.request().isNavigationRequest() && new URL(route.request().url()).origin === new URL(url).origin) {
+			const response = await route.fetch();
+			await route.fulfill({ response, headers: { ...response.headers(), 'content-security-policy': csp } });
+		} else { await route.continue(); }
+	});
+	await page.addInitScript(() => {
+		globalThis.__cspViolations = [];
+		document.addEventListener('securitypolicyviolation', event => {
+			globalThis.__cspViolations.push({ directive: event.effectiveDirective, blocked: event.blockedURI, source: event.sourceFile, line: event.lineNumber });
+		});
+	});
 	const fatal = [];
 	page.on('pageerror', error => {
 		// Outside Tauri the bridge calls fail with "reading 'invoke'"; those are
@@ -63,8 +78,26 @@ async function main() {
 		marks: performance.getEntriesByType('mark').map(mark => mark.name),
 		title: document.title,
 	}));
+	const cspChecks = await page.evaluate(async () => {
+		const script = document.createElement('script');
+		script.textContent = 'globalThis.__inlineExecuted = true';
+		document.head.appendChild(script);
+		await new Promise(resolve => setTimeout(resolve, 100));
+		const blockedInline = globalThis.__inlineExecuted !== true;
+		const violations = [...globalThis.__cspViolations];
+		// Blob workers and WASM are required by editor tokenization.
+		const worker = new Worker(URL.createObjectURL(new Blob(['postMessage(7)'], { type: 'text/javascript' })));
+		const workerValue = await Promise.race([new Promise(resolve => worker.onmessage = event => resolve(event.data)), new Promise(resolve => setTimeout(() => resolve('timeout'), 3000))]);
+		worker.terminate();
+		await WebAssembly.compile(new Uint8Array([0, 97, 115, 109, 1, 0, 0, 0]));
+		return { blockedInline, workerValue, violations };
+	});
 	await browser.close();
 	await server.close();
+	console.log('[smoke:dist] CSP', JSON.stringify(cspChecks));
+	if (!cspChecks.blockedInline || cspChecks.workerValue !== 7 || cspChecks.violations.some(event => /script-src|worker-src|connect-src/.test(event.directive) && event.blocked !== 'inline')) {
+		fatal.push('CSP security/worker checks failed');
+	}
 
 	const started = state.marks.some(name => name === 'code/didStartWorkbench');
 	console.log(`[smoke:dist] body=${state.body} title=${state.title} didStartWorkbench=${started}`);

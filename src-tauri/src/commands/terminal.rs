@@ -49,6 +49,9 @@ impl FlowControl {
     }
 
     fn close(&self) {
+        // Share the condition mutex with the waiter so close cannot notify in
+        // the gap between its closed check and entering Condvar::wait_timeout.
+        let _guard = self.unacked.lock().unwrap_or_else(|err| err.into_inner());
         self.closed.store(true, Ordering::Relaxed);
         self.resume.notify_all();
     }
@@ -58,8 +61,13 @@ impl FlowControl {
         let Ok(mut unacked) = self.unacked.lock() else {
             return;
         };
+        if *unacked <= HIGH_WATERMARK_CHARS {
+            return;
+        }
         let deadline = Instant::now() + max_pause;
-        while *unacked > HIGH_WATERMARK_CHARS && !self.closed.load(Ordering::Relaxed) {
+        // Once paused, stay paused until the low watermark, including after
+        // spurious notifications. The high watermark only decides when to start.
+        while *unacked > LOW_WATERMARK_CHARS && !self.closed.load(Ordering::Relaxed) {
             let Some(remaining) = deadline.checked_duration_since(Instant::now()) else {
                 *unacked = 0;
                 return;
@@ -118,7 +126,9 @@ impl Utf8Stream {
 #[derive(Debug, Clone, Serialize)]
 #[serde(tag = "kind", rename_all = "camelCase")]
 pub enum TerminalEvent {
-    Data { data: String },
+    Data {
+        data: String,
+    },
     Exit {
         #[serde(rename = "exitCode")]
         exit_code: i32,
@@ -851,22 +861,73 @@ mod stream_tests {
         assert_eq!(stream.finish(), "\u{FFFD}");
     }
 
+    fn start_flow_waiter(
+        flow: &Arc<FlowControl>,
+    ) -> (std::thread::JoinHandle<()>, std::sync::mpsc::Receiver<()>) {
+        let (ready_tx, ready_rx) = std::sync::mpsc::channel();
+        let (done_tx, done_rx) = std::sync::mpsc::channel();
+        let flow = Arc::clone(flow);
+        let waiter = std::thread::spawn(move || {
+            ready_tx.send(()).unwrap();
+            flow.wait_for_capacity(Duration::from_secs(10));
+            done_tx.send(()).unwrap();
+        });
+        ready_rx.recv_timeout(Duration::from_secs(5)).unwrap();
+        (waiter, done_rx)
+    }
+
     #[test]
     fn flow_control_pauses_until_acknowledged() {
+        use std::sync::mpsc::RecvTimeoutError;
+
         let flow = Arc::new(FlowControl::default());
         flow.sent(HIGH_WATERMARK_CHARS + 1);
-        let waiter = {
-            let flow = Arc::clone(&flow);
-            std::thread::spawn(move || {
-                let started = Instant::now();
-                flow.wait_for_capacity(Duration::from_secs(10));
-                started.elapsed()
-            })
-        };
-        std::thread::sleep(Duration::from_millis(100));
+        let (waiter, done) = start_flow_waiter(&flow);
+        assert_eq!(
+            done.recv_timeout(Duration::from_millis(100)),
+            Err(RecvTimeoutError::Timeout)
+        );
         flow.ack(HIGH_WATERMARK_CHARS);
-        let waited = waiter.join().unwrap();
-        assert!(waited >= Duration::from_millis(90) && waited < Duration::from_secs(5));
+        done.recv_timeout(Duration::from_secs(5)).unwrap();
+        waiter.join().unwrap();
+    }
+
+    #[test]
+    fn flow_control_stays_paused_above_low_watermark() {
+        use std::sync::mpsc::RecvTimeoutError;
+
+        let flow = Arc::new(FlowControl::default());
+        flow.sent(HIGH_WATERMARK_CHARS + 1);
+        let (waiter, done) = start_flow_waiter(&flow);
+        assert_eq!(
+            done.recv_timeout(Duration::from_millis(100)),
+            Err(RecvTimeoutError::Timeout)
+        );
+        flow.ack(1);
+        flow.resume.notify_all(); // Simulate a spurious wakeup after partial ACK.
+        assert_eq!(
+            done.recv_timeout(Duration::from_millis(100)),
+            Err(RecvTimeoutError::Timeout)
+        );
+        flow.ack(HIGH_WATERMARK_CHARS);
+        done.recv_timeout(Duration::from_secs(5)).unwrap();
+        waiter.join().unwrap();
+    }
+
+    #[test]
+    fn flow_control_close_wakes_a_paused_reader() {
+        use std::sync::mpsc::RecvTimeoutError;
+
+        let flow = Arc::new(FlowControl::default());
+        flow.sent(HIGH_WATERMARK_CHARS + 1);
+        let (waiter, done) = start_flow_waiter(&flow);
+        assert_eq!(
+            done.recv_timeout(Duration::from_millis(100)),
+            Err(RecvTimeoutError::Timeout)
+        );
+        flow.close();
+        done.recv_timeout(Duration::from_secs(5)).unwrap();
+        waiter.join().unwrap();
     }
 
     #[test]
