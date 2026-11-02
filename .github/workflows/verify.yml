@@ -36,6 +36,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: rustup toolchain install stable --profile minimal
+      - name: Install Linux keyring build dependencies
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y pkg-config libdbus-1-dev
       - run: cargo +stable test -p sc-code-runtime -p sc-code-auth -p sc-code-workspace -p sc-code-agent -p sc-code-settings -p sc-code-extensions -p sc-code-db -p sc-code-remote -p sc-code-lsp -p sc-code-syntax -p sc-code-context -p sc-code-terminal
   native:
     runs-on: windows-latest
