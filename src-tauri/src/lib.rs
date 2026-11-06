@@ -611,6 +611,7 @@ pub fn run() {
             commands::get_env,
             commands::get_all_env,
             commands::get_user_data_dir,
+            commands::get_builtin_extensions_dir,
             commands::storage_get,
             commands::storage_set,
             commands::storage_list,

@@ -80,7 +80,14 @@ pub fn get_user_data_dir() -> Result<String, String> {
     let user_dir = crate::app_dirs::app_data_dir();
     std::fs::create_dir_all(&user_dir)
         .map_err(|e| format!("failed to create ScCode app data dir: {e}"))?;
-    Ok(user_dir.to_string_lossy().to_string())
+    Ok(dunce::simplified(&user_dir).to_string_lossy().to_string())
+}
+
+#[allow(clippy::needless_pass_by_value)]
+#[tauri::command]
+pub fn get_builtin_extensions_dir(app: tauri::AppHandle) -> String {
+    let dir = super::extension_platform::resolve_builtin_extensions_dir(&app);
+    dunce::simplified(&dir).to_string_lossy().to_string()
 }
 
 /// Parses the build from `ver` output, e.g. `Microsoft Windows [Version 10.0.19045.6456]`

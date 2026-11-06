@@ -199,6 +199,7 @@ import './contrib/files/browser/files.contribution.js';
 
 // Bulk Edit
 import './contrib/bulkEdit/browser/bulkEditService.js';
+import './contrib/bulkEdit/browser/preview/bulkEdit.contribution.js';
 
 // Search
 import './contrib/search/browser/search.contribution.js';
@@ -234,8 +235,17 @@ import './contrib/debug/browser/debugViewlet.js';
 // Markers
 import './contrib/markers/browser/markers.contribution.js';
 
+// Merge Editor
+import './contrib/mergeEditor/browser/mergeEditor.contribution.js';
+
+// Multi Diff Editor
+import './contrib/multiDiffEditor/browser/multiDiffEditor.contribution.js';
+
 // Commands
 import './contrib/commands/common/commands.contribution.js';
+
+// Comments
+import './contrib/comments/browser/comments.contribution.js';
 
 // URL Support
 import './contrib/url/browser/url.contribution.js';
@@ -246,8 +256,12 @@ import './contrib/webviewPanel/browser/webviewPanel.contribution.js';
 import './contrib/webviewView/browser/webviewView.contribution.js';
 // Custom Editors (extension `customEditors`; required by MainThreadWebviewManager)
 import './contrib/customEditor/browser/customEditor.contribution.js';
-// Code editor: editor feature instantiation, Outline view/breadcrumb symbols, save participants
-import './contrib/codeEditor/browser/editorFeatures.js';
+
+// External Uri Opener
+import './contrib/externalUriOpener/common/externalUriOpener.contribution.js';
+
+// Code editor: editor feature instantiation, Outline view/breadcrumb symbols, save participants, quick access & toggles
+import './contrib/codeEditor/browser/codeEditor.contribution.js';
 import './contrib/codeEditor/browser/outline/documentSymbolsOutline.js';
 import { SaveParticipantsContribution } from './contrib/codeEditor/browser/saveParticipants.js';
 import { registerWorkbenchContribution2, WorkbenchPhase } from './common/contributions.js';
@@ -273,6 +287,9 @@ import './contrib/externalTerminal/browser/externalTerminal.contribution.js';
 // Tasks
 import './contrib/tasks/browser/task.contribution.js';
 
+// Emmet
+import './contrib/emmet/browser/emmet.contribution.js';
+
 // Markdown
 import './contrib/markdown/browser/markdown.contribution.js';
 
@@ -291,11 +308,38 @@ import './contrib/folding/browser/folding.contribution.js';
 // Limit Indicator
 import './contrib/limitIndicator/browser/limitIndicator.contribution.js';
 
+// Inlay Hint Accessibility
+import './contrib/inlayHints/browser/inlayHintsAccessibilty.js';
+
 // Themes
 import './contrib/themes/browser/themes.contribution.js';
 
+// Welcome Walkthrough & Views
+import './contrib/welcomeWalkthrough/browser/walkThrough.contribution.js';
+import './contrib/welcomeViews/common/viewsWelcome.contribution.js';
+import './contrib/welcomeViews/common/newFile.contribution.js';
+
+// Call Hierarchy
+import './contrib/callHierarchy/browser/callHierarchy.contribution.js';
+
+// Type Hierarchy
+import './contrib/typeHierarchy/browser/typeHierarchy.contribution.js';
+
+// Outline
+import './contrib/outline/browser/outline.contribution.js';
+
 // Language Status
 import './contrib/languageStatus/browser/languageStatus.contribution.js';
+
+// Code Actions
+import './contrib/codeActions/browser/codeActions.contribution.js';
+
+// Timeline
+import './contrib/timeline/browser/timeline.contribution.js';
+import './contrib/timeline/browser/timeline.service.contribution.js';
+
+// Local History
+import './contrib/localHistory/browser/localHistory.contribution.js';
 
 // Workspace
 import './contrib/workspace/browser/workspace.contribution.js';
@@ -305,6 +349,12 @@ import './contrib/workspaces/browser/workspaces.contribution.js';
 
 // Accessibility Signals
 import './contrib/accessibilitySignals/browser/accessibilitySignal.contribution.js';
+
+// Synchronized Scrolling
+import './contrib/scrollLocking/browser/scrollLocking.contribution.js';
+
+// Drop or paste into
+import './contrib/dropOrPasteInto/browser/dropOrPasteInto.contribution.js';
 
 // Opener
 import './contrib/opener/browser/opener.contribution.js';

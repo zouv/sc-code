@@ -170,10 +170,11 @@ async function start(): Promise<void> {
 			});
 		}, 300);
 
-		socket.onClose(() => {
+		ws.once('close', () => {
 			// The renderer went away (window closed or reloaded); the host has no
 			// work without it.
-			setTimeout(() => process.exit(0), 1000);
+			wss.close();
+			process.exit(0);
 		});
 	});
 

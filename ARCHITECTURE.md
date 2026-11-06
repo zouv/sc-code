@@ -21,7 +21,8 @@
 | 日常脚本/运行输出 | *.bat、scripts/{daily,build-desktop,package-output,unpack-output}.cjs、.cargo/config.toml、vite.config.ts | 真实用户 profile 与 dist/ 成品包不清理；旧 packages/ 由 clean 清理 |
 | 仓库布局/忽略规则 | .gitignore、.gitattributes、嵌套.gitignore、tests/repository-layout.test.cjs（忽略规则、checkout 属性与真实 Bash 字节行尾） | .runtime/ 与 dist/ 成品包、用户状态不可入库；生产DLL/WASM/图标不可整类忽略 |
 | 打包验证 | scripts/desktop-runtime.cjs、scripts/prepare-desktop-runtime.cjs、scripts/build-desktop.cjs、scripts/smoke-local-server.cjs、tests/、.github/workflows/ | 历史 workflow |
-| 真实扩展宿主 | src/vs/workbench/api/node/{scCodeExtHostMain,extHost.sc-code.services}.ts、src/vs/workbench/services/extensions/browser/tauriProcessExtensionHost.ts、src-tauri/src/commands/real_ext_host.rs、scripts/build-ext-host.cjs | 旧 host.cjs 逻辑 |
+| 真实扩展宿主 | src/vs/workbench/api/node/{scCodeExtHostMain,extHost.sc-code.services}.ts、src/vs/workbench/api/common/{extHost.api.impl,scCodeGitExtensionApi}.ts、src/vs/workbench/services/extensions/browser/tauriProcessExtensionHost.ts、src/vs/workbench/services/extensionManagement/browser/builtinExtensionsScannerService.ts、src-tauri/src/commands/real_ext_host.rs、scripts/build-ext-host.cjs | 旧 host.cjs 逻辑 |
+| VS Code 核心模块（近期/中期） | src/vs/workbench/workbench.common.main.ts、src/vs/workbench/api/browser/{extensionHost.contribution,mainThreadTimeline,mainThreadComments,mainThreadUriOpeners}.ts、src/vs/workbench/contrib/{outline,callHierarchy,typeHierarchy,timeline,localHistory,mergeEditor,multiDiffEditor,bulkEdit,emmet,inlayHints,codeActions,dropOrPasteInto,scrollLocking,comments,externalUriOpener,welcomeWalkthrough,welcomeViews}/ | 未接入的 notebook/interactive/share/profileContentHandlers |
 | 工作台存储 | src/vs/workbench/services/storage/browser/{storageService,tauriStorageDatabase}.ts、src-tauri/src/commands/storage.rs | 用户 profile 数据 |
 | 文件系统/搜索/终端/监听 IPC | src/vs/platform/files/browser/tauriFileSystemProvider.ts、src/vs/platform/scCode/browser/scCodeFileSystemProvider.ts（简单路径 API）、src/vs/workbench/services/search/browser/tauriSearchService.ts、src/vs/workbench/contrib/terminal/browser/tauriTerminalBackend.ts、src-tauri/src/commands/{fs,search,terminal,watch}.rs、src-tauri/src/recycle_bin.rs、crates/sc-code-workspace/src/search.rs | process.rs/sc_code_terminal.rs 的另两套终端（未接入工作台） |
 | DB/聊天迁移 | crates/sc-code-db/src/{db,chat_sessions,window_state}.rs、src-tauri/src/commands/chat_sessions.rs、scCodeChat/browser/chatPersistence.ts | 真实用户数据库；不得失败后自动建空库 |
@@ -107,8 +108,9 @@
 | 本地接口安全 | agent/server/internal/auth/local_transport.go / LocalTransportMiddleware |
 | 准备与真实侧车验收 | scripts/prepare-desktop-runtime.cjs；scripts/desktop-runtime.cjs / assertPrepared；scripts/smoke-local-server.cjs / smoke、request |
 | 真实扩展宿主构建 | scripts/build-ext-host.cjs（esbuild → `.runtime/ext-host/extensionHost.cjs`）；入口 src/vs/workbench/api/node/scCodeExtHostMain.ts |
-| 真实宿主连接 | src/vs/workbench/services/extensions/browser/tauriProcessExtensionHost.ts / start、_createExtHostInitData、isRealExtensionHostEnabled；src-tauri/src/commands/real_ext_host.rs / real_ext_host_start、start_blocking、read_handshake、shutdown_window、strip_verbatim |
-| 真实宿主开关与注册 | src/vs/workbench/services/extensions/browser/extensionService.ts / _scanWebExtensions、_registerDiskExtensions、ScCodeExtensionHostKindPicker；extensionSync.contribution.ts 在真实宿主下让路 |
+| 真实宿主连接 | src/vs/workbench/services/extensions/browser/tauriProcessExtensionHost.ts / start、_createExtHostInitData、isRealExtensionHostEnabled；src/vs/workbench/services/extensionManagement/browser/builtinExtensionsScannerService.ts / BuiltinExtensionsScannerService（`__SC_CODE_BUILTIN_EXTENSIONS_DIR__` → `file://` URI + `TargetPlatform.UNIVERSAL`）；src-tauri/src/commands/os.rs / get_builtin_extensions_dir、get_user_data_dir；src-tauri/src/commands/real_ext_host.rs / real_ext_host_start、start_blocking、read_handshake、shutdown_window、strip_verbatim |
+| 真实宿主开关与注册 | src/vs/workbench/services/extensions/browser/extensionService.ts / _scanWebExtensions、_registerDiskExtensions、ScCodeExtensionHostKindPicker；extensionSync.contribution.ts 在真实宿主下让路；src/vs/workbench/api/common/scCodeGitExtensionApi.ts / ScCodeGitExtensionHostBridge（合成 `vscode.git` 扩展与 v1 API） |
+| 近期与中期工作台贡献 | src/vs/workbench/workbench.common.main.ts（注册 outline/callHierarchy/typeHierarchy/timeline/localHistory/mergeEditor/multiDiffEditor/bulkEdit.preview/comments/externalUriOpener/codeEditor/emmet/inlayHints/codeActions/dropOrPasteInto/scrollLocking/welcomeWalkthrough/welcomeViews）；src/vs/workbench/api/browser/extensionHost.contribution.ts（注册 mainThreadComments/mainThreadTimeline/mainThreadUriOpeners） |
 | 工作台存储 | storageService.ts / createTauriOrIndexedDbStorage（首次从 IndexedDB 迁移）；tauriStorageDatabase.ts / updateItems → storage.rs / storage_apply、StorageDb::apply（单事务） |
 | 文件元数据 | crates/sc-code-workspace/src/file_ops.rs / stat、read_dir → fs.rs / stat、read_dir → tauriFileSystemProvider.ts / stat、readdir 与 scCodeFileSystemProvider.ts / stat；tests/file-metadata.test.cjs 执行真实 TS 方法验证毫秒与链接类型 |
 | 文件读写/删除 | tauriFileSystemProvider.ts / readFile、writeFile、delete、classify（按 os error 码映射）→ fs.rs / fs_read_binary、fs_write_binary（raw body + `sc-path` 头）、fs_trash；tauriUserDataProvider.ts 覆盖 capabilities（profile 数据不进回收站） |
@@ -158,37 +160,40 @@
 - Tab FIM：默认受监督 Agent 的 /v1/completions 使用 prefix/suffix/file_path/language，返回 completion；Agent 上游仍需 COMPLETION_SERVER_URL（兼容 VLLM_URL）。自定义外部 endpoint 保持 OpenAI prompt/choices/SSE；远程 Agent 不自动识别。仅向精确本地 Agent origin附 token，取消后不回调结果。ACP替换应单列补全服务，协议通过不代表真实模型已配置。
 - 内置 Agent 的 SC_CODE_HIDDEN 默认 true，load 覆盖旧可见状态；每次启动收起，本次会话仍可手动打开。未停 Go 自启，未移除Agent。推荐 AgentBackend → ACP客户端/进程transport → session/权限/文件/终端能力契约验收 → 停止自启Go → 删除推理/provider/用量及Agent专属数据/构建依赖；editor共享LSP/index/terminal与Node扩展宿主保留。
 
-## 3.6 真实 Node 扩展宿主（S10a）
+## 3.6 真实 Node 扩展宿主（S10a / S24）
 
-开关：`SC_CODE_REAL_EXT_HOST=1`（构建期）或 `?realExtHost=1` / `localStorage['scode.realExtHost']='1'`。关闭时仍走 `host.cjs` 仿制宿主。
+开关：Tauri 桌面环境下默认开启（`isRealExtensionHostEnabled() === true`）；可通过 `SC_CODE_REAL_EXT_HOST=0`（构建期）、`?realExtHost=0` 或 `localStorage['scode.realExtHost']='0'` 显式回退至 `host.cjs` 仿制宿主。
 
 ```
 构建：npm run ext-host:build
   └─ esbuild: src/vs/workbench/api/node/scCodeExtHostMain.ts → .runtime/ext-host/extensionHost.cjs (CJS, node22)
        ├─ extHost.common.services + extHost.sc-code.services（Node 版服务注册）
+       ├─ ScCodeGitExtensionHostBridge（合成 vscode.git 扩展与 getAPI(1) 兼容桥）
        ├─ ExtensionHostMain（VSCode 真实扩展宿主）
        └─ ws server (127.0.0.1, token 校验) + PersistentProtocol
 
-启动：workbench ExtensionService._initialize
-  ├─ hasLocalProcess = isRealExtensionHostEnabled()
+启动：src/main.ts → BuiltinExtensionsScannerService + ExtensionService._initialize
+  ├─ invoke('get_builtin_extensions_dir') / invoke('get_user_data_dir') → 写入 globalThis
+  ├─ BuiltinExtensionsScannerService 将内置扩展 location 解析为 file:// URI（TargetPlatform.UNIVERSAL）
+  ├─ hasLocalProcess = isRealExtensionHostEnabled()（Tauri 默认 true）
   ├─ ScCodeExtensionHostKindPicker：ui/workspace/web 全部 → LocalProcess
   ├─ _scanWebExtensions → _registerDiskExtensions（先 list_installed_extensions + installFromLocation）
   └─ TauriProcessExtensionHost.start()
        ├─ invoke real_ext_host_start(hostId) → Rust 按 (原生 window.label, hostId) spawn Node（strip_verbatim，token 环境变量）
        ├─ BrowserSocketFactory.connect(ws://127.0.0.1:port?token)
-       ├─ PersistentProtocol → 等 Ready → 发 initData → 等 Initialized
-       └─ ExtensionHostManager 接管 RPC（mainThread* 客户）
+       ├─ PersistentProtocol → 等 Ready → 发 initData（globalStorageHome/workspaceStorageHome/logsLocation 均为 file:// URI，uiKind=Desktop） → 等 Initialized
+       └─ ExtensionHostManager 接管 RPC（mainThread* 客户，含 Comments/Timeline/UriOpeners/MultiDiff）
 ```
 
 生命周期：RealExtensionHost 只共享 supervisor，不共享进程；每 (原生窗口, hostId) 独占 Node + token + ExtensionHostMain。每进程只接受一个认证 renderer。stop 仅处理调用窗口的 hostId，迟到 stop 不关闭新一代；Destroyed 清该窗口，app exit 清全部。启动/连接/握手中 dispose 或失败均 stop，并释放握手监听器；清进程时不持全局实例表锁。tests/ext-host-smoke.cjs 使用临时 profile 验证 A 退出 B 仍运行及拒绝第二 renderer；完整桌面多窗口行为仍需 GUI 验收。
 
-约束：`ICustomEditorService` 来自恢复的 `contrib/customEditor/browser/customEditors.ts`，`MainThreadCustomEditors` 依赖它；旧宿主无法 resolve 自定义编辑器，因此 contributed 编辑器在旧宿主下不注册（`isRealExtensionHostEnabled()` 门控），旧宿主仍用内置 imagePreview。扩展宿主 stdout/stderr 必须持续排空（握手后仍继续读，否则 64KB 管道写满即卡死）。宿主侧 `extHost.api.impl` 的代理断言需排除未移植的 notebook/interactive/share/profile；工作台侧不要注册依赖缺失服务的 `mainThreadComments/Timeline/Browsers/UriOpeners`。Node 进程不能在安装目录写文件；ESM shim/状态写 profile。
+约束：`ICustomEditorService` 来自恢复的 `contrib/customEditor/browser/customEditors.ts`，`MainThreadCustomEditors` 依赖它；旧宿主无法 resolve 自定义编辑器，因此 contributed 编辑器在旧宿主下不注册（`isRealExtensionHostEnabled()` 门控），旧宿主仍用内置 imagePreview。扩展宿主 stdout/stderr 必须持续排空（握手后仍继续读，否则 64KB 管道写满即卡死）。宿主侧 `extHost.api.impl` 的代理断言需排除未移植的 notebook/interactive/share/profile；工作台侧已恢复并注册 `mainThreadComments/Timeline/UriOpeners`（仅 `mainThreadBrowsers` 未注册）。内置 `git` 扩展不在打包清单中重复注册 SCM 视图（避免与原生 `TauriGitScmProvider` 冲突），改由 `scCodeGitExtensionApi.ts` 在扩展宿主内合成 `vscode.git` 扩展及 `getAPI(1)` 接口供第三方扩展调用。Node 进程不能在安装目录写文件；ESM shim/状态写 profile。
 
 前端分包约束：**不要把 `vs/base`、`vs/platform`、`vs/editor` 拆成不同 chunk**。三者存在运行时循环（platform ↔ editor），拆开会在生产包触发 `Cannot access '…' before initialization`（TDZ）并黑屏；只允许把 `terminal/xterm` 这类 core 不反向依赖的模块单独拆出，且必须用生产构建做 headless 启动验证。
 
 ## 4. 接口契约与边界
 - buildPaths = {mode,targetRoot,build,bundle,dist}；unpack-manifest.json={format:1,product:ScCode,mode,platform,builtinCount,createdAt,files:[{path,size,sha256}]}，路径为包内相对路径。成品只支持准备好的Windows x64；免安装不改变SC_CODE_HOME/profile/WebView2前提。`dist/dev/`含`unpack/`未压缩目录与`ScCode_<version>_x64-unpack-debug.zip`；`dist/release/`含`unpack/`未压缩目录、setup exe与`ScCode_<version>_x64-unpack.zip`；zip条目直接位于根目录（无`ScCode_<version>_x64-unpack[-debug]/`外壳），包含unpack-manifest.json与全部运行资源，Release不含Cargo缓存/PDB/用户profile，Debug含PDB。打包顺序为先导出unpack目录、再以其为源生成zip，prepare/zip校验完成后才导出安装包；zip写入失败保留旧zip与安装包，不宣称跨文件事务。
-- 产品 0.4.0 与 VS Code API 1.110.0 分离；command/settings IDs 使用 sc-code 前缀。
+- 产品 0.5.0 与 VS Code API 1.110.0 分离；command/settings IDs 使用 sc-code 前缀。
 - taskbar_update_jump_list 入参 `entries=[{kind:'folder'|'workspace', uri:'file:...', label}]`；仅 Windows 写入 Jump List，其他平台 no-op；空列表清除自定义分类。
 - Jump List 启动参数 `--open-folder=<base64url(file URI)>` / `--open-workspace=<base64url(file URI)>`；单实例转发只接受这两个前缀且只打开 file: URI。新窗口 label 为 `workspace-<n>`，capabilities 用 `workspace-*` 覆盖。
 - About 对话框通过 `ICustomDialogOptions.imageIcon/imageIconAlt` 渲染 `/sc-code.svg`；`imageIcon` 存在时自动使用垂直布局，图标与标题居中、说明文字左对齐。

@@ -19,6 +19,7 @@
 
 2026-11-02：完成项目审查与安全后续修复：数据迁移/原子编辑、聊天/补全、DNS 连接地址校验、CSP、窗口级原生执行信任、SSH 执行协议、终端回归、多窗/CLI 与隔离日志；全量/生产 npm 审计 0。0.4.1 已完成 Windows x64 Debug/Release 打包，Release ZIP 隔离 WebView2 冒烟 9/9，setup 与 unpack ZIP 均已上传 GitHub prerelease。
 2026-11-02：修复 0.4.1 的 CSP 回归（Tauri 给静态 `<style>` 注入的 nonce 使 `style-src 'unsafe-inline'` 失效，运行时主题/codicon/菜单样式被拦截，图标与排版异常）：仅对 style-src 关闭 Tauri 自动 nonce/hash 注入，并新增配置回归与真实桌面主题/图标冒烟断言。
+2026-11-07：完成 S24（近期与中期 VS Code 核心模块全量接入及真实扩展宿主默认开启，产品版本升至 0.5.0）：补齐 Outline、Call/Type Hierarchy、Timeline + Local History、Merge Editor、Multi-Diff Editor、Bulk Edit Preview、Comments、External URI Opener、Welcome Walkthrough/Views、CodeEditor/Emmet/InlayHints/CodeActions/DropOrPasteInto/ScrollLocking 等 18 项工作台模块与 MainThread 桥接；修复 Tauri 下内置扩展 `file://` 路径扫描并默认启用真实 Node 扩展宿主；新增 `vscode.git` v1 API 扩展宿主兼容层。
 
 ## 开发大纲
 | 编号 | 优先级 | 任务 | 状态 |
@@ -57,8 +58,9 @@
 | S18 | P0 | ~~安全面收紧：webview 独立来源、IPC 来源守卫、`git_run` 收紧、asset 授权收窄~~ | ✅ 2026-10-25；dev 实跑 + CDP 验证，Release 包冒烟随 S19；命令面收敛并入 S22 |
 | S19 | P1 | ~~性能快修：重活命令移出主线程、文件二进制 IPC、搜索正确性与取消、存储批量写、事件定向~~ | ✅ 2026-10-25；另修复全局搜索失效、终端乱码/退出码、监听丢新建、回收站；dev 实跑验证 |
 | S20 | P0 | ~~真实宿主转正前置：`ICustomEditorService`、Node 调试服务（executable 适配器）~~ | ✅ 2026-10-25；宿主 stdio 排空修复；扩展注册缺口归 S10b |
-| S21 | P1 | ~~体验缺口：保存参与者、面包屑/Outline 服务、关窗拦截、CLI 打开路径~~ | ✅ 2026-10-25；Explorer 的 Outline 面板与 `--wait` 未做 |
+| S21 | P1 | ~~体验缺口：保存参与者、面包屑/Outline 服务、关窗拦截、CLI 打开路径~~ | ✅ 2026-10-25；Explorer 的 Outline 面板已在 S24 补齐，`--wait` 未做 |
 | S23 | P0 | ~~项目审查修复：DB/chat、SSH、原子编辑、补全协议、跨窗宿主/搜索、文件元数据、DNS/CSP/trust、依赖与构建测试~~ | ✅ 2026-11-02；自动化及隔离 WebView2 核心链路通过，完整扩展/真实服务仍待验收，已完成 v0.4.1 打包与预发布 |
+| S24 | P1 | ~~近期与中期 VS Code 核心模块全量接入：Outline/Call&Type Hierarchy/Timeline/LocalHistory/MergeEditor/MultiDiffEditor/BulkEditPreview/Comments/ExternalUriOpener/Welcome/Emmet/InlayHints/DropOrPasteInto/ScrollLocking + 真实扩展宿主默认启用与内置扩展 `file://` 扫描 + `vscode.git` API 兼容层~~ | ✅ 2026-11-07；ext-host:build、typecheck、lint、test、test:ext-host、build、smoke:dist 与 rust:check 全部通过 |
 | S22 | P2 | ~~收敛：无消费者的 scCode 桥接服务加载、CUSTOM 标记~~ | ✅ 2026-10-27；CUSTOM 标记与不必要桥接已清理 |
 
 ## 移植验收矩阵
@@ -93,6 +95,7 @@
 6. Tab补全、多Agent DAG/验证器/记忆和长期恢复另做能力矩阵，不承诺ACP可一键替代；安全/事务P0仍需要独立完成。
 
 ## 已交付里程碑
+- ✅ 2026-11-07：~~S24 近期与中期 VS Code 核心模块全量接入及真实扩展宿主默认开启~~ — 补齐 18 个核心工作台模块与 13 处原 stub 的真实实现，恢复 `mainThreadTimeline`、`mainThreadComments`、`mainThreadUriOpeners` 与 `MultiDiffEditor` RPC 契约；修复 Tauri 桌面端内置扩展 `file://` 路径扫描与存储路径，默认启用真实 Node 扩展宿主并内置 `vscode.git` v1 API 兼容层；`ext-host:build`、`typecheck`、`lint`、`npm test`（99/99）、`test:ext-host`（2/2）、`rust:check`、`build` 与 `smoke:dist` 全部通过。
 - ✅ 2026-11-02：~~v0.4.2 CSP 样式回归修复与发布~~ — [GitHub Release](https://github.com/zouv/sc-code/releases/tag/v0.4.2)，未签名 Windows x64 prerelease（非 draft）；tag `v0.4.2` 指向 `8950484`，修复 0.4.1 因 Tauri style nonce 导致的工作台图标/菜单/主题样式丢失。
   - ScCode_0.4.2_x64-setup.exe：68,840,253 bytes；SHA-256 `53a0f7c7f304af359d0dd96cff72aa78f5b69c77804e206a735e698e3e940e0f`。
   - ScCode_0.4.2_x64-unpack.zip：94,639,283 bytes；SHA-256 `067ddaac5f3cdd497016d3294a3f5ecf3265e66f8101d80e541035506ff7d424`；zip 829 个条目，包脚本逐文件 size/SHA-256 校验通过。

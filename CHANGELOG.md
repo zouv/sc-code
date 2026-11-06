@@ -2,6 +2,16 @@
 
 ## [未发布]
 
+## [0.5.0] - 2026-11-07
+
+### 新增
+- 接入近期与中期 VS Code 核心模块：资源管理器「大纲（Outline）」与「时间线（Timeline）」视图、本地历史记录（Local History，保存自动快照、差异对比与还原）、调用层次结构（Call Hierarchy）、类型层次结构（Type Hierarchy）、三路合并编辑器（Merge Editor）、多文件差异编辑器（Multi-Diff Editor）、重构批量修改预览（Bulk Edit Preview）、评论控制器与面板（Comments）、欢迎演练与空视图引导（Welcome Walkthrough / Welcome Views）、外部链接打开器（External URI Opener）、Emmet 缩写展开、Inlay Hints、Code Actions、拖放/粘贴方式选择（Drop or Paste Into）、分屏同步滚动（Scroll Locking）与禅模式（Zen Mode）等编辑器基础工作台贡献。
+- 扩展宿主新增 `vscode.git` 扩展 API（v1）兼容层：第三方扩展可通过 `vscode.extensions.getExtension('vscode.git')` 及 `.exports.getAPI(1)` 查询仓库状态、分支/标签/远程、工作区与暂存区变更、diff/log/blame/show 及执行常用 Git 操作，同时不与工作台原生 `TauriGitScmProvider` 产生重复 SCM 视图冲突。
+
+### 变更
+- 产品版本升至 0.5.0（`package.json`、`package-lock.json`、`tauri.conf.json`/WiX、`src-tauri/Cargo.toml`/`Cargo.lock`、About 回退值同步）。
+- Tauri 桌面环境下默认开启真实 VS Code Node 扩展宿主（`TauriProcessExtensionHost`），并将内置扩展目录与扩展全局/工作区存储路径解析为真实 `file://` URI（`TargetPlatform.UNIVERSAL`、`UIKind.Desktop`），使真实 Node 扩展宿主可直接从磁盘加载并激活内置扩展；仍支持通过 `SC_CODE_REAL_EXT_HOST=0`、`localStorage['scode.realExtHost'] === '0'` 或 `?realExtHost=0` 显式回退。
+
 ## [0.4.2] - 2026-11-02
 
 ### 修复

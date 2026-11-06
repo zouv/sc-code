@@ -26,7 +26,7 @@ import { revive } from '../../../base/common/marshalling.js';
 @extHostNamedCustomer(MainContext.MainThreadTimeline)
 export class MainThreadTimeline implements MainThreadTimelineShape {
 	private readonly _proxy: ExtHostTimelineShape;
-	private readonly _providerEmitters = new Map<string, Emitter<TimelineChangeEvent>>();
+	private readonly _providerEmitters = new Map<string, Emitter<readonly URI[] | undefined>>();
 
 	constructor(
 		context: IExtHostContext,
@@ -44,7 +44,7 @@ export class MainThreadTimeline implements MainThreadTimelineShape {
 		const emitters = this._providerEmitters;
 		let onDidChange = emitters.get(provider.id);
 		if (onDidChange === undefined) {
-			onDidChange = new Emitter<TimelineChangeEvent>();
+			onDidChange = new Emitter<readonly URI[] | undefined>();
 			emitters.set(provider.id, onDidChange);
 		}
 
@@ -67,11 +67,15 @@ export class MainThreadTimeline implements MainThreadTimelineShape {
 		this._timelineService.unregisterTimelineProvider(id);
 	}
 
-	$emitTimelineChangeEvent(e: TimelineChangeEvent): void {
+	$emitTimelineChangeEvent(e: TimelineChangeEvent | undefined): void {
+		if (!e) {
+			return;
+		}
 		this.logService.trace(`MainThreadTimeline#emitChangeEvent: id=${e.id}, uri=${e.uri?.toString(true)}`);
 
 		const emitter = this._providerEmitters.get(e.id);
-		emitter?.fire(e);
+		const uris = e.uris ? e.uris.map(u => URI.revive(u)) : (e.uri ? [URI.revive(e.uri)] : undefined);
+		emitter?.fire(uris);
 	}
 
 	dispose(): void {

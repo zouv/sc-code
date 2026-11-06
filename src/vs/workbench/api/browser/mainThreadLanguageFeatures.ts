@@ -1356,9 +1356,9 @@ export class MainThreadLanguageFeatures extends Disposable implements MainThread
 						token
 					);
 					if (!supertypes) {
-						return supertypes;
+						return [];
 					}
-					return supertypes.map(MainThreadLanguageFeatures._reviveTypeHierarchyItemDto);
+					return supertypes.map(MainThreadLanguageFeatures._reviveTypeHierarchyItemDto) as typeh.TypeHierarchyItem[];
 				},
 				provideSubtypes: async (item, token) => {
 					const subtypes = await this._proxy.$provideTypeHierarchySubtypes(
@@ -1368,9 +1368,9 @@ export class MainThreadLanguageFeatures extends Disposable implements MainThread
 						token
 					);
 					if (!subtypes) {
-						return subtypes;
+						return [];
 					}
-					return subtypes.map(MainThreadLanguageFeatures._reviveTypeHierarchyItemDto);
+					return subtypes.map(MainThreadLanguageFeatures._reviveTypeHierarchyItemDto) as typeh.TypeHierarchyItem[];
 				}
 			})
 		);

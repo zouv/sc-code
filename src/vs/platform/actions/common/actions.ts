@@ -261,6 +261,7 @@ export class MenuId {
 	static readonly MultiDiffEditorFileToolbar = new MenuId('MultiDiffEditorFileToolbar');
 	static readonly DiffEditorHunkToolbar = new MenuId('DiffEditorHunkToolbar');
 	static readonly DiffEditorSelectionToolbar = new MenuId('DiffEditorSelectionToolbar');
+	static readonly DiffEditorViewSubmenu = new MenuId('DiffEditorViewSubmenu');
 	static readonly BrowserNavigationToolbar = new MenuId('BrowserNavigationToolbar');
 	static readonly BrowserActionsToolbar = new MenuId('BrowserActionsToolbar');
 	static readonly MarkerHoverStatusBar = new MenuId('MarkerHoverParticipant.StatusBar');

@@ -61,17 +61,17 @@ import './mainThreadTheming.js';
 import './mainThreadTreeViews.js';
 import './mainThreadDownloadService.js';
 import './mainThreadUrls.js';
-// UriOpeners — removed: its external-uri-opener contribution is not part of the web port
+import './mainThreadUriOpeners.js';
 import './mainThreadWindow.js';
 import './mainThreadPower.js';
 import './mainThreadWebviewManager.js';
 import './mainThreadWorkspace.js';
-// Comments — removed: the comments contribution is not part of the web port
+import './mainThreadComments.js';
 import './mainThreadTask.js';
 import './mainThreadLabelService.js';
 import './mainThreadTunnelService.js';
 import './mainThreadAuthentication.js';
-// Timeline — removed: the timeline contribution is not part of the web port
+import './mainThreadTimeline.js';
 import './mainThreadTesting.js';
 import './mainThreadSecretState.js';
 // Share — removed: ScCode uses sc-code-extension-api

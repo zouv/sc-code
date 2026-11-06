@@ -38,7 +38,8 @@ export const enum AccessibleViewProviderId {
 	TerminalFindHelp = 'terminalFindHelp',
 	WebviewFindHelp = 'webviewFindHelp',
 	OutputFindHelp = 'outputFindHelp',
-	ProblemsFilterHelp = 'problemsFilterHelp'
+	ProblemsFilterHelp = 'problemsFilterHelp',
+	MultiDiffEditorFileList = 'multiDiffEditorFileList'
 }
 
 export const enum AccessibleViewType {

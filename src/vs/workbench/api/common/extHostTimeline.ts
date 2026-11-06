@@ -64,7 +64,7 @@ export class ExtHostTimeline implements IExtHostTimeline {
 		token: vscode.CancellationToken
 	): Promise<Timeline | undefined> {
 		const item = this._providers.get(id);
-		return item?.provider.provideTimeline(URI.revive(uri), options, token);
+		return item?.provider.provideTimeline(URI.revive(uri), options as TimelineOptions, token);
 	}
 
 	registerTimelineProvider(

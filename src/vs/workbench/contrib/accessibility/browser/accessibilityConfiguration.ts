@@ -30,9 +30,12 @@ export const enum AccessibilityVerbositySettingId {
 	Webview = 'accessibility.verbosity.webview',
 	PanelChat = 'accessibility.verbosity.panelChat',
 	Find = 'accessibility.verbosity.find',
-	SourceControl = 'accessibility.verbosity.sourceControl'
+	SourceControl = 'accessibility.verbosity.sourceControl',
+	MergeEditor = 'accessibility.verbosity.mergeEditor',
+	MultiDiffEditorFileList = 'accessibility.verbosity.multiDiffEditorFileList'
 }
 
 export const accessibleViewIsShown = new RawContextKey<boolean>('accessibleViewIsShown', false);
+export const accessibilityHelpIsShown = new RawContextKey<boolean>('accessibilityHelpIsShown', false);
 export const accessibleViewCurrentProviderId = new RawContextKey<string>('accessibleViewCurrentProviderId', undefined);
 export const accessibleViewOnLastLine = new RawContextKey<boolean>('accessibleViewOnLastLine', false);

@@ -6,15 +6,16 @@
  *  connects to it with the same `PersistentProtocol` used by VSCode's remote
  *  extension host.
  *
- *  Enabled when the app is running under Tauri and `?realExtHost=1` is present
- *  (or `localStorage['scode.realExtHost'] === '1'`). The legacy Node shim
- *  (`tauriExtensionHost.contribution.ts`) stays active otherwise.
+ *  Enabled by default when the app is running under Tauri, unless explicitly
+ *  disabled via `SC_CODE_REAL_EXT_HOST=0`, `localStorage['scode.realExtHost'] === '0'`,
+ *  or `?realExtHost=0`.
  *--------------------------------------------------------------------------------------------*/
 
 import { VSBuffer } from '../../../../base/common/buffer.js';
 import { Emitter, Event } from '../../../../base/common/event.js';
 import { Disposable } from '../../../../base/common/lifecycle.js';
 import { joinPath } from '../../../../base/common/resources.js';
+import { URI } from '../../../../base/common/uri.js';
 import { generateUuid } from '../../../../base/common/uuid.js';
 import { IMessagePassingProtocol } from '../../../../base/parts/ipc/common/ipc.js';
 import { PersistentProtocol } from '../../../../base/parts/ipc/common/ipc.net.js';
@@ -53,18 +54,35 @@ export function isRealExtensionHostEnabled(): boolean {
 	if (!isTauri()) {
 		return false;
 	}
-	// Inlined/exposed by Vite from SC_CODE_REAL_EXT_HOST=1.
+	if (import.meta.env?.SC_CODE_REAL_EXT_HOST === '0') {
+		return false;
+	}
 	if (import.meta.env?.SC_CODE_REAL_EXT_HOST === '1') {
 		return true;
 	}
 	try {
-		if (typeof localStorage !== 'undefined' && localStorage.getItem('scode.realExtHost') === '1') {
-			return true;
+		if (typeof localStorage !== 'undefined') {
+			const stored = localStorage.getItem('scode.realExtHost');
+			if (stored === '0') {
+				return false;
+			}
+			if (stored === '1') {
+				return true;
+			}
 		}
 	} catch {
 		// localStorage may be unavailable; fall through to the URL switch.
 	}
-	return typeof location !== 'undefined' && new URLSearchParams(location.search).has('realExtHost');
+	if (typeof location !== 'undefined') {
+		const param = new URLSearchParams(location.search).get('realExtHost');
+		if (param === '0' || param === 'false') {
+			return false;
+		}
+		if (param !== null) {
+			return true;
+		}
+	}
+	return true;
 }
 
 export class TauriProcessExtensionHost extends Disposable implements IExtensionHost {
@@ -183,6 +201,19 @@ export class TauriProcessExtensionHost extends Disposable implements IExtensionH
 		const data = await this._initDataProvider.getInitData();
 		this.extensions = data.extensions;
 		const workspace = this._contextService.getWorkspace();
+		const nativeUserDataDir = (globalThis as { __SC_CODE_USER_DATA_DIR__?: string }).__SC_CODE_USER_DATA_DIR__;
+		const nativeUserDataUri = typeof nativeUserDataDir === 'string' && nativeUserDataDir.length > 0
+			? URI.file(nativeUserDataDir)
+			: undefined;
+		const globalStorageHome = nativeUserDataUri
+			? joinPath(nativeUserDataUri, 'User', 'globalStorage')
+			: this._userDataProfilesService.defaultProfile.globalStorageHome;
+		const workspaceStorageHome = nativeUserDataUri
+			? joinPath(nativeUserDataUri, 'User', 'workspaceStorage')
+			: this._environmentService.workspaceStorageHome;
+		const logsLocation = nativeUserDataUri
+			? joinPath(nativeUserDataUri, 'logs', 'localProcess')
+			: joinPath(this._environmentService.extHostLogsPath, 'localProcess');
 		return {
 			commit: this._productService.commit,
 			version: this._productService.version,
@@ -198,8 +229,8 @@ export class TauriProcessExtensionHost extends Disposable implements IExtensionH
 				isExtensionTelemetryLoggingOnly: isLoggingOnly(this._productService, this._environmentService),
 				extensionDevelopmentLocationURI: this._environmentService.extensionDevelopmentLocationURI,
 				extensionTestsLocationURI: this._environmentService.extensionTestsLocationURI,
-				globalStorageHome: this._userDataProfilesService.defaultProfile.globalStorageHome,
-				workspaceStorageHome: this._environmentService.workspaceStorageHome,
+				globalStorageHome,
+				workspaceStorageHome,
 				extensionLogLevel: this._defaultLogLevelsService.defaultLogLevels.extensions,
 				isSessionsWindow: this._environmentService.isSessionsWindow,
 				isPortable: false,
@@ -227,10 +258,10 @@ export class TauriProcessExtensionHost extends Disposable implements IExtensionH
 			virtualWorkspaceExtensionTips: this._productService.virtualWorkspaceExtensionTips,
 			logLevel: this._logService.getLevel(),
 			loggers: [...this._loggerService.getRegisteredLoggers()],
-			logsLocation: joinPath(this._environmentService.extHostLogsPath, 'localProcess'),
+			logsLocation,
 			autoStart: this.startup !== ExtensionHostStartup.EagerManualStart,
 			remote: { authority: null, connectionData: null, isRemote: false },
-			uiKind: platform.isWeb ? UIKind.Web : UIKind.Desktop,
+			uiKind: UIKind.Desktop,
 		};
 	}
 

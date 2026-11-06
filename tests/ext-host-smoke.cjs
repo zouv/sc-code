@@ -102,9 +102,20 @@ test('each host has one renderer and closing one process does not close another 
             extra.once('close', code => { clearTimeout(timer); code === 1008 ? resolve() : reject(new Error('unexpected close')); });
             extra.once('error', reject);
         });
+        const exitPromise = new Promise((resolve, reject) => {
+            if (a.child.exitCode !== null) {
+                resolve(a.child.exitCode);
+                return;
+            }
+            const timer = setTimeout(() => reject(new Error('host A did not exit within 5s')), 5000);
+            a.child.once('exit', code => {
+                clearTimeout(timer);
+                resolve(code);
+            });
+        });
         socketA.close();
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        assert.equal(a.child.exitCode, 0);
+        const exitCodeA = await exitPromise;
+        assert.equal(exitCodeA, 0);
         assert.equal(b.child.exitCode, null); assert.equal(socketB.readyState, WebSocket.OPEN);
     } finally {
         socketA?.terminate(); socketB?.terminate(); a.child.kill(); b.child.kill();

@@ -57,7 +57,13 @@ export class BuiltinExtensionsScannerService implements IBuiltinExtensionsScanne
 				);
 			}
 
-			const builtinExtensionsServiceUrl = FileAccess.asBrowserUri(builtinExtensionsPath);
+			const nativeBuiltinDir = (globalThis as { __SC_CODE_BUILTIN_EXTENSIONS_DIR__?: string }).__SC_CODE_BUILTIN_EXTENSIONS_DIR__;
+			const builtinExtensionsServiceUrl = typeof nativeBuiltinDir === 'string' && nativeBuiltinDir.length > 0
+				? URI.file(nativeBuiltinDir)
+				: FileAccess.asBrowserUri(builtinExtensionsPath);
+			const targetPlatform = typeof nativeBuiltinDir === 'string' && nativeBuiltinDir.length > 0
+				? TargetPlatform.UNIVERSAL
+				: TargetPlatform.WEB;
 			this.logService.info(
 				`[ScCode-Builtin] builtinExtensionsServiceUrl = ${builtinExtensionsServiceUrl?.toString?.()}`
 			);
@@ -105,7 +111,7 @@ export class BuiltinExtensionsScannerService implements IBuiltinExtensionsScanne
 						changelogUrl: e.changelogPath
 							? uriIdentityService.extUri.joinPath(builtinExtensionsServiceUrl, e.changelogPath)
 							: undefined,
-						targetPlatform: TargetPlatform.WEB,
+						targetPlatform,
 						validations: [],
 						isValid: true,
 						preRelease: false

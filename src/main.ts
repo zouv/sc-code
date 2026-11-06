@@ -138,7 +138,7 @@ async function boot() {
 	//（webExtensionsScannerService → validateExtensionManifest），改成其它版本会让
 	// VAC(^1.85.0)/Claude Code(^1.94.0) 被判 DisabledByInvalidExtension，扩展视图全部失效。
 	// 真正的 ScCode 版本号放到全局 __SC_CODE_VERSION__，由 About 对话框读取。
-	let scCodeVersion = '0.4.2';
+	let scCodeVersion = '0.5.0';
 	if ((globalThis as any).__SC_CODE_TAURI__) {
 		try {
 			const { getVersion } = await import('@tauri-apps/api/app');
@@ -158,6 +158,8 @@ async function boot() {
 			// Reload/new workspaces start restricted even if the window label is reused.
 			(globalThis as any).__SC_CODE_TRUST_SESSION__ = await invoke<string>('workspace_reset_trust');
 			(globalThis as any).__SC_CODE_WEBVIEW_ORIGIN__ = await invoke<string>('webview_host_origin');
+			(globalThis as any).__SC_CODE_BUILTIN_EXTENSIONS_DIR__ = await invoke<string>('get_builtin_extensions_dir').catch(() => undefined);
+			(globalThis as any).__SC_CODE_USER_DATA_DIR__ = await invoke<string>('get_user_data_dir').catch(() => undefined);
 		} catch (error) {
 			console.error('[ScCode] Isolated webview host unavailable; extension webviews are disabled:', error);
 		}

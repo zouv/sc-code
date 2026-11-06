@@ -105,6 +105,7 @@ import { IExtHostWindow } from './extHostWindow.js';
 import { IExtHostPower } from './extHostPower.js';
 import { IExtHostWorkspace } from './extHostWorkspace.js';
 import { IExtHostMeteredConnection } from './extHostMeteredConnection.js';
+import { ScCodeGitExtensionHostBridge } from './scCodeGitExtensionApi.js';
 
 export interface IExtensionRegistries {
 	mine: ExtensionDescriptionRegistry;
@@ -329,6 +330,7 @@ export function createApiFactoryAndRegisterActors(accessor: ServicesAccessor): I
 	const extHostClipboard = new ExtHostClipboard(rpcProtocol);
 	const extHostMessageService = new ExtHostMessageService(rpcProtocol, extHostLogService);
 	const extHostDialogs = new ExtHostDialogs(rpcProtocol);
+	const scCodeGitBridge = new ScCodeGitExtensionHostBridge(extHostWorkspace, extHostFileSystemEvent, extHostCommands, extHostLogService);
 
 	// Register API-ish commands
 	ExtHostApiCommands.register(extHostCommands);
@@ -746,12 +748,22 @@ export function createApiFactoryAndRegisterActors(accessor: ServicesAccessor): I
 						);
 					}
 				}
+				if (typeof extensionId === 'string' && extensionId.toLowerCase() === 'vscode.git') {
+					return scCodeGitBridge.createSyntheticVscodeExtension(extensionKind);
+				}
 				return undefined;
 			},
 			get all(): vscode.Extension<any>[] {
 				const result: vscode.Extension<any>[] = [];
+				let hasGit = false;
 				for (const desc of extensionInfo.mine.getAllExtensionDescriptions()) {
+					if (desc.identifier.value.toLowerCase() === 'vscode.git') {
+						hasGit = true;
+					}
 					result.push(new Extension(extensionService, extension.identifier, desc, extensionKind, false));
+				}
+				if (!hasGit) {
+					result.push(scCodeGitBridge.createSyntheticVscodeExtension(extensionKind));
 				}
 				return result;
 			},
