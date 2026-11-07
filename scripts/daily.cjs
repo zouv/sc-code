@@ -45,6 +45,7 @@ function dependencies() {
 }
 function prepare(force = false) {
   dependencies();
+  run(process.execPath, [path.join(root, 'scripts/build-ext-host.cjs')]);
   let ready = false;
   if (!force) { try { assertPrepared(); ready = true; } catch (error) { console.log(`[PREPARE] ${error.message}`); } }
   if (!ready) run(process.execPath, [path.join(root, 'scripts/prepare-desktop-runtime.cjs')]);
@@ -94,7 +95,7 @@ function help() {
   console.log(`ScCode daily scripts (Node.js 22+, Rust MSVC, Go + C compiler for initial preparation)
   setup.bat               Install npm dependencies and prepare pinned desktop runtime
   run.bat [app args...]    Launch current Debug desktop; build if missing/stale
-  dev.bat [tauri args...]  Desktop development with the prepared resource overlay
+  dev.bat [tauri args...]  Compile first, then launch desktop in development mode
   build.bat [Debug|Release] [tauri args...]  Compile only (no packages)
   package.bat              Build Debug zip + Release setup/unpack/zip (local only)
   test.bat                Node, transport, TypeScript and selected native regressions
@@ -152,7 +153,7 @@ function main(action, args) {
   switch (action) {
     case 'setup': npm('ci', '--ignore-scripts', '--no-audit', '--no-fund'); prepare(true); npm('run', 'setup'); break;
     case 'run': launch(args); break;
-    case 'dev': prepare(); run(process.execPath, [path.join(root, 'scripts/dev-desktop.cjs'), ...args]); break;
+    case 'dev': dependencies(); run(process.execPath, [path.join(root, 'scripts/dev-desktop.cjs'), ...args]); break;
     case 'build': {
       const compileArgs = args.includes('--no-bundle') ? args : ['--no-bundle', ...args];
       build(mode, compileArgs, false);

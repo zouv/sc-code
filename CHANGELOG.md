@@ -2,6 +2,14 @@
 
 ## [未发布]
 
+## [0.5.1] - 2026-11-07
+
+### 变更
+- 产品版本升至 0.5.1（`package.json`、`package-lock.json`、`tauri.conf.json`/WiX、`src-tauri/Cargo.toml`/`Cargo.lock`、About 回退值同步）。
+
+### 修复
+- 修复点击 `dev.bat` 无反应（一闪而退）并调整为“先编译、再以开发模式启动”：`prepare-desktop-runtime.cjs` 在 `agent/server` 源码未变更时自动复用已通过 SHA-256 校验的 `sc-code-agent.exe`，避免因机器未配置 Go 工具链抛 `spawnSync go ENOENT` 退出；`dev-desktop.cjs` 在启动 `tauri dev` 前先完成真实扩展宿主打包、桌面运行时校验/准备、内置扩展元数据生成与 `cargo build --no-default-features` 编译。
+
 ## [0.5.0] - 2026-11-07
 
 ### 新增

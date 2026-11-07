@@ -1,9 +1,9 @@
 # 会话接力 · ScCode
 
 ## 当前状态
-- 快照：2026-11-07；分支 main；版本 0.5.0；**无进行中任务**。
-- S24（近期与中期 VS Code 核心模块全量接入、真实 Node 扩展宿主默认启用与 `vscode.git` 扩展 API 兼容层）已完成并通过验证（`ext-host:build`、`typecheck`、`lint`、`npm test` 99/99、`test:ext-host` 2/2、`rust:check`、`build`、`smoke:dist` 全绿），成果已记入 `CHANGELOG.md` `[0.5.0]` 与 `ROADMAP.md`。
-- v0.4.2 已打包并上传 GitHub prerelease：https://github.com/zouv/sc-code/releases/tag/v0.4.2；tag `v0.4.2` 指向 `8950484`。
+- 快照：2026-11-07；分支 main；版本 0.5.1；**无进行中任务**。
+- v0.5.1：修复 `dev.bat` 点击无反应并调整为“先编译、再以开发模式启动”（`prepare-desktop-runtime.cjs` 自动复用已校验 `sc-code-agent.exe`、`dev-desktop.cjs` 先执行 `ext-host` 打包与 `cargo build --no-default-features` 再启动 `tauri dev`）；S24（近期与中期 VS Code 核心模块全量接入、真实 Node 扩展宿主默认启用与 `vscode.git` 扩展 API 兼容层）已完成并通过验证（`ext-host:build`、`typecheck`、`lint`、`npm test` 100/100、`test:ext-host` 2/2、`rust:check`、`build`、`smoke:dist` 全绿）。
+- v0.5.1 已打包并上传 GitHub prerelease：https://github.com/zouv/sc-code/releases/tag/v0.5.1（`ScCode_0.5.1_x64-setup.exe` + `ScCode_0.5.1_x64-unpack.zip`）。
 
 ## 尚需真实环境验收
 1. 工作台 trust：实际授权 UI 后确认全部扩展自动恢复；当前程序性 IPC 与合成服务测试不能替代此项。顶层 renderer 控制授权，执行 guard 不是 Node/文件系统沙箱，也不保证终止全部在途后台活动；细粒度授权/强隔离见 ROADMAP。

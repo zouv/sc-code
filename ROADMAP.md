@@ -20,6 +20,7 @@
 2026-11-02：完成项目审查与安全后续修复：数据迁移/原子编辑、聊天/补全、DNS 连接地址校验、CSP、窗口级原生执行信任、SSH 执行协议、终端回归、多窗/CLI 与隔离日志；全量/生产 npm 审计 0。0.4.1 已完成 Windows x64 Debug/Release 打包，Release ZIP 隔离 WebView2 冒烟 9/9，setup 与 unpack ZIP 均已上传 GitHub prerelease。
 2026-11-02：修复 0.4.1 的 CSP 回归（Tauri 给静态 `<style>` 注入的 nonce 使 `style-src 'unsafe-inline'` 失效，运行时主题/codicon/菜单样式被拦截，图标与排版异常）：仅对 style-src 关闭 Tauri 自动 nonce/hash 注入，并新增配置回归与真实桌面主题/图标冒烟断言。
 2026-11-07：完成 S24（近期与中期 VS Code 核心模块全量接入及真实扩展宿主默认开启，产品版本升至 0.5.0）：补齐 Outline、Call/Type Hierarchy、Timeline + Local History、Merge Editor、Multi-Diff Editor、Bulk Edit Preview、Comments、External URI Opener、Welcome Walkthrough/Views、CodeEditor/Emmet/InlayHints/CodeActions/DropOrPasteInto/ScrollLocking 等 18 项工作台模块与 MainThread 桥接；修复 Tauri 下内置扩展 `file://` 路径扫描并默认启用真实 Node 扩展宿主；新增 `vscode.git` v1 API 扩展宿主兼容层。
+2026-11-07：修复 `dev.bat` 点击无反应并调整为“先编译、再启动开发模式”（未改 Go 源码时复用已校验的 `sc-code-agent.exe`，先打包真实宿主并完成 `cargo build` 再启动 `tauri dev`），产品版本升至 0.5.1 并完成 Windows x64 Debug/Release 打包与 GitHub Release 发布。
 
 ## 开发大纲
 | 编号 | 优先级 | 任务 | 状态 |
@@ -95,6 +96,10 @@
 6. Tab补全、多Agent DAG/验证器/记忆和长期恢复另做能力矩阵，不承诺ACP可一键替代；安全/事务P0仍需要独立完成。
 
 ## 已交付里程碑
+- ✅ 2026-11-07：~~v0.5.1 开发模式编译启动修复与发布~~ — [GitHub Release](https://github.com/zouv/sc-code/releases/tag/v0.5.1)，未签名 Windows x64 prerelease（非 draft）；修复 `dev.bat` 点击无反应并调整为“先编译、再启动开发模式”（`prepare-desktop-runtime.cjs` 复用已校验 `sc-code-agent.exe`、`dev-desktop.cjs` 先执行 `ext-host` 打包与 `cargo build --no-default-features` 再启动 `tauri dev`）。
+  - ScCode_0.5.1_x64-setup.exe：68,999,245 bytes；SHA-256 `f158da1f91a7ff1db0c542928ae33dfcdfdb36a55c9e31576d5d372779f2fc32`。
+  - ScCode_0.5.1_x64-unpack.zip：94,792,903 bytes；SHA-256 `42edd15dffaaefa6cc6b8dc6c81906cff5ff672d21cf50b52d962892cc245ce2`；zip 829 个条目，包脚本逐文件 size/SHA-256 校验通过。
+  - Debug unpack zip（`ScCode_0.5.1_x64-unpack-debug.zip`，247,141,565 bytes，830 个条目，含 PDB）已生成但不上传。
 - ✅ 2026-11-07：~~S24 近期与中期 VS Code 核心模块全量接入及真实扩展宿主默认开启~~ — 补齐 18 个核心工作台模块与 13 处原 stub 的真实实现，恢复 `mainThreadTimeline`、`mainThreadComments`、`mainThreadUriOpeners` 与 `MultiDiffEditor` RPC 契约；修复 Tauri 桌面端内置扩展 `file://` 路径扫描与存储路径，默认启用真实 Node 扩展宿主并内置 `vscode.git` v1 API 兼容层；`ext-host:build`、`typecheck`、`lint`、`npm test`（99/99）、`test:ext-host`（2/2）、`rust:check`、`build` 与 `smoke:dist` 全部通过。
 - ✅ 2026-11-02：~~v0.4.2 CSP 样式回归修复与发布~~ — [GitHub Release](https://github.com/zouv/sc-code/releases/tag/v0.4.2)，未签名 Windows x64 prerelease（非 draft）；tag `v0.4.2` 指向 `8950484`，修复 0.4.1 因 Tauri style nonce 导致的工作台图标/菜单/主题样式丢失。
   - ScCode_0.4.2_x64-setup.exe：68,840,253 bytes；SHA-256 `53a0f7c7f304af359d0dd96cff72aa78f5b69c77804e206a735e698e3e940e0f`。

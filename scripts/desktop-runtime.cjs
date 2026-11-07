@@ -64,6 +64,11 @@ function assertPrepared() {
   }
   if (treeHash(path.join(runtime,'extensions')) !== m.extensionsHash) throw new Error('Builtin extensions changed: rerun preparation');
   if (treeHash(path.join(root,'src-tauri/extension-host'), f => f.endsWith('.cjs') && !f.endsWith('.test.cjs')) !== m.hostSourceHash) throw new Error('Extension host changed: rerun preparation');
+  const builtExtHost = path.join(root, '.runtime/ext-host/extensionHost.cjs');
+  const runtimeExtHost = path.join(runtime, 'extension-host/extensionHost.cjs');
+  if (fs.existsSync(builtExtHost) && (!fs.existsSync(runtimeExtHost) || sha256(builtExtHost) !== sha256(runtimeExtHost))) {
+    throw new Error('Real extension host bundle changed: rerun preparation');
+  }
   validateExtensions(path.join(runtime,'extensions'));
   console.log(`Runtime preflight passed: ${m.builtinCount} builtins, authenticated host, Node ${m.nodeVersion}, native agent.`);
   return m;

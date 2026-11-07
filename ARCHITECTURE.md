@@ -63,7 +63,7 @@
 - scripts/daily.cjs + 8 个 BAT：setup/run/dev/build/package/test/verify/clean；foreground+exitCode，sourceFingerprint 拒绝旧源码包；cleanTargets 先验证全部绝对路径/链接，仅删允许生成物，不强杀、不碰用户 profile。
 - scripts/build-desktop.cjs / package-output.cjs：buildDesktop(args,{exportPackages}) 在 exportPackages=false 时只编译（build.bat）；为 true 时（package.bat / release）先prepareUnpack校验，再用exportUnpacked把未压缩运行目录发布到`dist/<dev|release>/unpack`，随后archiveUnpack以该目录为源生成zip（zip根目录无版本子目录）；Release再按构建前快照只选新NSIS/MSI及签名并exportPackages至dist/release；失败不导出旧包。buildPaths解析Debug/target并固定.runtime输出；package.bat 依次跑 Debug 与 Release 两个通道。tests/package-output.test.cjs隔离验证分类、旧包、失败、清理保留与链接拒绝。
 - scripts/unpack-output.cjs：validateUnpack校验已构建profile内Node/Go/5CJS逐文件hash、扩展treeHash/94项清单；prepareUnpack复制EXE+运行资源+同级DLL+许可证至.runtime/package-staging（Debug另含PDB），exportUnpacked用partial目录校验后替换`dist/<mode>/unpack`，archiveUnpack用scripts/zip-writer.cjs（纯Node deflate/读取校验，无系统zip/tar依赖）以unpack目录为源生成根目录无版本子目录的zip，随后删除暂存目录。Release zip不含Cargo缓存/PDB/用户文件；拒绝链接与测试模块。tests/unpack-output.test.cjs与unpack-fixture.cjs验证资源契约、源码搬离、dev/release命名与内容、zip根条目、失败保护。
-- .cargo/config.toml / vite.config.ts / scripts/dev-desktop.cjs：Cargo 输出 .runtime/target，前端 .runtime/dist、public，开发扩展 URL 指向 .runtime/desktop/extensions；runtime overlay .runtime/tauri.runtime.conf.json。
+- .cargo/config.toml / vite.config.ts / scripts/dev-desktop.cjs：Cargo 输出 .runtime/target，前端 .runtime/dist、public，开发扩展 URL 指向 .runtime/desktop/extensions；runtime overlay .runtime/tauri.runtime.conf.json；`devDesktop` 先构建 `extensionHost.cjs`、校验/准备桌面运行时、生成扩展元数据并执行 `cargo build --no-default-features` 编译，再启动 `tauri dev` 开发模式。
 - scripts/runtime-lock.json：固定 Windows Node/内置扩展下载与 SHA256；生成资源不纳入版本管理。
 
 - .gitignore / .gitattributes / tests/repository-layout.test.cjs：根级生成目录与源码分离；临时Git仓库复制全部忽略规则，用--no-index核验源码资源可见性、源码资源/锁文件保留、本地状态排除和Bash/BAT行尾，不受真实index或全局忽略掩盖。
@@ -72,7 +72,7 @@
 | 任务 | 文件 / 函数 |
 |---|---|
 | 忽略规则/干净检出完整性 | tests/repository-layout.test.cjs / fixture、ignoredPaths |
-| 日常操作/安全清理 | scripts/daily.cjs / main、launch、sourceFingerprint、cleanTargets、clean |
+| 日常操作/安全清理 | scripts/daily.cjs / main、launch、sourceFingerprint、cleanTargets、clean；scripts/dev-desktop.cjs / devDesktop、cargoBuildArgs |
 | 成品包分类/安全导出 | scripts/build-desktop.cjs / buildDesktop → scripts/package-output.cjs / buildPaths、installerSnapshot、freshInstallers、exportPackages、assertLocalPath |
 | 免安装完整性/发布 | scripts/unpack-output.cjs / validateUnpack、prepareUnpack、exportUnpacked、archiveUnpack、exportUnpack、removeStage；scripts/zip-writer.cjs / writeZip、readZipEntries、readZipEntry |
 | 稳定凭据身份 | src-tauri/src/commands/secrets.rs / SecretsStore::new、select_extension_profile_id、profile_hash |
@@ -106,7 +106,7 @@
 | 前端凭据与重连 | localServer.ts / localServerHeaders、localStreamUrl、invalidateServerEndpoint；scCodeChatService.ts / _sendWithContext |
 | 原生 agent WS | src-tauri/src/commands/orchestrate.rs / run_agent_session |
 | 本地接口安全 | agent/server/internal/auth/local_transport.go / LocalTransportMiddleware |
-| 准备与真实侧车验收 | scripts/prepare-desktop-runtime.cjs；scripts/desktop-runtime.cjs / assertPrepared；scripts/smoke-local-server.cjs / smoke、request |
+| 准备与真实侧车验收 | scripts/prepare-desktop-runtime.cjs / findReusableServer、buildServer；scripts/desktop-runtime.cjs / assertPrepared；scripts/smoke-local-server.cjs / smoke、request |
 | 真实扩展宿主构建 | scripts/build-ext-host.cjs（esbuild → `.runtime/ext-host/extensionHost.cjs`）；入口 src/vs/workbench/api/node/scCodeExtHostMain.ts |
 | 真实宿主连接 | src/vs/workbench/services/extensions/browser/tauriProcessExtensionHost.ts / start、_createExtHostInitData、isRealExtensionHostEnabled；src/vs/workbench/services/extensionManagement/browser/builtinExtensionsScannerService.ts / BuiltinExtensionsScannerService（`__SC_CODE_BUILTIN_EXTENSIONS_DIR__` → `file://` URI + `TargetPlatform.UNIVERSAL`）；src-tauri/src/commands/os.rs / get_builtin_extensions_dir、get_user_data_dir；src-tauri/src/commands/real_ext_host.rs / real_ext_host_start、start_blocking、read_handshake、shutdown_window、strip_verbatim |
 | 真实宿主开关与注册 | src/vs/workbench/services/extensions/browser/extensionService.ts / _scanWebExtensions、_registerDiskExtensions、ScCodeExtensionHostKindPicker；extensionSync.contribution.ts 在真实宿主下让路；src/vs/workbench/api/common/scCodeGitExtensionApi.ts / ScCodeGitExtensionHostBridge（合成 `vscode.git` 扩展与 v1 API） |

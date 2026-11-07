@@ -3,6 +3,7 @@ const test = require('node:test'), assert = require('node:assert/strict');
 const fs = require('node:fs'), path = require('node:path'), os = require('node:os');
 const { spawnSync } = require('node:child_process');
 const { clean, cleanTargets, main } = require('../scripts/daily.cjs');
+const { devDesktop, cargoBuildArgs } = require('../scripts/dev-desktop.cjs');
 const { root, runtime, runtimeConfig } = require('../scripts/desktop-runtime.cjs');
 const read = file => fs.readFileSync(path.join(root, file), 'utf8');
 test('generated assets and frontend builds live inside .runtime, source scripts stay source', () => {
@@ -64,3 +65,27 @@ test('BAT works from another cwd and invalid arguments keep nonzero status', { s
   const bundles = invoke('build.bat', 'Debug --bundles nsis --dry-run'); assert.equal(bundles.status, 2, bundles.stderr + bundles.stdout); assert.match(bundles.stderr + bundles.stdout, /build\.bat only compiles/);
   const conflict = invoke('build.bat', 'Release --debug --dry-run'); assert.equal(conflict.status, 2, conflict.stderr + conflict.stdout);
 });
+test('devDesktop compiles ext-host, prepares runtime if needed, builds cargo and then launches tauri dev', () => {
+  const calls = [];
+  let prepared = false;
+  devDesktop(['--target', 'x86_64-pc-windows-msvc'], {
+    preflight() {
+      if (!prepared) throw new Error('Runtime not prepared');
+    },
+    runCommand(command, args) {
+      calls.push({ command, args });
+      if (args.some(a => String(a).endsWith('prepare-desktop-runtime.cjs'))) prepared = true;
+    },
+  });
+  assert.equal(calls.length, 5);
+  assert.match(calls[0].args[0], /build-ext-host\.cjs$/);
+  assert.match(calls[1].args[0], /prepare-desktop-runtime\.cjs$/);
+  assert.match(calls[2].args[0], /generate-extension-meta\.js$/);
+  assert.equal(calls[3].command, 'cargo');
+  assert.deepEqual(calls[3].args, cargoBuildArgs(['--target', 'x86_64-pc-windows-msvc']));
+  assert.match(calls[4].args[0], /tauri\.js$/);
+  assert.equal(calls[4].args[1], 'dev');
+  assert.equal(calls[4].args[2], '--config');
+  assert.equal(calls[4].args[3], runtimeConfig);
+});
+

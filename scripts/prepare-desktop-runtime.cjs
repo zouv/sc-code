@@ -20,7 +20,36 @@ function expand(archive, target) {
   run('powershell.exe',['-NoProfile','-NonInteractive','-Command',`$ErrorActionPreference='Stop'; Expand-Archive -LiteralPath ${quote(archive)} -DestinationPath ${quote(target)} -Force`]);
   fs.writeFileSync(path.join(target,'.extracted'),'ok');
 }
+function findReusableServer(output, expectedSourceHash) {
+  const candidates = [
+    { bin: output, manifest: path.join(runtime, 'manifest.json') },
+    { bin: path.join(root, 'dist/dev/unpack/sc-code-agent.exe'), manifest: path.join(root, 'dist/dev/unpack/runtime-manifest.json') },
+    { bin: path.join(root, 'dist/release/unpack/sc-code-agent.exe'), manifest: path.join(root, 'dist/release/unpack/runtime-manifest.json') },
+  ];
+  for (const candidate of candidates) {
+    if (!fs.existsSync(candidate.bin) || !fs.existsSync(candidate.manifest)) continue;
+    try {
+      const m = JSON.parse(fs.readFileSync(candidate.manifest, 'utf8'));
+      const expectedBinHash = m.resources?.['.runtime/desktop/sc-code-agent.exe'] || m.resources?.['.runtime/desktop/sc-code-agent'];
+      if (m.serverSourceHash === expectedSourceHash && expectedBinHash && sha256(candidate.bin) === expectedBinHash) {
+        return candidate.bin;
+      }
+    } catch {}
+  }
+  return null;
+}
 function buildServer() {
+  const output = path.join(runtime,process.platform === 'win32' ? 'sc-code-agent.exe' : 'sc-code-agent');
+  fs.mkdirSync(runtime,{recursive:true});
+  const currentSourceHash = serverSourceHash();
+  if (!process.argv.includes('--server-only') && !process.argv.includes('--test-go')) {
+    const reusable = findReusableServer(output, currentSourceHash);
+    if (reusable) {
+      if (path.resolve(reusable) !== path.resolve(output)) fs.copyFileSync(reusable, output);
+      console.log(`Reusing verified sc-code-agent binary (${currentSourceHash.slice(0, 12)}) from ${path.relative(root, reusable)}`);
+      return output;
+    }
+  }
   const localGo = path.join(root,'.runtime/tools/go/bin/go.exe');
   const go = process.env.SC_CODE_GO_BINARY || (fs.existsSync(localGo) ? localGo : 'go');
   const zig = path.join(root,'.runtime/tools/zig-x86_64-windows-0.15.2/zig.exe');
@@ -36,8 +65,6 @@ function buildServer() {
     env.PATH = llvmBin + path.delimiter + (env.PATH || '');
   }
   if (!env.CC && fs.existsSync(zig)) env.CC = `"${zig}" cc -target x86_64-windows-gnu`;
-  const output = path.join(runtime,process.platform === 'win32' ? 'sc-code-agent.exe' : 'sc-code-agent');
-  fs.mkdirSync(runtime,{recursive:true});
   if (process.argv.includes('--test-go')) run(go,['test','-tags','fts5','./...'],{cwd:path.join(root,'agent/server'),env});
   run(go,['build','-trimpath','-tags','fts5','-o',output,'./cmd/server'],{cwd:path.join(root,'agent/server'),env});
   return output;
@@ -70,6 +97,7 @@ async function main() {
   }
   copyHostModules(path.join(root,'src-tauri/extension-host'),path.join(runtime,'extension-host'));
   // Real VSCode extension host bundle (built by scripts/build-ext-host.cjs).
+  run(process.execPath,[path.join(root,'scripts/build-ext-host.cjs')]);
   const extHostBundle=path.join(root,'.runtime/ext-host/extensionHost.cjs');
   if(!fs.existsSync(extHostBundle)) throw new Error('Real extension host bundle missing: run `npm run ext-host:build` first');
   fs.copyFileSync(extHostBundle,path.join(runtime,'extension-host/extensionHost.cjs'));
