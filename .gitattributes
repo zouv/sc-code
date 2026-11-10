@@ -54,3 +54,7 @@
 # Bash entry points must also work after a Windows checkout.
 *.sh text eol=lf
 scripts/bin/xattr text eol=lf
+# 换行约定：脚本永远 LF，Windows 批处理永远 CRLF，与各人的 core.autocrlf 无关。
+* text=auto eol=lf
+*.ps1 text eol=lf
+*.cmd text eol=crlf

@@ -115,6 +115,21 @@ npm run desktop:package
 
 `npm run dev` 只是 web 工作台开发服务器，不包含原生服务，不代表完整编辑器运行。
 
+## manager.sh 命令一览
+
+所有命令通过 `sh manager.sh <命令>` 执行（Windows 用 Git Bash），与 `sh manager.sh help` 一致：
+
+| 命令 | 说明 |
+|---|---|
+| `setup` | 安装 JS 依赖（`npm ci`） |
+| `dev` | 桌面开发（Tauri） |
+| `web` | 浏览器工作台开发服务器 |
+| `build` | 前端生产构建 |
+| `test` | Node / TS / 原生核心回归 + 文档体检 |
+| `check` | 原生应用编译检查（`cargo check`） |
+| `package` | 安装包构建（需要已准备 Node / Go / 扩展） |
+| `docs` | 文档体系机械体检 |
+
 ### 打包产物
 
 `build.bat` 只编译，不产出 `dist/`；以下产物由 `package.bat` 一次生成：
