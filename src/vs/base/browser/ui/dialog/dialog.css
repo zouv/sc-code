@@ -284,3 +284,43 @@
 .monaco-dialog-modal-block .dialog-shadow {
 	border-radius: 10px;
 }
+
+/* ScCode About: product icon on the left, identity and summary on the right. */
+.monaco-dialog-box.sc-code-about {
+	min-width: 480px;
+	max-width: 480px;
+}
+
+.monaco-dialog-box.sc-code-about .dialog-message-row {
+	flex-direction: row;
+	align-items: flex-start;
+}
+
+.monaco-dialog-box.sc-code-about .dialog-message-row > .dialog-icon.dialog-image-icon {
+	margin: 0 18px 0 0;
+}
+
+.monaco-dialog-box.sc-code-about .dialog-message-row .dialog-message-container {
+	align-items: stretch;
+	text-align: left;
+	width: 100%;
+}
+
+.monaco-dialog-box.sc-code-about .dialog-message-row .dialog-message-container .dialog-message {
+	justify-content: flex-start;
+	text-align: left;
+	font-size: 18px;
+	font-weight: 600;
+	margin-bottom: 6px;
+}
+
+.monaco-dialog-box.sc-code-about .dialog-message-row .dialog-message-container .dialog-message-detail {
+	flex: initial;
+	color: var(--vscode-descriptionForeground);
+}
+
+.monaco-dialog-box.sc-code-about > .dialog-buttons-row > .dialog-buttons {
+	flex-direction: row;
+	justify-content: flex-end;
+	margin: 0;
+}

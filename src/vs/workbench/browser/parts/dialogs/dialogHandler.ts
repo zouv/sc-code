@@ -121,7 +121,7 @@ export class BrowserDialogHandler extends AbstractDialogHandler {
 		const { button } = await this.doShow(
 			Severity.Info,
 			title,
-			[localize({ key: 'copy', comment: ['&& denotes a mnemonic'] }, '&&Copy'), localize('ok', 'OK')],
+			[localize({ key: 'copy', comment: ['&& denotes a mnemonic'] }, '&&Copy'), localize('close', 'Close')],
 			details,
 			1,
 			undefined,
@@ -129,7 +129,9 @@ export class BrowserDialogHandler extends AbstractDialogHandler {
 			{
 				imageIcon: '/sc-code.svg',
 				imageIconAlt: 'ScCode'
-			}
+			},
+			undefined,
+			['sc-code-about']
 		);
 
 		if (button === 0) {
@@ -146,7 +148,8 @@ export class BrowserDialogHandler extends AbstractDialogHandler {
 		checkbox?: ICheckbox,
 		inputs?: IInputElement[],
 		customOptions?: ICustomDialogOptions,
-		token?: CancellationToken
+		token?: CancellationToken,
+		rootClasses?: string[]
 	): Promise<IDialogResult> {
 		const dialogDisposables = new DisposableStore();
 
@@ -191,7 +194,8 @@ export class BrowserDialogHandler extends AbstractDialogHandler {
 					buttonOptions: customOptions?.buttonDetails?.map(detail => ({ sublabel: detail })),
 					checkboxLabel: checkbox?.label,
 					checkboxChecked: checkbox?.checked,
-					inputs
+					inputs,
+					extraClasses: rootClasses
 				},
 				this.keybindingService,
 				this.layoutService,

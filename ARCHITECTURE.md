@@ -135,7 +135,7 @@
 - 产品 0.5.0 与 VS Code API 1.110.0 分离；command/settings IDs 使用 sc-code 前缀。
 - taskbar_update_jump_list 入参 `entries=[{kind:'folder'|'workspace', uri:'file:...', label}]`；仅 Windows 写入 Jump List，其他平台 no-op；空列表清除自定义分类。
 - Jump List 启动参数 `--open-folder=<base64url(file URI)>` / `--open-workspace=<base64url(file URI)>`；单实例转发只接受这两个前缀且只打开 file: URI。新窗口 label 为 `workspace-<n>`，capabilities 用 `workspace-*` 覆盖。
-- About 对话框通过 `ICustomDialogOptions.imageIcon/imageIconAlt` 渲染 `/sc-code.svg`；`imageIcon` 存在时自动使用垂直布局，图标与标题居中、说明文字左对齐。
+- About 用 `imageIcon/imageIconAlt` 渲染 `/sc-code.svg`；`sc-code-about` 根类覆盖为左图标 / 右信息布局，显示版本·作者与简介，诊断由 Copy 复制。
 - 文件 FileStat.modified/created 为毫秒，file:// 主 provider 与 ScCode 简单路径 provider 均直接透传，不再乘 1000；symlink/junction 同时返回 SymbolicLink 与目标 File/Directory 位，dangling 保留 link 位。
 - 搜索取消表按 (原生 window.label, requestId) 隔离；同窗重用 ID 先取消旧任务，旧任务完成仅以 Arc identity 清自己的记录，不误删新请求。
 - HTTP proxy：marketplace 逐跳 validate_url + allowlist；通用 fetch 逐跳 validate_url，但不套 marketplace 域名表；两者 PublicDns 在 5s 内解析并校验全部 A/AAAA，空答案或混合公网/私网拒绝，将同批已验证 SocketAddr 交给 reqwest 实际连接，避免二次解析重绑定。逐 chunk 检查 50 MiB 上限。客户端 no_proxy，renderer fetch/proxy 直连、不使用系统/环境代理（兼容变化）；不涵盖 Agent/provider 独立网络栈或浏览器直接网络。

@@ -3,6 +3,7 @@
 ## [未发布]
 
 ### 变更
+- 关于对话框改为左侧产品图标 + 右侧产品名 / 版本·作者 / 简介，构建诊断信息仍可通过「Copy」复制。
 - 文档体系：同步 vibe-coding-starter 2026-11-10.1（check-docs / skills / hook / ARCH 与 ROADMAP 分册 / README 命令表）。
 
 ## [0.5.1] - 2026-11-07

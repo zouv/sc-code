@@ -78,12 +78,16 @@ export function createBrowserAboutDialogDetails(productService: IProductService)
 		);
 	};
 
-	const details = detailString(true);
 	const detailsToCopy = detailString(false);
 
 	return {
 		title: productService.nameLong,
-		details: details,
+		// ScCode: About keeps the identity block short; build diagnostics stay available through Copy.
+		details: localize(
+			'aboutSummary',
+			'Version: {0} · Author: @zouv\nScCode is an independent desktop code editor built on VS Code.',
+			(globalThis as any).__SC_CODE_VERSION__ || productService.version || 'Unknown'
+		),
 		detailsToCopy: detailsToCopy
 	};
 }
