@@ -192,15 +192,28 @@ export class ExtensionService extends AbstractExtensionService implements IExten
 			}
 			const profileLocation = this._userDataProfileService.currentProfile.extensionsResource;
 			const installed = await server.extensionManagementService.getInstalled(ExtensionType.User, profileLocation);
-			const installedIds = new Set(installed.map(extension => extension.identifier.id.toLowerCase()));
+			const installedById = new Map(installed.map(extension => [extension.identifier.id.toLowerCase(), extension]));
 			for (const extension of disk) {
-				if (!extension?.path || installedIds.has(extension.id.toLowerCase())) {
+				if (!extension?.path) {
+					continue;
+				}
+				const localUri = URI.file(extension.path);
+				const current = installedById.get(extension.id.toLowerCase());
+				// The profile record may point at a gallery/remote URL (Open VSX) even
+				// though Rust already downloaded the files. The Node host can only load
+				// file-scheme extensions, so repair such records from the disk path.
+				if (current?.location.scheme === 'file' && current.location.fsPath === localUri.fsPath) {
 					continue;
 				}
 				try {
-					await server.extensionManagementService.installFromLocation(URI.file(extension.path), profileLocation);
-					this._logService.info(`[ScCode-Extensions] registered disk extension ${extension.id} (${extension.version})`);
-					logToHost(3, `[ScCode-Extensions] registered disk extension ${extension.id} (${extension.version})`);
+					await server.extensionManagementService.installFromLocation(localUri, profileLocation);
+					if (current) {
+						this._logService.info(`[ScCode-Extensions] repaired extension location ${extension.id}: ${current.location.toString()} -> ${localUri.toString()}`);
+						logToHost(3, `[ScCode-Extensions] repaired extension location ${extension.id} -> ${localUri.toString()}`);
+					} else {
+						this._logService.info(`[ScCode-Extensions] registered disk extension ${extension.id} (${extension.version})`);
+						logToHost(3, `[ScCode-Extensions] registered disk extension ${extension.id} (${extension.version})`);
+					}
 				} catch (error) {
 					this._logService.warn(`[ScCode-Extensions] failed to register ${extension.id}: ${toErrorMessage(error)}`);
 					logToHost(2, `[ScCode-Extensions] failed to register ${extension.id}: ${toErrorMessage(error)}`);

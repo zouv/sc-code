@@ -1029,7 +1029,11 @@ pub fn run() {
                 }
             }
             // Let the workbench confirm unsaved changes before a window really closes.
+            // Auxiliary windows are workbench-owned and have no close hook of their own.
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                if window.label().starts_with("auxiliary-") {
+                    return;
+                }
                 let approved = commands::window::take_close_approval(window.label());
                 log::info!("[close] CloseRequested for '{}' approved={approved}", window.label());
                 if !approved {

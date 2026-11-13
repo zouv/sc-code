@@ -2191,6 +2191,16 @@ export function createApiFactoryAndRegisterActors(accessor: ServicesAccessor): I
 			IndentAction: languageConfiguration.IndentAction,
 			Location: extHostTypes.Location,
 			MarkdownString: extHostTypes.MarkdownString,
+			// Notebook types are plain data classes; the notebook runtime itself is
+			// not part of the web port, but extensions (e.g. Claude Code) reference
+			// these classes while loading their module.
+			NotebookCellData: extHostTypes.NotebookCellData,
+			NotebookCellKind: extHostTypes.NotebookCellKind,
+			NotebookCellOutput: extHostTypes.NotebookCellOutput,
+			NotebookCellOutputItem: extHostTypes.NotebookCellOutputItem,
+			NotebookData: extHostTypes.NotebookData,
+			NotebookEdit: extHostTypes.NotebookEdit,
+			NotebookRange: extHostTypes.NotebookRange,
 			OverviewRulerLane: OverviewRulerLane,
 			ParameterInformation: extHostTypes.ParameterInformation,
 			PortAutoForwardAction: extHostTypes.PortAutoForwardAction,

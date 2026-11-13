@@ -279,9 +279,11 @@ export class BrowserSocketFactory implements ISocketFactory<RemoteConnectionType
 		return true;
 	}
 
-	connect({ host, port }: WebSocketRemoteConnection, path: string, query: string, debugLabel: string): Promise<ISocket> {
+	connect({ host, port }: WebSocketRemoteConnection, path: string, query: string, debugLabel: string, scheme?: 'ws' | 'wss'): Promise<ISocket> {
 		return new Promise<ISocket>((resolve, reject) => {
-			const webSocketSchema = (/^https:/.test(mainWindow.location.href) ? 'wss' : 'ws');
+			// ScCode: local loopback hosts serve plain ws even when the workbench
+			// itself is loaded over https (tauri.localhost), so callers may pin it.
+			const webSocketSchema = scheme ?? (/^https:/.test(mainWindow.location.href) ? 'wss' : 'ws');
 			const socket = this._webSocketFactory.create(`${webSocketSchema}://${(/:/.test(host) && !/\[/.test(host)) ? `[${host}]` : host}:${port}${path}?${query}&skipWebSocketFrames=false`, debugLabel);
 			const disposables = new DisposableStore();
 			disposables.add(socket.onError(reject));

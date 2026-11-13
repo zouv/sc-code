@@ -301,6 +301,10 @@ export class BrowserAuxiliaryWindowService extends Disposable implements IAuxili
 		const resolvedWindowId = await this.resolveWindowId(targetWindow);
 		ensureCodeWindow(targetWindow, resolvedWindowId);
 
+		// Tauri-created auxiliary windows load aux.html first; wait until its
+		// head/body exist before cloning the main window's DOM into it.
+		await this.whenWindowReady(targetWindow);
+
 		const containerDisposables = new DisposableStore();
 		const { container, stylesLoaded } = this.createContainer(targetWindow, containerDisposables, options);
 
@@ -447,6 +451,38 @@ export class BrowserAuxiliaryWindowService extends Disposable implements IAuxili
 
 	protected async resolveWindowId(_auxiliaryWindow: Window): Promise<number> {
 		return BrowserAuxiliaryWindowService.WINDOW_IDS++;
+	}
+
+	private whenWindowReady(targetWindow: Window): Promise<void> {
+		try {
+			if (targetWindow.document.readyState !== 'loading') {
+				return Promise.resolve();
+			}
+		} catch {
+			return Promise.resolve();
+		}
+		return new Promise<void>(resolve => {
+			let settled = false;
+			const done = () => {
+				if (settled) {
+					return;
+				}
+				settled = true;
+				targetWindow.removeEventListener('DOMContentLoaded', done);
+				resolve();
+			};
+			targetWindow.addEventListener('DOMContentLoaded', done, { once: true });
+			// The event may have fired between the readyState check and this listener.
+			setTimeout(() => {
+				try {
+					if (targetWindow.document.readyState !== 'loading') {
+						done();
+					}
+				} catch {
+					done();
+				}
+			}, 0);
+		});
 	}
 
 	protected createContainer(

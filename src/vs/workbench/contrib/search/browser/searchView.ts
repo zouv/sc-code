@@ -216,6 +216,7 @@ export class SearchView extends ViewPane {
 	private treeLabels!: ResourceLabels;
 	private viewletState: ISearchViewState;
 	private messagesElement!: HTMLElement;
+	private searchStatusElement!: HTMLElement;
 	private readonly messageDisposables: DisposableStore = new DisposableStore();
 	private searchWidgetsContainerElement!: HTMLElement;
 	private searchWidget!: SearchWidget;
@@ -515,7 +516,9 @@ export class SearchView extends ViewPane {
 
 		const slowTimer = setTimeout(() => {
 			this.state = SearchUIState.SlowSearch;
+			this.setSearchingStatus('slow');
 		}, 2000);
+		this.setSearchingStatus('searching');
 
 		this._refreshResultsScheduler.schedule();
 
@@ -683,6 +686,10 @@ export class SearchView extends ViewPane {
 		this._register(this.inputPatternExcludes.onSubmit(onFilePatternSubmit));
 
 		this.messagesElement = dom.append(this.container, $('.messages.text-search-provider-messages'));
+		this.searchStatusElement = dom.append(
+			this.container,
+			$('.search-status', { role: 'status', 'aria-live': 'polite' })
+		);
 		if (this.contextService.getWorkbenchState() === WorkbenchState.EMPTY) {
 			this.showSearchWithoutFolderMessage();
 		}
@@ -1177,6 +1184,39 @@ export class SearchView extends ViewPane {
 		}
 
 		return newMessage;
+	}
+
+	private setSearchingStatus(state: 'searching' | 'slow' | 'idle'): void {
+		if (!this.searchStatusElement) {
+			return;
+		}
+		dom.clearNode(this.searchStatusElement);
+		if (state === 'idle') {
+			this.searchStatusElement.classList.remove('visible');
+			this.reLayout();
+			return;
+		}
+		dom.append(
+			this.searchStatusElement,
+			$('span.codicon.codicon-loading.codicon-modifier-spin', { 'aria-hidden': 'true' })
+		);
+		dom.append(
+			this.searchStatusElement,
+			$(
+				'span',
+				undefined,
+				state === 'slow'
+					? nls.localize('searchStatus.slow', 'Searching… still running')
+					: nls.localize('searchStatus.searching', 'Searching…')
+			)
+		);
+		this.searchStatusElement.classList.add('visible');
+		// A new search must not keep the previous "No results" / count message
+		// visible while the next query is still running.
+		if (this.messagesElement) {
+			dom.hide(this.messagesElement);
+		}
+		this.reLayout();
 	}
 
 	private createSearchResultsView(container: HTMLElement): void {
@@ -1695,6 +1735,7 @@ export class SearchView extends ViewPane {
 
 	clearSearchResults(clearInput = true): void {
 		this.viewModel.searchResult.clear();
+		this.setSearchingStatus('idle');
 		this.showEmptyStage(true);
 		if (this.contextService.getWorkbenchState() === WorkbenchState.EMPTY) {
 			this.showSearchWithoutFolderMessage();
@@ -2138,6 +2179,7 @@ export class SearchView extends ViewPane {
 		_keywords?: AISearchKeyword[]
 	) {
 		this.state = SearchUIState.Idle;
+		this.setSearchingStatus('idle');
 
 		// Complete up to 100% as needed
 		progressComplete();
@@ -2307,6 +2349,7 @@ export class SearchView extends ViewPane {
 		shouldDoFinalRefresh = true
 	) {
 		this.state = SearchUIState.Idle;
+		this.setSearchingStatus('idle');
 		if (errors.isCancellationError(e)) {
 			return this.onSearchComplete(
 				progressComplete,
@@ -2407,6 +2450,7 @@ export class SearchView extends ViewPane {
 
 		this.searchWidget.searchInput?.clearMessage();
 		this.state = SearchUIState.Searching;
+		this.setSearchingStatus('searching');
 		this.showEmptyStage();
 		if (this.model.searchResult.aiTextSearchResult.hidden && shouldUpdateAISearch) {
 			this.logService.info(
@@ -2417,6 +2461,7 @@ export class SearchView extends ViewPane {
 
 		const slowTimer = setTimeout(() => {
 			this.state = SearchUIState.SlowSearch;
+			this.setSearchingStatus('slow');
 		}, 2000);
 
 		this._visibleMatches = 0;

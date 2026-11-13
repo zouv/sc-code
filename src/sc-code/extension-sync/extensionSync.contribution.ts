@@ -69,15 +69,20 @@ class ExtensionSyncContribution extends Disposable implements IWorkbenchContribu
 			const profileLocation = this.userDataProfileService.currentProfile.extensionsResource;
 
 			const installed = await server.extensionManagementService.getInstalled(ExtensionType.User, profileLocation);
-			const installedIds = new Set(installed.map(extension => extension.identifier.id.toLowerCase()));
+			const installedById = new Map(installed.map(extension => [extension.identifier.id.toLowerCase(), extension]));
 
 			for (const extension of disk) {
-				if (!extension?.path || installedIds.has(extension.id.toLowerCase())) {
+				if (!extension?.path) {
+					continue;
+				}
+				const localUri = URI.file(extension.path);
+				const current = installedById.get(extension.id.toLowerCase());
+				if (current?.location.scheme === 'file' && current.location.fsPath === localUri.fsPath) {
 					continue;
 				}
 				try {
-					await server.extensionManagementService.installFromLocation(URI.file(extension.path), profileLocation);
-					this.logService.info(`[ExtSync] registered disk extension ${extension.id} (${extension.version})`);
+					await server.extensionManagementService.installFromLocation(localUri, profileLocation);
+					this.logService.info(`[ExtSync] ${current ? 'repaired' : 'registered'} disk extension ${extension.id} (${extension.version})`);
 				} catch (error) {
 					this.logService.warn(`[ExtSync] failed to register ${extension.id}: ${(error as Error)?.message ?? String(error)}`);
 				}

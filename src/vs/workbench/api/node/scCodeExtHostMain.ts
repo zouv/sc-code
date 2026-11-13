@@ -13,8 +13,10 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as crypto from 'node:crypto';
+import { promises as fs } from 'node:fs';
 import { WebSocketServer, WebSocket } from 'ws';
 import { VSBuffer } from '../../../base/common/buffer.js';
+import { URI } from '../../../base/common/uri.js';
 import { Emitter } from '../../../base/common/event.js';
 import { Disposable, IDisposable } from '../../../base/common/lifecycle.js';
 import { IMessagePassingProtocol } from '../../../base/parts/ipc/common/ipc.js';
@@ -120,6 +122,31 @@ async function connectToRenderer(protocol: IMessagePassingProtocol): Promise<{ p
 	});
 }
 
+/**
+ * The renderer normally creates these paths before sending init data, but the
+ * extension host must not die if it runs against an older renderer (or a path
+ * was recreated/removed). Output channels use a non-recursive mkdir under
+ * logsLocation, so a missing directory would become an unhandled rejection and
+ * terminate the whole host (VAC/Claude Code regression).
+ */
+async function ensureInitDataDirectories(initData: IExtensionHostInitData): Promise<void> {
+	const directories = [
+		initData.logsLocation,
+		initData.environment.globalStorageHome,
+		initData.environment.workspaceStorageHome,
+	];
+	for (const directory of directories) {
+		try {
+			const fsPath = URI.revive(directory).fsPath;
+			if (fsPath) {
+				await fs.mkdir(fsPath, { recursive: true });
+			}
+		} catch (error) {
+			console.error('[ext-host] cannot create init data directory:', error);
+		}
+	}
+}
+
 async function start(): Promise<void> {
 	const expectedToken = process.env.SC_CODE_EXT_HOST_TOKEN || '';
 	const port = Number(process.env.SC_CODE_EXT_HOST_PORT || '0');
@@ -153,7 +180,8 @@ async function start(): Promise<void> {
 		// opens. Sending `Ready` synchronously can race ahead of that listener,
 		// so give it a tick to attach before the handshake starts.
 		setTimeout(() => {
-			connectToRenderer(protocol).then(({ initData }) => {
+			connectToRenderer(protocol).then(async ({ initData }) => {
+				await ensureInitDataDirectories(initData);
 				const hostUtils: IHostUtils = {
 					_serviceBrand: undefined,
 					pid: process.pid,

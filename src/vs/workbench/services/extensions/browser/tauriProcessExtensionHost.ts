@@ -35,6 +35,7 @@ import { invoke, isTauri, logToHost } from '../../../../scCodeBridge.js';
 import { ExtensionHostExitCode, IExtensionHostInitData, MessageType, UIKind, createMessageOfType, isMessageOfType } from '../common/extensionHostProtocol.js';
 import { ExtensionHostExtensions, ExtensionHostStartup, IExtensionHost } from '../common/extensions.js';
 import { LocalProcessRunningLocation } from '../common/extensionRunningLocation.js';
+import { ensureScCodeExtHostDirectories } from './scCodeExtHostDirectories.js';
 
 export interface ITauriExtensionHostInitData {
 	readonly extensions: ExtensionHostExtensions;
@@ -145,7 +146,11 @@ export class TauriProcessExtensionHost extends Disposable implements IExtensionH
 			{ type: RemoteConnectionType.WebSocket, host: '127.0.0.1', port: endpoint.port },
 			'/',
 			`token=${encodeURIComponent(endpoint.token)}`,
-			'extensionHost'
+			'extensionHost',
+			// The Rust supervisor serves plain ws. The release workbench origin is
+			// https://tauri.localhost, where BrowserSocketFactory would otherwise
+			// choose wss and fail with ERR_SSL_PROTOCOL_ERROR.
+			'ws'
 		);
 		if (this._isTerminating) {
 			socket.dispose();
@@ -214,6 +219,15 @@ export class TauriProcessExtensionHost extends Disposable implements IExtensionH
 		const logsLocation = nativeUserDataUri
 			? joinPath(nativeUserDataUri, 'logs', 'localProcess')
 			: joinPath(this._environmentService.extHostLogsPath, 'localProcess');
+		if (nativeUserDataUri) {
+			// Node extension host mkdir is non-recursive; the output-channel log
+			// directory and extension storage roots must exist before init data.
+			await ensureScCodeExtHostDirectories(
+				[logsLocation.fsPath, globalStorageHome.fsPath, workspaceStorageHome.fsPath],
+				path => invoke('mkdir', { path, recursive: true }),
+				(directory, error) => this._logService.warn(`[extHost] cannot create native directory ${directory}`, error)
+			);
+		}
 		return {
 			commit: this._productService.commit,
 			version: this._productService.version,

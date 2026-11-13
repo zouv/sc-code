@@ -1,8 +1,20 @@
 # 变更记录 · ScCode
 
-## [未发布]
+## [0.6.0] - 2026-11-13
+
+### 新增
+- 搜索面板新增状态提示：搜索进行中显示「Searching…」加载动画，超过 2 秒显示「Searching… still running」，完成后显示结果计数或「No results found」；新搜索开始时会清掉上一条结果提示，不再分不清正在搜索还是没有结果。
+
+### 修复
+- 修复「Open in New Window」弹出「浏览器阻止打开新窗口」提示：WebView2 默认不处理工作台的 `window.open('about:blank')`；现由 Tauri `on_new_window` 创建同环境辅助窗口，辅助窗口关闭时跳过主工作台未保存确认钩子，并在 DOM 就绪后再注入工作台界面。
+- 修复扩展安装记录指向 Open VSX 远程 URL（`source=gallery`）时真实 Node 宿主无法加载扩展：即使 Rust 已把文件下载到本地，宿主仍报 `Cannot load URI ... must be of file-scheme`，Claude Code 等扩展的激活与命令全部失效；现在启动注册磁盘扩展时检测非 `file:` 记录并用本地路径修复，legacy 同步路径同样处理。
+- 修复发布版 HTTPS workbench（`https://tauri.localhost`）下真实 Node 扩展宿主连接错误：`BrowserSocketFactory` 按页面协议选择 `wss`，但本机回环宿主只提供明文 `ws`，连接以 `ERR_SSL_PROTOCOL_ERROR` 失败，VAC/Claude Code 等全部扩展命令不可用；现为本地宿主显式固定 `ws`。
+- 修复默认启用真实 Node 扩展宿主后 VAC 等扩展的侧边栏与 Chat 打不开：宿主 native 日志目录 `logs/localProcess` 与扩展存储根目录未预创建，扩展首次 `createOutputChannel` 触发的非递归 mkdir 以 ENOENT 成为未处理异常并终止整个扩展宿主；现于 init data 生成前递归创建这些目录，并由扩展宿主在收到 init data 后再兜底创建，用 `tests/ext-host-directories.test.cjs` 防止回归。
+- 修复 Claude Code 2.1.x 在真实扩展宿主下激活失败、Claude Chat 面板打不开（`command 'claude-vscode.window.open' not found`）：扩展在模块加载阶段调用 `vscode.NotebookCellOutputItem.error()`，而 ScCode 的 `vscode` API 未导出 notebook 数据类型；现导出 NotebookCellData/Output/OutputItem/Edit/Range/Kind/Data 纯数据类型（notebook 运行时仍未接入），并新增 `tests/ext-host-notebook-api.test.cjs`。
+- 修复 `.gitattributes` 通配规则覆盖 `*.bat eol=crlf` 导致 Windows 批处理检出为 LF、仓库体检测试失败；批处理规则移到通配规则之后。
 
 ### 变更
+- 产品版本升至 0.6.0（`package.json`、`package-lock.json`、`tauri.conf.json`/WiX、`src-tauri/Cargo.toml`/`Cargo.lock`、About 回退值同步）。
 - 关于对话框改为左侧产品图标 + 右侧产品名 / 版本·作者 / 简介，构建诊断信息仍可通过「Copy」复制。
 - 文档体系：同步 vibe-coding-starter 2026-11-10.1（check-docs / skills / hook / ARCH 与 ROADMAP 分册 / README 命令表）。
 

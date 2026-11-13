@@ -21,6 +21,8 @@
 2026-11-02：修复 0.4.1 的 CSP 回归（Tauri 给静态 `<style>` 注入的 nonce 使 `style-src 'unsafe-inline'` 失效，运行时主题/codicon/菜单样式被拦截，图标与排版异常）：仅对 style-src 关闭 Tauri 自动 nonce/hash 注入，并新增配置回归与真实桌面主题/图标冒烟断言。
 2026-11-07：完成 S24（近期与中期 VS Code 核心模块全量接入及真实扩展宿主默认开启，产品版本升至 0.5.0）：补齐 Outline、Call/Type Hierarchy、Timeline + Local History、Merge Editor、Multi-Diff Editor、Bulk Edit Preview、Comments、External URI Opener、Welcome Walkthrough/Views、CodeEditor/Emmet/InlayHints/CodeActions/DropOrPasteInto/ScrollLocking 等 18 项工作台模块与 MainThread 桥接；修复 Tauri 下内置扩展 `file://` 路径扫描并默认启用真实 Node 扩展宿主；新增 `vscode.git` v1 API 扩展宿主兼容层。
 2026-11-07：修复 `dev.bat` 点击无反应并调整为“先编译、再启动开发模式”（未改 Go 源码时复用已校验的 `sc-code-agent.exe`，先打包真实宿主并完成 `cargo build` 再启动 `tauri dev`），产品版本升至 0.5.1 并完成 Windows x64 Debug/Release 打包与 GitHub Release 发布。
+2026-11-12：修复默认真实扩展宿主下 VAC 崩溃：native `logs/localProcess` 与扩展存储根目录未预创建，首次 `createOutputChannel` 的非递归 mkdir 以 ENOENT 终止整个宿主；VAC 1.15.0 在隔离 profile 的侧边栏/Chat 验证通过。同轮修复 Claude Code 2.1.296 激活失败（模块加载即调用 `NotebookCellOutputItem.error`，API 未导出 notebook 数据类型），Chat 面板可打开。2026-11-13 修复发布版 HTTPS workbench 下真实宿主误用 `wss` 连接明文 `ws` 回环端口的 `ERR_SSL_PROTOCOL_ERROR`，profile 中 Open VSX 远程 location 导致扩展无法加载，以及 WebView2 `window.open` 被拦截导致「Open in New Window」弹出浏览器提示；VAC/Claude 在 HTTPS origin、真实 profile 与辅助窗口下验证通过，真实安装包与其余第三方扩展矩阵仍待验收。
+2026-11-13：发布 v0.6.0（真实扩展宿主兼容、WebView2 辅助窗口与搜索面板状态），完成 Windows x64 Debug/Release 打包、Release 包冒烟与 GitHub prerelease。
 
 ## 开发大纲
 | 编号 | 优先级 | 任务 | 状态 |
@@ -45,7 +47,7 @@
 | S9 | P1 | ~~仓库布局、源码/生成物Git边界与首次提交~~ | ✅ 2026-10-18；干净检出验收通过，提交/推送记录以Git为准 |
 | S6 | P2 | 扩展 API/服务/许可矩阵、性能基准与新特性 | 待开发 |
 | S10a | P0 | ~~真实 Node 扩展宿主：bundle、Rust 监管、PersistentProtocol/WS、工作台 `IExtensionHost`、磁盘扩展先行注册、开关~~ | ✅ 2026-10-19；实验开关，默认关闭 |
-| S10b | P0 | 真实宿主全量验收：VAC/Claude Code 等第三方扩展、内置扩展矩阵、多窗口宿主隔离、异常恢复 | 待开发；实测真实宿主未注册扩展贡献命令（typescript/emmet 等 MISSING），旧宿主同样缺（2026-10-25） |
+| S10b | P0 | 真实宿主全量验收：VAC/Claude Code 等第三方扩展、内置扩展矩阵、多窗口宿主隔离、异常恢复 | 待开发；实测真实宿主未注册扩展贡献命令（typescript/emmet 等 MISSING），旧宿主同样缺（2026-10-25）；2026-11-12/13 VAC 1.15.0 侧边栏/Chat 与 Claude Code 2.1.296 激活/Chat 已在隔离 profile（含 HTTPS origin）及真实 profile 通过（修复日志目录缺失、notebook 类型缺失、loopback wss/ws 错配与 Open VSX 远程 location），其余矩阵待验收 |
 | S10c | P1 | ~~设置/UI 状态迁到 profile SQLite + IndexedDB 一次性迁移~~ | ✅ 2026-10-19 |
 | S10d | P1 | ~~Go agent 懒启动、WASM 运行时懒初始化、前端分包、性能基线脚本、IPC 桥修复、依赖清理~~ | ✅ 2026-10-19 |
 | S10e | P0 | ~~修复 Release 黑屏（分包循环 TDZ）：恢复 base/platform/editor 单一 core，仅拆 terminal；新增 `smoke:dist` 生产包 headless 冒烟并接入 CI~~ | ✅ 2026-10-19 |
@@ -65,6 +67,7 @@
 | S22 | P2 | ~~收敛：无消费者的 scCode 桥接服务加载、CUSTOM 标记~~ | ✅ 2026-10-27；CUSTOM 标记与不必要桥接已清理 |
 
 ## 已交付里程碑
+- ✅ 2026-11-13：~~v0.6.0 真实扩展宿主兼容、辅助窗口与搜索状态~~ — [GitHub Release](https://github.com/zouv/sc-code/releases/tag/v0.6.0)，未签名 Windows x64 prerelease；修复 HTTPS workbench 下真实宿主 `wss/ws` 错配、Open VSX 远程 location、native 日志/存储目录与 notebook 类型缺失，新增 WebView2 辅助窗口与搜索中/完成状态；VAC 1.15.0 与 Claude Code 2.1.296 实机验证，`npm test` 109/109，Release 包冒烟通过。
 - ✅ 2026-11-07：~~v0.5.1 开发模式编译启动修复与发布~~ — [GitHub Release](https://github.com/zouv/sc-code/releases/tag/v0.5.1)，未签名 Windows x64 prerelease（非 draft）；修复 `dev.bat` 点击无反应并调整为“先编译、再启动开发模式”（`prepare-desktop-runtime.cjs` 复用已校验 `sc-code-agent.exe`、`dev-desktop.cjs` 先执行 `ext-host` 打包与 `cargo build --no-default-features` 再启动 `tauri dev`）。
 - ✅ 2026-11-07：~~S24 近期与中期 VS Code 核心模块全量接入及真实扩展宿主默认开启~~ — 补齐 18 个核心工作台模块与 13 处原 stub 的真实实现，恢复 `mainThreadTimeline`、`mainThreadComments`、`mainThreadUriOpeners` 与 `MultiDiffEditor` RPC 契约；修复 Tauri 桌面端内置扩展 `file://` 路径扫描与存储路径，默认启用真实 Node 扩展宿主并内置 `vscode.git` v1 API 兼容层；`ext-host:build`、`typecheck`、`lint`、`npm test`（99/99）、`test:ext-host`（2/2）、`rust:check`、`build` 与 `smoke:dist` 全部通过。
 - ✅ 2026-11-02：~~v0.4.2 CSP 样式回归修复与发布~~ — [GitHub Release](https://github.com/zouv/sc-code/releases/tag/v0.4.2)，未签名 Windows x64 prerelease（非 draft）；tag `v0.4.2` 指向 `8950484`，修复 0.4.1 因 Tauri style nonce 导致的工作台图标/菜单/主题样式丢失。

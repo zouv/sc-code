@@ -49,7 +49,6 @@
 *.webm binary
 
 # Windows daily entry points keep CMD-compatible line endings.
-*.bat text eol=crlf
 
 # Bash entry points must also work after a Windows checkout.
 *.sh text eol=lf
@@ -58,3 +57,4 @@ scripts/bin/xattr text eol=lf
 * text=auto eol=lf
 *.ps1 text eol=lf
 *.cmd text eol=crlf
+*.bat text eol=crlf

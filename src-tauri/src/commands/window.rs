@@ -7,6 +7,7 @@ use super::storage::StorageDb;
 use crate::taskbar::OpenTarget;
 
 static WORKSPACE_WINDOW_COUNTER: AtomicU64 = AtomicU64::new(1);
+static AUXILIARY_WINDOW_COUNTER: AtomicU64 = AtomicU64::new(1);
 
 /// Windows whose close request was approved by the workbench (unsaved-changes prompt done).
 fn approved_closes() -> &'static std::sync::Mutex<std::collections::HashSet<String>> {
@@ -37,6 +38,51 @@ pub fn isolated_webview_data_dir() -> Option<std::path::PathBuf> {
     std::env::var_os("SC_CODE_HOME").map(|_| crate::app_dirs::app_data_dir())
 }
 
+/// The web workbench creates auxiliary windows with `window.open('about:blank')`.
+/// WebView2 blocks that unless the host answers `NewWindowRequested`; create a
+/// same-origin Tauri window backed by `aux.html` instead of showing the popup
+/// permission dialog.
+fn with_auxiliary_window_support<'a, M: Manager<tauri::Wry>>(
+    builder: WebviewWindowBuilder<'a, tauri::Wry, M>,
+    manager: &M,
+    use_https_scheme: bool,
+) -> WebviewWindowBuilder<'a, tauri::Wry, M> {
+    let app = manager.app_handle().clone();
+    builder.on_new_window(move |url, features| {
+        let id = AUXILIARY_WINDOW_COUNTER.fetch_add(1, Ordering::Relaxed);
+        let label = format!("auxiliary-{id}");
+        log::info!("[aux-window] creating {label} (requested {url})");
+        let mut builder = WebviewWindowBuilder::new(
+            &app,
+            &label,
+            WebviewUrl::External(url.clone()),
+        )
+        .title("ScCode")
+        .use_https_scheme(use_https_scheme)
+        .decorations(false)
+        .shadow(true)
+        .window_features(features);
+
+        #[cfg(target_os = "macos")]
+        {
+            builder = builder
+                .title_bar_style(tauri::TitleBarStyle::Overlay)
+                .hidden_title(true);
+        }
+
+        match builder.build() {
+            Ok(window) => {
+                log::info!("[aux-window] created {label}");
+                tauri::webview::NewWindowResponse::Create { window }
+            }
+            Err(error) => {
+                log::error!("failed to create auxiliary window: {error}");
+                tauri::webview::NewWindowResponse::Deny
+            }
+        }
+    })
+}
+
 /// Builds a workbench window from a window config, applying the profile's WebView data folder.
 pub fn build_workbench_window<M: Manager<tauri::Wry>>(
     manager: &M,
@@ -47,7 +93,7 @@ pub fn build_workbench_window<M: Manager<tauri::Wry>>(
     if let Some(dir) = isolated_webview_data_dir() {
         builder = builder.data_directory(dir);
     }
-    builder
+    with_auxiliary_window_support(builder, manager, config.use_https_scheme)
         .build()
         .map_err(|e| format!("failed to build window '{}': {e}", config.label))
 }
@@ -100,10 +146,16 @@ pub async fn create_window(
         None => WebviewUrl::default(),
     };
 
+    let use_https_scheme = app
+        .config()
+        .app
+        .windows
+        .first()
+        .is_some_and(|config| config.use_https_scheme);
     let mut builder = WebviewWindowBuilder::new(&app, &label, webview_url)
         .title(&title)
         // Dynamic windows must register the same app origin as the main window.
-        .use_https_scheme(app.config().app.windows.first().is_some_and(|config| config.use_https_scheme))
+        .use_https_scheme(use_https_scheme)
         .inner_size(1200.0, 800.0);
     if let Some(dir) = isolated_webview_data_dir() {
         builder = builder.data_directory(dir);
@@ -117,7 +169,7 @@ pub async fn create_window(
     #[cfg(not(target_os = "macos"))]
     let builder = builder.decorations(false).shadow(true);
 
-    builder
+    with_auxiliary_window_support(builder, &app, use_https_scheme)
         .build()
         .map_err(|e| format!("Failed to create window '{label}': {e}"))?;
 

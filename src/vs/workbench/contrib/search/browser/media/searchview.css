@@ -190,6 +190,24 @@
 	opacity: 0.7;
 }
 
+.search-view .search-status {
+	display: none;
+	align-items: center;
+	gap: 6px;
+	padding: 2px 22px 8px;
+	color: var(--vscode-search-resultsInfoForeground);
+	font-size: 11px;
+	opacity: 0.8;
+}
+
+.search-view .search-status.visible {
+	display: flex;
+}
+
+.search-view .search-status .codicon {
+	font-size: 12px;
+}
+
 .search-view .message {
 	padding: 0 22px 8px;
 	overflow-wrap: break-word;
