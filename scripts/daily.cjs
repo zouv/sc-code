@@ -7,6 +7,7 @@ const { spawnSync } = require('node:child_process');
 const { root, runtime, runtimeConfig, run, assertPrepared } = require('./desktop-runtime.cjs');
 const target = 'x86_64-pc-windows-msvc';
 const { buildPaths } = require('./package-output.cjs');
+const { guardForDev, guardForPackage } = require('./process-guard.cjs');
 const generated = ['.runtime/target', '.runtime/dist', '.runtime/public', '.runtime/metadata',
   '.runtime/desktop', '.runtime/package-staging', '.runtime/tauri.runtime.conf.json', '.runtime/logs', '.runtime/legacy', 'src-tauri/gen', 'packages'];
 function cleanTargets(base = root) {
@@ -95,9 +96,9 @@ function help() {
   console.log(`ScCode daily scripts (Node.js 22+, Rust MSVC, Go + C compiler for initial preparation)
   setup.bat               Install npm dependencies and prepare pinned desktop runtime
   run.bat [app args...]    Launch current Debug desktop; build if missing/stale
-  dev.bat [tauri args...]  Compile first, then launch desktop in development mode
+  dev.bat [tauri args...]  Compile first, then launch desktop in development mode (force-closes repo-local instances)
   build.bat [Debug|Release] [tauri args...]  Compile only (no packages)
-  package.bat              Build Debug zip + Release setup/unpack/zip (local only)
+  package.bat              Build Debug zip + Release setup/unpack/zip (local only; asks before force-closing)
   test.bat                Node, transport, TypeScript and selected native regressions
   verify.bat              test + runtime preflight + server smoke + docs
   clean.bat               Delete allowlisted generated output (incl. legacy packages/), not dist/ or profiles
@@ -107,7 +108,7 @@ Unpack dirs: dist/<mode>/unpack. Zip contents are rooted at the package root (no
 Intermediate output: .runtime/{desktop,target,dist,public,metadata,logs,package-staging}.
 clean.bat preserves dist/, tools/downloads and user profiles; legacy packages/ is removed.
 Known sc-code-agent timeout, sc-code-terminal Unix and sc-code-remote test failures are NOT part of test.bat.
-No script commits, pushes, publishes, kills apps or deletes %APPDATA%/ScCode.`);
+dev force-closes repo-local ScCode instances; package asks first. No script commits, pushes, publishes or deletes %APPDATA%/ScCode.`);
 }
 function main(action, args) {
   if (args.includes('--help') || args.includes('-h') || !action) return help();
@@ -153,7 +154,11 @@ function main(action, args) {
   switch (action) {
     case 'setup': npm('ci', '--ignore-scripts', '--no-audit', '--no-fund'); prepare(true); npm('run', 'setup'); break;
     case 'run': launch(args); break;
-    case 'dev': dependencies(); run(process.execPath, [path.join(root, 'scripts/dev-desktop.cjs'), ...args]); break;
+    case 'dev':
+      if (!args.some(arg => ['--help', '-h', '--version', '-V'].includes(arg))) guardForDev();
+      dependencies();
+      run(process.execPath, [path.join(root, 'scripts/dev-desktop.cjs'), ...args]);
+      break;
     case 'build': {
       const compileArgs = args.includes('--no-bundle') ? args : ['--no-bundle', ...args];
       build(mode, compileArgs, false);
@@ -165,6 +170,7 @@ function main(action, args) {
       break;
     }
     case 'package':
+      if (!guardForPackage()) { process.exitCode = 2; break; }
       build('Debug', ['--bundles', 'nsis'], true);
       build('Release', ['--bundles', 'nsis'], true);
       break;

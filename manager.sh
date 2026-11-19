@@ -6,7 +6,7 @@ cd "$ROOT"
 require() { command -v "$1" >/dev/null 2>&1 || { echo "Missing tool: $1" >&2; exit 1; }; }
 case "${1:-help}" in
   setup) require node; require npm; npm ci --ignore-scripts --no-audit --no-fund ;;
-  dev) require npm; npm run desktop:dev ;;
+  dev) require node; require npm; node scripts/daily.cjs dev ;;
   web) require npm; npm run dev ;;
   build) require npm; npm run build ;;
   test) require npm; require cargo; npm test; npm run test:transport; npm run typecheck; cargo test -p sc-code-runtime -p sc-code-auth -p sc-code-workspace -p sc-code-agent -p sc-code-settings -p sc-code-extensions; cargo test -p sc-code --lib; bash check-docs.sh ;;

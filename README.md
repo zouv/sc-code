@@ -88,9 +88,9 @@ ScCode 是一个从 VS Code workbench 迁移、并独立演进的桌面编辑器
 | ---------------------------- | ------------------------------------------------------------------------------------ |
 | `setup.bat`                  | 安装依赖、准备固定 Node/Go/内置扩展并生成元数据                                      |
 | `run.bat [应用参数]`         | 前台启动当前 Debug 桌面；缺失或源码变化时自动重建                                    |
-| `dev.bat`                    | Tauri 热更新开发，带完整 runtime 资源配置                                            |
+| `dev.bat`                    | Tauri 热更新开发，带完整 runtime 资源配置；先强制关闭仓库内运行中的 ScCode 实例             |
 | `build.bat [Debug或Release]` | 只编译桌面程序，不生成成品包；默认 Debug                                             |
-| `package.bat`                | 一次生成 Debug zip + Release setup、未压缩 unpack 目录与 unpack zip，不自动签名/发布 |
+| `package.bat`                | 一次生成 Debug zip + Release setup、未压缩 unpack 目录与 unpack zip；检测到运行中的实例先询问是否强制关闭，不自动签名/发布 |
 | `test.bat`                   | Node/transport/TS + 选定原生模块和桌面 lib 回归                                      |
 | `verify.bat`                 | 测试 + runtime/真实本地服务/文档检查                                                 |
 | `clean.bat`                  | 清理生成输出；保留 dist/、工具缓存、node_modules 与用户配置，并清理旧 packages/      |
